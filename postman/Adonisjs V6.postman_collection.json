@@ -1,0 +1,298 @@
+{
+	"info": {
+		"_postman_id": "7f4b8840-7a92-483a-9b93-fa79499872ab",
+		"name": "Adonisjs V6",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "27725687",
+		"_collection_link": "https://theexpertscloud.postman.co/workspace/ExpertsCloud-Team~4978b08d-b7f5-4888-a9fb-5af473f7ddef/collection/12874982-7f4b8840-7a92-483a-9b93-fa79499872ab?action=share&source=collection_link&creator=27725687"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"fullName\": \"Tariq Sajid\",\n\t\"email\": \"mtariqsajid@gmail.com\",\n\t\"password\": \"12345678\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/api/register",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"",
+									"if(pm.response.code === 200){",
+									"    var jsonData = pm.response.json();",
+									"    const data = jsonData.data.token?.token",
+									"",
+									"",
+									"    console.log(\"jsonData\", data)",
+									"    ",
+									"    if(data){",
+									"        pm.environment.set(\"token\", data);",
+									"    }",
+									"",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\": \"admin@experts.com\",\n\t\"password\": \"Abc@1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/api/login",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "me",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/api/me",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "users",
+			"item": [
+				{
+					"name": "listing users",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"page\": 1,\n\t\"page_size\": 100,\n\t\"filters\": [\n\t\t// {\n\t\t// \t\"columnName\": \"email\",\n\t\t// \t\"type\": \"like\",\n\t\t// \t\"value\": \"tar\"\n\t\t// }\n\t\t// {\n\t\t// \t\"columnName\": \"full_name\",\n\t\t// \t\"type\": \"exact\",\n\t\t// \t\"value\": \"tariq\"\n\t\t// },\n\t\t// {\n\t\t// \t\"columnName\": \"is_active\",\n\t\t// \t\"type\": \"exact\",\n\t\t// \t\"value\": true\n\t\t// }\n\t]\n\t// \"sorts\": [\n\t// \t{\n\t// \t\t\"columnName\": \"id\",\n\t// \t\t\"orderBy\": \"desc\"\n\t// \t}\n\t// ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/api/users/listing",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"listing"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create user",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\": \"admi1n@experts.com\",\n\t\"fullName\": \"tariq aslam\",\n\t\"password\": \"1233333\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/api/users",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update user",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\": \"admdin@experts.com\",\n\t\"fullName\": \"Abc@1234\",\n\t\"isActive\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/api/users/:userId",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get user",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/api/users/:userId",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete user",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/api/users/:userId",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "3"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{token}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	]
+}
