@@ -1,0 +1,78 @@
+name: Deploy to Dev Remote Server
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+# These permissions are required for the OIDC token exchange with AWS.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Application to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Npm Run Build
+        run: |
+          npm run build
+
+      - name: Configure AWS Credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          # The ARN of the IAM role to assume.
+          # This role MUST be configured in your AWS account to trust the GitHub OIDC provider.
+          # Store this as a secret in GitHub repository settings: Settings > Secrets and variables > Actions > New repository secret
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_GITHUB }}
+
+          # The AWS region where your resources are located.
+          # Store this as a variable in GitHub repository settings: Settings > Secrets and variables > Actions > New repository variable
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Deploy files to EC2 via Rsync and SSM
+        run: |
+          echo "Starting deployment to EC2 instance ${{ vars.EC2_INSTANCE_ID }}"...
+
+          # This command uses SSH with a ProxyCommand to tunnel the connection
+          # through AWS Systems Manager (SSM) Session Manager.
+          # Authentication is handled by the IAM role assumed in the previous step,
+          # eliminating the need for storing SSH keys as secrets.
+          #
+          # AWS PREREQUISITES:
+          # 1. The EC2 instance must have the SSM Agent installed and running.
+          # 2. The EC2 instance needs an IAM Instance Profile with the 'AmazonSSMManagedInstanceCore' policy attached.
+          # 3. The IAM role specified in secrets.AWS_ROLE_TO_ASSUME needs a policy allowing
+          #    the 'ssm:StartSession' action on the target instance. Example policy:
+          #    {
+          #        "Version": "2012-10-17",
+          #        "Statement": [
+          #            {
+          #                "Effect": "Allow",
+          #                "Action": "ssm:StartSession",
+          #                "Resource": "arn:aws:ec2:YOUR_REGION:YOUR_ACCOUNT_ID:instance/${{ vars.EC2_INSTANCE_ID }}"
+          #            }
+          #        ]
+          #    }
+
+          rsync -avz --delete \
+            -e 'ssh -o StrictHostKeyChecking=no -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"' \
+            ${{ vars.LOCAL_PATH }} \
+            ${{ vars.REMOTE_USER }}@${{ vars.EC2_INSTANCE_ID }}:${{ vars.REMOTE_PATH }}
+
+          echo "Deployment successful."
