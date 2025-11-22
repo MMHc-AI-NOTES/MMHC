@@ -16,6 +16,11 @@ jobs:
     name: Deploy Application to EC2
     runs-on: ubuntu-latest
 
+    env:
+      LOCAL_PATH: build
+      REMOTE_USER: ubuntu
+      REMOTE_PATH: /home/ubuntu/mmhc-backend-dev
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -43,11 +48,11 @@ jobs:
 
           # The AWS region where your resources are located.
           # Store this as a variable in GitHub repository settings: Settings > Secrets and variables > Actions > New repository variable
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy files to EC2 via Rsync and SSM
         run: |
-          echo "Starting deployment to EC2 instance ${{ vars.EC2_INSTANCE_ID }}"...
+          echo "Starting deployment to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}"...
 
           # This command uses SSH with a ProxyCommand to tunnel the connection
           # through AWS Systems Manager (SSM) Session Manager.
@@ -65,14 +70,14 @@ jobs:
           #            {
           #                "Effect": "Allow",
           #                "Action": "ssm:StartSession",
-          #                "Resource": "arn:aws:ec2:YOUR_REGION:YOUR_ACCOUNT_ID:instance/${{ vars.EC2_INSTANCE_ID }}"
+          #                "Resource": "arn:aws:ec2:YOUR_REGION:YOUR_ACCOUNT_ID:instance/${{ secrets.EC2_INSTANCE_ID }}"
           #            }
           #        ]
           #    }
 
           rsync -avz --delete \
             -e 'ssh -o StrictHostKeyChecking=no -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"' \
-            ${{ vars.LOCAL_PATH }} \
-            ${{ vars.REMOTE_USER }}@${{ vars.EC2_INSTANCE_ID }}:${{ vars.REMOTE_PATH }}
+            ${{ env.LOCAL_PATH }} \
+            ${{ env.REMOTE_USER }}@${{ secrets.EC2_INSTANCE_ID }}:${{ env.REMOTE_PATH }}
 
           echo "Deployment successful."
