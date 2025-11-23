@@ -49,6 +49,16 @@ jobs:
           # Store this as a variable in GitHub repository settings: Settings > Secrets and variables > Actions > New repository variable
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Test AWS SSM SSH Connection
+        run: |
+          echo "Testing SSH connection to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}..."
+
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p" \
+            ${{ secrets.EC2_INSTANCE_ID }} "ls -la ${{ env.REMOTE_PATH }}"
+
+          echo "SSH test successful."
+
       - name: Deploy files to EC2 via Rsync and SSM
         run: |
           echo "Starting deployment to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}..."
