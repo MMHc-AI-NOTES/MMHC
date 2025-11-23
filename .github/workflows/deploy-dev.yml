@@ -18,7 +18,6 @@ jobs:
 
     env:
       LOCAL_PATH: build
-      REMOTE_USER: ubuntu
       REMOTE_PATH: /home/ubuntu/mmhc-backend-dev
 
     steps:
@@ -52,13 +51,11 @@ jobs:
 
       - name: Deploy files to EC2 via Rsync and SSM
         run: |
-          echo "Starting deployment to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}"...
-
-
+          echo "Starting deployment to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}..."
 
           rsync -avz --delete \
-            -e 'ssh -o StrictHostKeyChecking=no -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"' \
-            ${{ env.LOCAL_PATH }} \
-            ${{ env.REMOTE_USER }}@${{ secrets.EC2_INSTANCE_ID }}:${{ env.REMOTE_PATH }}
+            -e 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"' \
+            ${{ env.LOCAL_PATH }}/ \
+            ${{ secrets.EC2_INSTANCE_ID }}:${{ env.REMOTE_PATH }}
 
           echo "Deployment successful."
