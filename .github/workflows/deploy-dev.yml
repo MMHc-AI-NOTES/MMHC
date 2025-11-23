@@ -54,26 +54,7 @@ jobs:
         run: |
           echo "Starting deployment to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}"...
 
-          # This command uses SSH with a ProxyCommand to tunnel the connection
-          # through AWS Systems Manager (SSM) Session Manager.
-          # Authentication is handled by the IAM role assumed in the previous step,
-          # eliminating the need for storing SSH keys as secrets.
-          #
-          # AWS PREREQUISITES:
-          # 1. The EC2 instance must have the SSM Agent installed and running.
-          # 2. The EC2 instance needs an IAM Instance Profile with the 'AmazonSSMManagedInstanceCore' policy attached.
-          # 3. The IAM role specified in secrets.AWS_ROLE_TO_ASSUME needs a policy allowing
-          #    the 'ssm:StartSession' action on the target instance. Example policy:
-          #    {
-          #        "Version": "2012-10-17",
-          #        "Statement": [
-          #            {
-          #                "Effect": "Allow",
-          #                "Action": "ssm:StartSession",
-          #                "Resource": "arn:aws:ec2:YOUR_REGION:YOUR_ACCOUNT_ID:instance/${{ secrets.EC2_INSTANCE_ID }}"
-          #            }
-          #        ]
-          #    }
+
 
           rsync -avz --delete \
             -e 'ssh -o StrictHostKeyChecking=no -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"' \
