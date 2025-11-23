@@ -19,6 +19,7 @@ jobs:
     env:
       LOCAL_PATH: build
       REMOTE_PATH: /home/ubuntu/mmhc-backend-dev
+      AVAILABILITY_ZONE: us-east-1a
 
     steps:
       - name: Checkout repository
@@ -48,6 +49,21 @@ jobs:
           # The AWS region where your resources are located.
           # Store this as a variable in GitHub repository settings: Settings > Secrets and variables > Actions > New repository variable
           aws-region: ${{ secrets.AWS_REGION }}
+
+      # ---------- Generate SSH key for temporary login ----------
+      - name: Generate SSH Key
+        run: |
+          ssh-keygen -t rsa -N "" -f temp_key
+          echo "Key generated"
+
+      # ---------- Push public key using EC2 Instance Connect ----------
+      - name: Send SSH Key to EC2
+        run: |
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id ${{ secrets.EC2_INSTANCE_ID }} \
+            --instance-os-user ubuntu \
+            --availability-zone ${{ env.AVAILABILITY_ZONE }} \
+            --ssh-public-key file://temp_key.pub
 
       - name: Test AWS SSM SSH Connection
         run: |
