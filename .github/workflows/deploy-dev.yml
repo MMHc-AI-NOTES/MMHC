@@ -65,23 +65,11 @@ jobs:
             --availability-zone ${{ env.AVAILABILITY_ZONE }} \
             --ssh-public-key file://temp_key.pub
 
-      - name: Test AWS SSM SSH Connection
+      - name: Rsync to EC2
         run: |
-          echo "Testing SSH connection to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}..."
-
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p" \
-            ${{ secrets.EC2_INSTANCE_ID }} "ls -la ${{ env.REMOTE_PATH }}"
-
-          echo "SSH test successful."
-
-      - name: Deploy files to EC2 via Rsync and SSM
-        run: |
-          echo "Starting deployment to EC2 instance ${{ secrets.EC2_INSTANCE_ID }}..."
-
           rsync -avz --delete \
-            -e 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"' \
-            ${{ env.LOCAL_PATH }}/ \
-            ${{ secrets.EC2_INSTANCE_ID }}:${{ env.REMOTE_PATH }}
+            -e "ssh -i temp_key -o StrictHostKeyChecking=no" \
+            ./build/ \
+            ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/app
 
           echo "Deployment successful."
