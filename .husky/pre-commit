@@ -1,1 +1,7 @@
+# Skip Husky when committing from GitHub Desktop
+if [[ "$GIT_EXEC_PATH" == *"github-desktop"* ]]; then
+exit 0
+fi
+
 npm test
+npm run build
