@@ -19,7 +19,7 @@ jobs:
     env:
       LOCAL_PATH: build
       REMOTE_PATH: /home/ubuntu/mmhc-backend-dev
-      AVAILABILITY_ZONE: us-east-1a
+      AVAILABILITY_ZONE: us-east-1f
 
     steps:
       - name: Checkout repository
