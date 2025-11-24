@@ -35,6 +35,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create env file
+        run: |
+          echo "${{ vars.ENV_DEV }}" > .env
+          cat .env > ./build/.env  # Copy .env to the build directory
+
       - name: Npm Run Build
         run: npm run build
 
@@ -82,10 +87,8 @@ jobs:
             --compress-level=9 \
             --exclude="node_modules" \
             --exclude="tmp" \
-            --exclude=".git" \
             --exclude=".github" \
             --exclude=".gitignore" \
-            --exclude="*.map" \
             --exclude=".DS_Store" \
             -e "ssh -i temp_key -o StrictHostKeyChecking=no -o ConnectTimeout=10" \
             ./build/ \
