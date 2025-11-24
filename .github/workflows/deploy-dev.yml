@@ -86,7 +86,6 @@ jobs:
             --exclude=".github" \
             --exclude=".gitignore" \
             --exclude="*.map" \
-            --exclude=".env*" \
             --exclude=".DS_Store" \
             -e "ssh -i temp_key -o StrictHostKeyChecking=no -o ConnectTimeout=10" \
             ./build/ \
