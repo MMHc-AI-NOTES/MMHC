@@ -118,6 +118,25 @@ jobs:
           _pm2_server_ref=$1
           NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
 
+
+          ## go to desired directory
+          cd /home/ubuntu/$_remote_directory_name
+
+          nvm use v22.21
+
+          npm i
+
+          node ace migration:run --force
+
+          # restart PM2
+          pm2 stop $_pm2_server_ref --silent
+          pm2 delete $_pm2_server_ref --silent
+          pm2 start bin/server.js --name $_pm2_server_ref --time
+
+          echo "Deployment Ended Local system name: $HOSTNAME"
+          echo "Deployment Ended Local date and time: $(date)"
+          echo "Bye"
+
           EOL
 
       - name: Deployment Successful
