@@ -69,7 +69,8 @@ jobs:
             --instance-id ${{ secrets.EC2_INSTANCE_ID }} \
             --instance-os-user ubuntu \
             --availability-zone ${{ env.AVAILABILITY_ZONE }} \
-            --ssh-public-key file://temp_key.pub
+            --ssh-public-key file://temp_key.pub \
+            --os-user-session-duration 600
 
       - name: Clean build artifacts
         run: |
@@ -120,7 +121,7 @@ jobs:
 
 
           ## go to desired directory
-          cd /home/ubuntu/$_remote_directory_name
+          cd $_remote_directory_name
 
           nvm use v22.21
 
