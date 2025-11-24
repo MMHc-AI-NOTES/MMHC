@@ -77,7 +77,7 @@ jobs:
           echo
 
           # connect to remote server
-          ssh -T "$_user"@"$_remote" "bash -s $_remote_directory_name" <<'EOL'
+          ssh -i temp_key -T "$_user"@"$_remote" "bash -s $_remote_directory_name" <<'EOL'
           #!/bin/bash
 
           export NVM_DIR="$HOME/.nvm"
