@@ -70,7 +70,6 @@ jobs:
             --instance-os-user ubuntu \
             --availability-zone ${{ env.AVAILABILITY_ZONE }} \
             --ssh-public-key file://temp_key.pub \
-            --os-user-session-duration 600
 
       - name: Clean build artifacts
         run: |
