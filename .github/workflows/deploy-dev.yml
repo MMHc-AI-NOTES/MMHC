@@ -72,19 +72,22 @@ jobs:
             ./build/ \
             ubuntu@${{ secrets.EC2_PUBLIC_IP }}:${{ env.REMOTE_PATH }}
 
+      - name: Running commands on remote host
+        run: |
           echo
           echo "** Running commands on remote host named $_remote **"
           echo
 
-          # connect to remote server
-          ssh -i temp_key -T "$_user"@"$_remote" "bash -s $_remote_directory_name" <<'EOL'
+      - name: Execute Remote Commands
+        run: |
+          ssh -i temp_key -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_PUBLIC_IP }} "bash -s /home/ubuntu/mmhc-backend-dev" <<'EOL'
           #!/bin/bash
 
           export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
           export HOME="/home/ubuntu/"
-          #
+
           now="$(date)"
           name="$HOSTNAME"
           up="$(uptime)"
@@ -96,6 +99,7 @@ jobs:
           _pm2_server_ref=$1
           NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
 
-
           EOL
-          echo "Deployment successful."
+
+      - name: Deployment Successful
+        run: echo "Deployment successful."
