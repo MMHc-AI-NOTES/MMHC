@@ -35,13 +35,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Npm Run Build
+        run: npm run build
+
       - name: Create env file
         run: |
           echo "${{ vars.ENV_DEV }}" > .env
           cat .env > ./build/.env  # Copy .env to the build directory
-
-      - name: Npm Run Build
-        run: npm run build
 
       - name: Cache build artifacts
         uses: actions/cache@v4
