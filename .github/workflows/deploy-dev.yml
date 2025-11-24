@@ -97,5 +97,5 @@ jobs:
           NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
 
 
-
+          EOL
           echo "Deployment successful."
