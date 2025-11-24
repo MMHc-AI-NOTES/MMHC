@@ -67,9 +67,35 @@ jobs:
 
       - name: Rsync to EC2
         run: |
-          rsync -avz --delete \
+          rsync -avzrtu --delete --progress --exclude="node_modules" --exclude="tmp" \
             -e "ssh -i temp_key -o StrictHostKeyChecking=no" \
             ./build/ \
-            ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/home/ubuntu/app
+            ubuntu@${{ secrets.EC2_PUBLIC_IP }}:${{ env.REMOTE_PATH }}
+
+          echo
+          echo "** Running commands on remote host named $_remote **"
+          echo
+
+          # connect to remote server
+          ssh -T "$_user"@"$_remote" "bash -s $_remote_directory_name" <<'EOL'
+          #!/bin/bash
+
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+          export HOME="/home/ubuntu/"
+          #
+          now="$(date)"
+          name="$HOSTNAME"
+          up="$(uptime)"
+          echo "Server name is $name"
+          echo "Server date and time is $now"
+          echo "Server uptime: $up"
+          echo "remote_directory_name : $1"
+          _remote_directory_name=$1
+          _pm2_server_ref=$1
+          NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
+
+
 
           echo "Deployment successful."
