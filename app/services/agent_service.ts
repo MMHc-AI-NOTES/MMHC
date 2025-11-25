@@ -224,21 +224,24 @@ export const listAgents = async (
 
 export const getagentDefaultSettings = async (model: string) => {
   try {
-    if (
-      model === agentModelKeys.GEMINI_2_5_FLASH_LITE ||
-      model === agentModelKeys.GEMINI_2_5_FLASH
-    ) {
+    const claudeModels = [
+      agentModelKeys.CLAUDE_3_5_SONNET_V2,
+      agentModelKeys.CLAUDE_3_5_SONNET_V1,
+      agentModelKeys.CLAUDE_3_OPUS,
+      agentModelKeys.CLAUDE_3_SONNET,
+      agentModelKeys.CLAUDE_3_HAIKU,
+      agentModelKeys.CLAUDE_3_5_HAIKU_V2,
+      agentModelKeys.CLAUDE_3_5_HAIKU_V1,
+    ]
+
+    if (claudeModels.includes(model as (typeof claudeModels)[number])) {
       return {
         temperature: aiDefaultConfig.temperature,
+        frequency_penalty: null,
+        presence_penalty: null,
       }
     }
-    if (model === agentModelKeys.GPT_5_MINI || model === agentModelKeys.GPT_4_1) {
-      return {
-        temperature: aiDefaultConfig.temperature,
-        frequency_penalty: aiDefaultConfig.frequencyPenalty,
-        presence_penalty: aiDefaultConfig.presencePenalty,
-      }
-    }
+
     return null
   } catch (error) {
     console.log('Error in getDefault agent settings', error)
