@@ -1,8 +1,9 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeFetch, beforeFind, belongsTo, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import Chat from '#models/chat'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 
 export const sessionFilterEnum = ['id', 'note_id', 'session_id', 'practitioner_id']
 export const sessionSortEnum = [
@@ -48,6 +49,12 @@ export default class Session extends BaseModel {
     foreignKey: 'practitionerId',
   })
   declare practitioner: BelongsTo<typeof User>
+
+  @hasMany(() => Chat, {
+    foreignKey: 'noteId',
+    localKey: 'noteId',
+  })
+  declare chats: HasMany<typeof Chat>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery

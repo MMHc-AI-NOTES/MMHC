@@ -227,24 +227,18 @@ export const listAgents = async (
 
 export const getagentDefaultSettings = async (model: string) => {
   try {
-    const claudeModels = [
-      agentModelKeys.CLAUDE_3_5_SONNET_V2,
-      agentModelKeys.CLAUDE_3_5_SONNET_V1,
-      agentModelKeys.CLAUDE_3_OPUS,
-      agentModelKeys.CLAUDE_3_SONNET,
-      agentModelKeys.CLAUDE_3_HAIKU,
-      agentModelKeys.CLAUDE_3_5_HAIKU_V2,
-      agentModelKeys.CLAUDE_3_5_HAIKU_V1,
-    ]
-
-    if (claudeModels.includes(model as (typeof claudeModels)[number])) {
+    // Free Claude Haiku models use temperature only (no frequency/presence penalty)
+    if (
+      model === agentModelKeys.CLAUDE_3_HAIKU ||
+      model === agentModelKeys.CLAUDE_3_5_HAIKU_V2 ||
+      model === agentModelKeys.CLAUDE_3_5_HAIKU_V1
+    ) {
       return {
         temperature: aiDefaultConfig.temperature,
         frequency_penalty: null,
         presence_penalty: null,
       }
     }
-
     return null
   } catch (error) {
     console.log('Error in getDefault agent settings', error)
