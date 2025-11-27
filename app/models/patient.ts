@@ -9,20 +9,7 @@ export default class Patient extends BaseModel {
   declare id: number
 
   @column()
-  declare fullName: string | null
-
-  @column()
-  declare email: string
-
-  @column()
-  declare type: number | null
-
-  @column({
-    serialize: (value) => {
-      return Boolean(value)
-    },
-  })
-  declare isActive: boolean
+  declare uuid: string | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
