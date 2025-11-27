@@ -16,6 +16,7 @@ export const noteListing = async (
     let sortNote: any
     let noteListings: any = Session.query()
       .preload('practitioner')
+      .preload('patient')
       .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc'))
 
     if (filters?.length) {
@@ -59,6 +60,7 @@ export const getNoteWithChats = async (noteId: string) => {
     const note = await Session.query()
       .where('note_id', noteId)
       .preload('practitioner')
+      .preload('patient')
       .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc').limit(10))
       .first()
 
