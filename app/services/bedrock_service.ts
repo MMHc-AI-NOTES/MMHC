@@ -1,4 +1,5 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
+import { bedrockConfig } from '#config/services'
 import env from '#start/env'
 
 const client = new BedrockRuntimeClient({
@@ -31,7 +32,9 @@ export const invokeBedrockModel = async (
   systemPrompt: string,
   userPrompt: string,
   maxTokens: number = 2048,
-  temperature: number = 0.7
+  temperature: number = 0.7,
+  topP?: number | null,
+  topK?: number | null
 ): Promise<BedrockEvaluationResponse> => {
   try {
     // Claude 3 API format requires:
@@ -39,7 +42,7 @@ export const invokeBedrockModel = async (
     // - max_tokens (not maxTokens)
     // - system message in separate field (not in messages array)
     // - No inferenceConfig wrapper
-    const body = {
+    const body: any = {
       anthropic_version: 'bedrock-2023-05-31',
       max_tokens: maxTokens,
       temperature: temperature,
@@ -50,6 +53,14 @@ export const invokeBedrockModel = async (
           content: [{ type: 'text', text: userPrompt }],
         },
       ],
+    }
+
+    if (typeof topP === 'number') {
+      body.top_p = topP
+    }
+
+    if (typeof topK === 'number') {
+      body.top_k = topK
     }
 
     const command = new InvokeModelCommand({
@@ -87,7 +98,9 @@ export const evaluateChatWithBedrock = async (
   currentNote: string,
   previousNote: string | undefined,
   systemPrompt: string,
-  temperature: number = 0.3
+  temperature: number,
+  topP?: number | null,
+  topK?: number | null
 ): Promise<{
   'score': number
   'pass': boolean
@@ -144,8 +157,10 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
     modelId,
     evaluationSystemPrompt,
     evaluationUserPrompt,
-    4096,
-    temperature
+    bedrockConfig.maxTokens,
+    temperature,
+    topP ?? undefined,
+    topK ?? undefined
   )
 
   try {

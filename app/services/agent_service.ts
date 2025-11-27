@@ -41,9 +41,9 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
       name: reqData.name,
       agentKey: agentKey,
       model: reqData.model,
-      temperature: reqData.temperature ?? 1,
-      frequencyPenalty: reqData.frequency_penalty ?? 1,
-      presencePenalty: reqData.presence_penalty ?? 1,
+      temperature: reqData.temperature ?? aiDefaultConfig.temperature,
+      topP: reqData.top_p ?? aiDefaultConfig.top_p ?? null,
+      topK: reqData.top_k ?? aiDefaultConfig.top_k ?? null,
       previousSection: reqData.previous_section?.length
         ? JSON.stringify(reqData.previous_section)
         : null,
@@ -117,10 +117,8 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
       const settings = await getagentDefaultSettings(agentPayload.model)
       if (settings) {
         agentPayload.temperature = agentPayload.temperature ?? settings.temperature
-        agentPayload.frequency_penalty =
-          agentPayload.frequency_penalty ?? settings.frequency_penalty ?? null
-        agentPayload.presence_penalty =
-          agentPayload.presence_penalty ?? settings.presence_penalty ?? null
+        agentPayload.top_p = agentPayload.top_p ?? settings.top_p ?? null
+        agentPayload.top_k = agentPayload.top_k ?? settings.top_k ?? null
       }
     }
 
@@ -137,10 +135,8 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
     if (agentPayload.name !== undefined) mappedPayload.name = agentPayload.name
     if (agentPayload.model !== undefined) mappedPayload.model = agentPayload.model
     if (agentPayload.temperature !== undefined) mappedPayload.temperature = agentPayload.temperature
-    if (agentPayload.frequency_penalty !== undefined)
-      mappedPayload.frequencyPenalty = agentPayload.frequency_penalty
-    if (agentPayload.presence_penalty !== undefined)
-      mappedPayload.presencePenalty = agentPayload.presence_penalty
+    if (agentPayload.top_p !== undefined) mappedPayload.topP = agentPayload.top_p
+    if (agentPayload.top_k !== undefined) mappedPayload.topK = agentPayload.top_k
     if (agentPayload.description !== undefined) mappedPayload.description = agentPayload.description
     if (agentPayload.prompt !== undefined) mappedPayload.prompt = agentPayload.prompt
     if (agentPayload.isActive !== undefined) mappedPayload.isActive = agentPayload.isActive
@@ -191,6 +187,9 @@ export const listAgents = async (
     }
 
     query = filterData?.query ?? agentListing
+    if (!sorts?.length) {
+      query = query.orderBy('id', 'desc')
+    }
 
     if (sorts?.length) {
       sortAgent = applySorting(query, sorts, SORT_AGENT_ENUM)
@@ -227,7 +226,7 @@ export const listAgents = async (
 
 export const getagentDefaultSettings = async (model: string) => {
   try {
-    // Free Claude Haiku models use temperature only (no frequency/presence penalty)
+    // Free Claude Haiku models use temperature + top_p/top_k controls
     if (
       model === agentModelKeys.CLAUDE_3_HAIKU ||
       model === agentModelKeys.CLAUDE_3_5_HAIKU_V2 ||
@@ -235,8 +234,8 @@ export const getagentDefaultSettings = async (model: string) => {
     ) {
       return {
         temperature: aiDefaultConfig.temperature,
-        frequency_penalty: null,
-        presence_penalty: null,
+        top_p: aiDefaultConfig.top_p ?? null,
+        top_k: aiDefaultConfig.top_k ?? null,
       }
     }
     return null

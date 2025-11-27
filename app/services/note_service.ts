@@ -14,7 +14,9 @@ export const noteListing = async (
     let query: any
     let filterData: any
     let sortNote: any
-    let noteListings: any = Session.query().preload('practitioner').preload('chats')
+    let noteListings: any = Session.query()
+      .preload('practitioner')
+      .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc'))
 
     if (filters?.length) {
       filterData = applyFilters(noteListings, filters, sessionFilterEnum)
@@ -26,6 +28,9 @@ export const noteListing = async (
       }
     }
     query = filterData?.query ?? noteListings
+    if (!sorts?.length) {
+      query = query.orderBy('id', 'desc')
+    }
     if (sorts?.length) {
       sortNote = applySorting(query, sorts, sessionSortEnum)
       if (sortNote?.status) {
@@ -54,7 +59,7 @@ export const getNoteWithChats = async (noteId: string) => {
     const note = await Session.query()
       .where('note_id', noteId)
       .preload('practitioner')
-      .preload('chats')
+      .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc').limit(10))
       .first()
 
     if (!note) {

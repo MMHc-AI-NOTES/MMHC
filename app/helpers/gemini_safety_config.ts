@@ -1,5 +1,5 @@
 export const aiDefaultConfig = {
   temperature: 1,
-  frequencyPenalty: 0,
-  presencePenalty: 0,
+  top_p: 0.9,
+  top_k: 250,
 }

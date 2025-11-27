@@ -48,6 +48,8 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const prompt = agent.prompt
     const modelId = agent.model
     const temperature = agent.temperature ?? 0.3
+    const topP = agent.topP ?? 0.9
+    const topK = agent.topK ?? 250
 
     if (!prompt) {
       return sendError('Agent prompt is required for evaluation')
@@ -59,7 +61,9 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       currentNote,
       previousNote,
       prompt,
-      temperature
+      temperature,
+      topP,
+      topK
     )
 
     const chatData = {
@@ -115,12 +119,16 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
 
       // Use default temperature for update (agent not available)
       const temperature = 0.3
+      const topP = 0.9
+      const topK = 250
       const evaluation = await evaluateChatWithBedrock(
         modelId,
         userNote,
         undefined,
         prompt,
-        temperature
+        temperature,
+        topP,
+        topK
       )
 
       chat.evaluationScore = evaluation.score
@@ -181,6 +189,9 @@ export const listChats = async (
       }
     }
     query = filterData?.query ?? chatListings
+    if (!sorts?.length) {
+      query = query.orderBy('id', 'desc')
+    }
     if (sorts?.length) {
       sortChat = applySorting(query, sorts, chatSortEnum)
       if (sortChat?.status) {
@@ -238,13 +249,17 @@ export const reevaluateChat = async (chatId: number) => {
 
     // Use default temperature for re-evaluation (agent not available)
     const temperature = 0.3
+    const topP = 0.9
+    const topK = 250
     // Re-evaluate with Bedrock
     const evaluation = await evaluateChatWithBedrock(
       chat.modelId,
       chat.userNote,
       previousNote,
       chat.prompt,
-      temperature
+      temperature,
+      topP,
+      topK
     )
 
     chat.evaluationScore = evaluation.score
