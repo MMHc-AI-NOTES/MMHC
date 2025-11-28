@@ -9,7 +9,6 @@ import {
   updateAgentValidatorInterface,
 } from '#validators/agent_validator'
 import { sendError, sendSuccess } from '#services/custom_response_service'
-import { setDefaultAgent } from '#services/agent_default_service'
 
 const fetchAgentById = async (agent_id: number) => {
   const agent = await Agent.query().where('id', agent_id).first()
@@ -26,6 +25,20 @@ const fetchAgentById = async (agent_id: number) => {
   }
 
   return agent
+}
+
+/**
+ * Ensures only one agent is marked as default.
+ * Sets the provided agentId as default and clears the flag on all others.
+ */
+const setDefaultAgent = async (agentId: number) => {
+  await Agent.query().where('id', '!=', agentId).andWhere('is_default', true).update({
+    is_default: false,
+  })
+
+  await Agent.query().where('id', agentId).update({
+    is_default: true,
+  })
 }
 
 export const createAgent = async (reqData: createAgentValidatorInterface) => {
