@@ -17,9 +17,3 @@ export const agentModelKeys = {
   CLAUDE_3_5_HAIKU_V2: 'anthropic.claude-3-5-haiku-20241022-v2:0',
   CLAUDE_3_5_HAIKU_V1: 'anthropic.claude-3-5-haiku-20241022-v1:0',
 } as const
-
-export const agentTypes = {
-  system: 1,
-  soap: 2,
-  custom: 3,
-}

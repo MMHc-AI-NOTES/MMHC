@@ -1,5 +1,5 @@
 import Agent, { FILTER_AGENT_ENUM, SORT_AGENT_ENUM } from '#models/agent'
-import { agentModelKeys, agentTypes } from '#enums/agent_enum'
+import { agentModelKeys } from '#enums/agent_enum'
 import { aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { applyFilters } from '#services/apply_filter'
 import { paginateQuery } from '#services/apply_pagination'
@@ -27,12 +27,22 @@ const fetchAgentById = async (agent_id: number) => {
   return agent
 }
 
+/**
+ * Ensures only one agent is marked as default.
+ * Sets the provided agentId as default and clears the flag on all others.
+ */
+const setDefaultAgent = async (agentId: number) => {
+  await Agent.query().where('id', '!=', agentId).andWhere('is_default', true).update({
+    is_default: false,
+  })
+
+  await Agent.query().where('id', agentId).update({
+    is_default: true,
+  })
+}
+
 export const createAgent = async (reqData: createAgentValidatorInterface) => {
   try {
-    if (reqData.type === agentTypes.system) {
-      throw new Error('System Agents are not allowed to create')
-    }
-
     const existingAgent = await Agent.query().where('name', reqData.name).first()
     if (existingAgent) {
       throw new Error('Agent with name already exists')
@@ -44,19 +54,16 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
       name: reqData.name,
       agentKey: agentKey,
       model: reqData.model,
-      useContext: reqData.use_context,
       temperature: reqData.temperature ?? 1,
       frequencyPenalty: reqData.frequency_penalty ?? 1,
       presencePenalty: reqData.presence_penalty ?? 1,
       previousSection: reqData.previous_section?.length
         ? JSON.stringify(reqData.previous_section)
         : null,
-      transcript: reqData.transcript,
       prompt: reqData.prompt,
       description: reqData.description,
       isActive: reqData.isActive ?? true,
-      isDefault: false,
-      type: reqData.type,
+      isDefault: reqData.is_default ?? false,
       aiSafetySettings: null,
     }
     const agent = await Agent.create(agentData)
@@ -67,6 +74,11 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
         // keep string if parsing fails
       }
     }
+
+    if (agent.isDefault) {
+      await setDefaultAgent(agent.id)
+    }
+
     return sendSuccess('Agent created successfully', agent)
   } catch (error: any) {
     return sendError(error.message)
@@ -137,16 +149,15 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
     const mappedPayload: any = {}
     if (agentPayload.name !== undefined) mappedPayload.name = agentPayload.name
     if (agentPayload.model !== undefined) mappedPayload.model = agentPayload.model
-    if (agentPayload.use_context !== undefined) mappedPayload.useContext = agentPayload.use_context
     if (agentPayload.temperature !== undefined) mappedPayload.temperature = agentPayload.temperature
     if (agentPayload.frequency_penalty !== undefined)
       mappedPayload.frequencyPenalty = agentPayload.frequency_penalty
     if (agentPayload.presence_penalty !== undefined)
       mappedPayload.presencePenalty = agentPayload.presence_penalty
-    if (agentPayload.transcript !== undefined) mappedPayload.transcript = agentPayload.transcript
     if (agentPayload.description !== undefined) mappedPayload.description = agentPayload.description
     if (agentPayload.prompt !== undefined) mappedPayload.prompt = agentPayload.prompt
     if (agentPayload.isActive !== undefined) mappedPayload.isActive = agentPayload.isActive
+    if (agentPayload.is_default !== undefined) mappedPayload.isDefault = agentPayload.is_default
     if (agentPayload.previousSection !== undefined)
       mappedPayload.previousSection = agentPayload.previousSection
 
@@ -159,6 +170,11 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
         // If parsing fails, keep as string
       }
     }
+
+    if (agentPayload.is_default === true) {
+      await setDefaultAgent(agent.id)
+    }
+
     return sendSuccess('Agent updated successfully', agent)
   } catch (error: any) {
     return sendError(error.message)

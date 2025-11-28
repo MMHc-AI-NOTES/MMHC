@@ -1,3 +1,4 @@
+import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 
 const NotesController = () => import('#controllers/note_controller')
@@ -7,3 +8,4 @@ router
     router.post('/listing', [NotesController, 'listing'])
   })
   .prefix('api/notes')
+  .use(middleware.auth())

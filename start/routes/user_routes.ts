@@ -1,3 +1,4 @@
+import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 
 const UsersController = () => import('#controllers/user_controller')
@@ -12,3 +13,4 @@ router
     router.post('/listing', [UsersController, 'listing'])
   })
   .prefix('api/users')
+  .use(middleware.auth())

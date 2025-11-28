@@ -20,9 +20,6 @@ export default class Agent extends BaseModel {
   @column()
   declare model: string
 
-  @column({ consume: (value) => value ?? false })
-  declare useContext: boolean
-
   @column()
   declare temperature: number
 
@@ -38,9 +35,6 @@ export default class Agent extends BaseModel {
   @column()
   declare description: string | null
 
-  @column({ consume: (value) => value ?? false })
-  declare transcript: boolean
-
   @column()
   declare prompt: string | null
 
@@ -49,9 +43,6 @@ export default class Agent extends BaseModel {
 
   @column()
   declare isDefault: boolean
-
-  @column()
-  declare type: number
 
   @column({
     prepare: (value: any) => (value ? JSON.stringify(value) : null),
