@@ -122,6 +122,7 @@ export const evaluateChatWithBedrock = async (
   '9z5t-1_therapist_reflection'?: string
   'gm4p-1_progress'?: string
   'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string
+  'raw_response': string
 }> => {
   // Use the provided system prompt from agent
   const evaluationSystemPrompt = systemPrompt
@@ -210,6 +211,7 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
         'gm4p-1_progress': parsed['gm4p-1_progress'] || '',
         'kxgx-7_&_kxgx-8_suicidality/homicidality':
           parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] || '',
+        'raw_response': responseText,
       }
     }
 
@@ -235,6 +237,7 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
       '9z5t-1_therapist_reflection': '',
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
+      'raw_response': responseText,
     }
   } catch (error) {
     return {
@@ -252,6 +255,7 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
       '9z5t-1_therapist_reflection': '',
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
+      'raw_response': response.output_text || 'Evaluation completed',
     }
   }
 }
