@@ -1,8 +1,9 @@
 // Session Type Enum
 export const SessionTypeEnum = {
-  // Add your session types here
-  // Example: standard: 1, followup: 2, etc.
-  default: 1,
+  progress_note: 1,
+  intake: 2,
+  treatment_plan: 3,
+  termination: 4,
 }
 
 // AI Status Enum

@@ -11,8 +11,8 @@ const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   passwordColumnName: 'password',
 })
 
-export const userFilterEnum = ['id', 'full_name', 'email', 'is_active']
-export const userSortEnum = ['id', 'full_name', 'email', 'is_active']
+export const userFilterEnum = ['id', 'full_name', 'email', 'type', 'is_active', 'created_at']
+export const userSortEnum = ['id', 'full_name', 'email', 'type', 'is_active', 'created_at']
 
 export default class User extends compose(BaseModel, AuthFinder) {
   static table = 'users'

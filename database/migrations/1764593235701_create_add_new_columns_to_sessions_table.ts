@@ -13,7 +13,7 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.alterTable(this.tableName, (table) => {
-      table.integer('type').nullable().defaultTo(SessionTypeEnum.default)
+      table.integer('type').nullable().defaultTo(SessionTypeEnum.progress_note)
       table.float('ai_score').nullable()
       table.integer('ai_status').nullable().defaultTo(AiStatusEnum.not_reviewed)
       table.integer('human_review').nullable().defaultTo(HumanReviewEnum.pending)
