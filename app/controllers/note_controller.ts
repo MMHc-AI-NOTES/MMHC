@@ -1,6 +1,6 @@
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
-import { noteListing, getNoteWithChats } from '#services/note_service'
+import { noteListing, getNoteWithChats, getQueueStatistics } from '#services/note_service'
 import { paginationValidator } from '#validators/pagination_validator'
 import vine from '@vinejs/vine'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -32,6 +32,18 @@ export default class NotesController {
       return noteResponse
     } catch (error) {
       console.log('Note with chats getting error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async queueStatistics(ctx: HttpContext) {
+    try {
+      const startDate = ctx.request.qs().start_date
+      const endDate = ctx.request.qs().end_date
+      const statistics = await getQueueStatistics(startDate, endDate)
+      return sendSuccess('Queue statistics retrieved successfully', statistics)
+    } catch (error) {
+      console.log('Queue statistics error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

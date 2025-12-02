@@ -6,13 +6,33 @@ import Chat from '#models/chat'
 import Patient from '#models/patient'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 
-export const sessionFilterEnum = ['id', 'note_id', 'session_id', 'practitioner_id', 'patient_id']
+export const sessionFilterEnum = [
+  'id',
+  'note_id',
+  'session_id',
+  'practitioner_id',
+  'patient_id',
+  'type',
+  'ai_score',
+  'ai_status',
+  'human_review',
+  'manager',
+  'workflow',
+  'priority',
+]
 export const sessionSortEnum = [
   'id',
   'note_id',
   'session_id',
   'practitioner_id',
   'patient_id',
+  'type',
+  'ai_score',
+  'ai_status',
+  'human_review',
+  'manager',
+  'workflow',
+  'priority',
   'created_at',
   'updated_at',
 ]
@@ -40,6 +60,27 @@ export default class Session extends BaseModel {
 
   @column({ columnName: 'patient_id' })
   declare patientId: number | null
+
+  @column()
+  declare type: number | null
+
+  @column({ columnName: 'ai_score' })
+  declare aiScore: number | null
+
+  @column({ columnName: 'ai_status' })
+  declare aiStatus: number | null
+
+  @column({ columnName: 'human_review' })
+  declare humanReview: number | null
+
+  @column()
+  declare manager: number | null
+
+  @column()
+  declare workflow: number | null
+
+  @column()
+  declare priority: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

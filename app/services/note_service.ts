@@ -3,6 +3,8 @@ import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess, sendError } from '#services/custom_response_service'
+import { AiStatusEnum, HumanReviewEnum, ManagerEnum, WorkflowEnum } from '#enums/session_enum'
+import { DateTime } from 'luxon'
 
 export const noteListing = async (
   page?: number,
@@ -71,5 +73,78 @@ export const getNoteWithChats = async (noteId: string) => {
     return sendSuccess('Note with chats retrieved successfully', note)
   } catch (error: any) {
     return sendError(error.message)
+  }
+}
+
+export const getQueueStatistics = async (startDate?: string, endDate?: string) => {
+  try {
+    // Set default dates if not provided (yesterday to today)
+    let startDateTime: DateTime
+    let endDateTime: DateTime
+
+    if (startDate && endDate) {
+      startDateTime = DateTime.fromISO(startDate).startOf('day')
+      endDateTime = DateTime.fromISO(endDate).endOf('day')
+    } else {
+      // Default: yesterday to today
+      endDateTime = DateTime.now().endOf('day')
+      startDateTime = endDateTime.minus({ days: 1 }).startOf('day')
+    }
+
+    // Build query with date filtering
+    let query = Session.query().select('ai_status', 'human_review', 'manager', 'workflow')
+
+    // Apply date filter on created_at
+    query = query
+      .where('created_at', '>=', startDateTime.toSQL()!)
+      .where('created_at', '<=', endDateTime.toSQL()!)
+
+    const sessions = await query
+
+    // Initialize counters
+    let aiPassed = 0
+    let aiFailed = 0
+    let pendingHumanReview = 0
+    let pendingManagerReview = 0
+    let blacklist = 0
+
+    // Iterate through sessions and count
+    sessions.forEach((session) => {
+      // Count AI passed
+      if (session.aiStatus === AiStatusEnum.passed) {
+        aiPassed++
+      }
+
+      // Count AI failed
+      if (session.aiStatus === AiStatusEnum.failed) {
+        aiFailed++
+      }
+
+      // Count pending human review
+      if (session.humanReview === HumanReviewEnum.pending) {
+        pendingHumanReview++
+      }
+
+      // Count pending manager review
+      if (session.manager === ManagerEnum.pending) {
+        pendingManagerReview++
+      }
+
+      // Count blacklist
+      if (session.workflow === WorkflowEnum.blacklisted) {
+        blacklist++
+      }
+    })
+
+    return {
+      total_notes: sessions.length,
+      ai_passed: aiPassed,
+      ai_failed: aiFailed,
+      pending_human_review: pendingHumanReview,
+      pending_manager_review: pendingManagerReview,
+      blacklist: blacklist,
+    }
+  } catch (error: any) {
+    throw new Error(`Error retrieving queue statistics: ${error.message}`)
   }
 }

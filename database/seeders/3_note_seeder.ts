@@ -1,5 +1,13 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import Session from '#models/session'
+import {
+  SessionTypeEnum,
+  AiStatusEnum,
+  HumanReviewEnum,
+  ManagerEnum,
+  WorkflowEnum,
+  PriorityEnum,
+} from '#enums/session_enum'
 
 export default class extends BaseSeeder {
   async run() {
@@ -43,6 +51,13 @@ export default class extends BaseSeeder {
             session: sessionData.session,
             practitionerId: sessionData.practitionerId,
             patientId: sessionData.patientId,
+            type: SessionTypeEnum.default,
+            aiScore: null,
+            aiStatus: AiStatusEnum.not_reviewed,
+            humanReview: HumanReviewEnum.pending,
+            manager: ManagerEnum.not_needed,
+            workflow: WorkflowEnum.in_queue,
+            priority: PriorityEnum.low,
           }
         )
       }
