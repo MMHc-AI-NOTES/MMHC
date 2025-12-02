@@ -20,6 +20,9 @@ export const noteListing = async (
       .preload('practitioner')
       .preload('patient')
       .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc'))
+      .withCount('chats', (countQuery) => {
+        countQuery.as('chat_count')
+      })
 
     // Extract search filter if present
     let searchFilter: any = null
@@ -80,9 +83,13 @@ export const noteListing = async (
       total_page_count: noteListingPaginated.lastPage,
       page: noteListingPaginated.currentPage,
       page_size: noteListingPaginated.perPage,
-      data: noteListingPaginated['rows'].map((note: any) => ({
-        ...note.serialize(),
-      })),
+      data: noteListingPaginated['rows'].map((note: any) => {
+        const serialized = note.serialize()
+        return {
+          ...serialized,
+          chat_count: note.$extras.chat_count || 0,
+        }
+      }),
     }
   } catch (error) {
     throw new Error(`Error retrieving notes: ${error.message}`)
@@ -96,13 +103,22 @@ export const getNoteWithChats = async (noteId: string) => {
       .preload('practitioner')
       .preload('patient')
       .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc').limit(10))
+      .withCount('chats', (countQuery) => {
+        countQuery.as('chat_count')
+      })
       .first()
 
     if (!note) {
       return sendError('Note not found for the provided note_id')
     }
 
-    return sendSuccess('Note with chats retrieved successfully', note)
+    const serialized = note.serialize()
+    const noteWithCount = {
+      ...serialized,
+      chat_count: note.$extras.chat_count || 0,
+    }
+
+    return sendSuccess('Note with chats retrieved successfully', noteWithCount)
   } catch (error: any) {
     return sendError(error.message)
   }
