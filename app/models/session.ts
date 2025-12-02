@@ -19,6 +19,7 @@ export const sessionFilterEnum = [
   'manager',
   'workflow',
   'priority',
+  'search',
 ]
 export const sessionSortEnum = [
   'id',

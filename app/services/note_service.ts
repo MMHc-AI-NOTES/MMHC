@@ -21,8 +21,40 @@ export const noteListing = async (
       .preload('patient')
       .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc'))
 
+    // Extract search filter if present
+    let searchFilter: any = null
+    let otherFilters: Array<any> = []
+
     if (filters?.length) {
-      filterData = applyFilters(noteListings, filters, sessionFilterEnum)
+      filters.forEach((filter) => {
+        if (filter.columnName === 'search') {
+          searchFilter = filter
+        } else {
+          otherFilters.push(filter)
+        }
+      })
+    }
+
+    // Apply search filter (OR WHERE on note_id, practitioner_id, patient_id)
+    if (searchFilter && searchFilter.value) {
+      const searchValue = String(searchFilter.value).trim()
+      if (searchValue) {
+        const searchPattern = `%${searchValue}%`
+        const searchNumber = Number.parseInt(searchValue)
+
+        noteListings = noteListings.where((subQuery: any) => {
+          subQuery.whereILike('note_id', searchPattern)
+
+          // If search value is a number, also search in practitioner_id and patient_id
+          if (!Number.isNaN(searchNumber)) {
+            subQuery.orWhere('practitioner_id', searchNumber).orWhere('patient_id', searchNumber)
+          }
+        })
+      }
+    }
+
+    if (otherFilters?.length) {
+      filterData = applyFilters(noteListings, otherFilters, sessionFilterEnum)
     }
     if (filterData?.status === false) {
       return {

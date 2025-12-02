@@ -18,6 +18,11 @@ export const applyFilters = (
       return
     }
 
+    // Skip 'search' filter as it's handled separately
+    if (filter.columnName === 'search') {
+      return
+    }
+
     if (filter.type === 'exact') {
       if (filter.columnName === 'created_at') {
         let startDate: any
