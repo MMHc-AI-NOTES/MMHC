@@ -7,8 +7,7 @@ export default class HumanReviewController {
   public async create(ctx: HttpContext) {
     try {
       const payload = await createHumanReviewValidator.validate(ctx.request.body())
-      const user = ctx.auth.getUserOrFail()
-      const humanReviewResponse = await createHumanReview(payload, user.id)
+      const humanReviewResponse = await createHumanReview(payload)
       return humanReviewResponse
     } catch (error) {
       console.log('Human review creating error', error)

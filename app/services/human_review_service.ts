@@ -3,10 +3,7 @@ import Session from '#models/session'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type { createHumanReviewValidatorInterface } from '#validators/human_review_validator'
 
-export const createHumanReview = async (
-  reqData: createHumanReviewValidatorInterface,
-  practitionerId: number
-) => {
+export const createHumanReview = async (reqData: createHumanReviewValidatorInterface) => {
   try {
     // Verify note exists
     const note = await Session.query().where('note_id', reqData.note_id).first()
@@ -18,7 +15,7 @@ export const createHumanReview = async (
     // Create human review
     const humanReviewData = {
       noteId: reqData.note_id,
-      practitionerId: practitionerId,
+      practitionerId: reqData.practitioner_id,
       decision: reqData.decision,
       manualScore: reqData.manual_score ?? null,
       comment: reqData.comment ?? null,
