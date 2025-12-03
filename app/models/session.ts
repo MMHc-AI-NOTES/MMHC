@@ -4,6 +4,7 @@ import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import Chat from '#models/chat'
 import Patient from '#models/patient'
+import HumanReview from '#models/human_review'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import {
   SessionTypeEnum,
@@ -165,6 +166,12 @@ export default class Session extends BaseModel {
     localKey: 'noteId',
   })
   declare chats: HasMany<typeof Chat>
+
+  @hasMany(() => HumanReview, {
+    foreignKey: 'noteId',
+    localKey: 'noteId',
+  })
+  declare humanReviews: HasMany<typeof HumanReview>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery
