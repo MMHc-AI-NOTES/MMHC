@@ -8,12 +8,13 @@ import {
   createAgentValidatorInterface,
   updateAgentValidatorInterface,
 } from '#validators/agent_validator'
-import { sendError, sendSuccess } from '#services/custom_response_service'
+import { sendSuccess } from '#services/custom_response_service'
 
 const fetchAgentById = async (agent_id: number) => {
   const agent = await Agent.query().where('id', agent_id).first()
   if (!agent) {
-    throw new Error(`Agent with ID: ${agent_id} does not exist`)
+    console.log('Error in fetchAgentById: Agent not found with id:', agent_id)
+    throw new Error('Agent not found')
   }
 
   if (agent.previousSection) {
@@ -45,7 +46,8 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
   try {
     const existingAgent = await Agent.query().where('name', reqData.name).first()
     if (existingAgent) {
-      throw new Error('Agent with name already exists')
+      console.log('Error in createAgent: Agent with name already exists:', reqData.name)
+      throw new Error('An agent with this name already exists')
     }
 
     const agentKey = reqData.name.replace(/\s+/g, '_').toUpperCase()
@@ -81,7 +83,8 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
 
     return sendSuccess('Agent created successfully', agent)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in createAgent:', error.message)
+    throw error
   }
 }
 
@@ -90,7 +93,8 @@ export const getAgentById = async (agent_id: number) => {
     const agent = await fetchAgentById(agent_id)
     return sendSuccess('Agent details', agent)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in getAgentById:', error.message)
+    throw error
   }
 }
 
@@ -98,12 +102,14 @@ export const deleteAgent = async (agent_id: number) => {
   try {
     const agent = await fetchAgentById(agent_id)
     if (agent.isDefault) {
+      console.log('Error in deleteAgent: Attempted to delete default agent with id:', agent_id)
       throw new Error('Default agent cannot be deleted')
     }
     await agent.softDelete()
     return sendSuccess('Agent deleted successfully', agent)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in deleteAgent:', error.message)
+    throw error
   }
 }
 
@@ -111,7 +117,8 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
   try {
     const agent = await fetchAgentById(agent_id)
     if (agent.isDefault === true && payload.isActive === false) {
-      throw new Error('Default Agents cannot be disabled')
+      console.log('Error in updateAgent: Attempted to disable default agent with id:', agent_id)
+      throw new Error('Default agent cannot be disabled')
     }
 
     if (payload.name) {
@@ -120,7 +127,8 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
         .andWhereNot('id', agent_id)
         .first()
       if (existingAgent) {
-        throw new Error(`Agent with name '${payload.name}' already exists`)
+        console.log('Error in updateAgent: Agent with name already exists:', payload.name)
+        throw new Error('An agent with this name already exists')
       }
     }
 
@@ -177,7 +185,8 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
 
     return sendSuccess('Agent updated successfully', agent)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in updateAgent:', error.message)
+    throw error
   }
 }
 
@@ -200,7 +209,8 @@ export const listAgents = async (
       filterData = applyFilters(agentListing, filters, FILTER_AGENT_ENUM)
     }
     if (filterData?.status === false) {
-      return sendError(filterData.message)
+      console.log('Error in listAgents: Filter validation failed:', filterData.message)
+      throw new Error(filterData.message || 'Invalid filter parameters')
     }
 
     query = filterData?.query ?? agentListing
@@ -208,7 +218,8 @@ export const listAgents = async (
     if (sorts?.length) {
       sortAgent = applySorting(query, sorts, SORT_AGENT_ENUM)
       if (sortAgent?.status) {
-        return sendError(sortAgent.message)
+        console.log('Error in listAgents: Sort validation failed:', sortAgent.message)
+        throw new Error(sortAgent.message || 'Invalid sort parameters')
       }
     }
     let sortQuery = sortAgent?.query ?? query
@@ -234,7 +245,8 @@ export const listAgents = async (
       })),
     })
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in listAgents:', error.message)
+    throw error
   }
 }
 

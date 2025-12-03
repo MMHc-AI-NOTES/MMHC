@@ -1,11 +1,11 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
-import env from '#start/env'
+import { bedrockConfig } from '#config/services'
 
 const client = new BedrockRuntimeClient({
-  region: env.get('AWS_REGION', 'us-east-1'),
+  region: bedrockConfig.region,
   credentials: {
-    accessKeyId: env.get('AWS_ACCESS_KEY_ID', ''),
-    secretAccessKey: env.get('AWS_SECRET_ACCESS_KEY', ''),
+    accessKeyId: bedrockConfig.accessKeyId,
+    secretAccessKey: bedrockConfig.secretAccessKey,
   },
 })
 
@@ -30,7 +30,6 @@ export const invokeBedrockModel = async (
   modelId: string,
   systemPrompt: string,
   userPrompt: string,
-  maxTokens: number = 2048,
   temperature: number = 0.7
 ): Promise<BedrockEvaluationResponse> => {
   try {
@@ -40,8 +39,8 @@ export const invokeBedrockModel = async (
     // - system message in separate field (not in messages array)
     // - No inferenceConfig wrapper
     const body = {
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: maxTokens,
+      anthropic_version: bedrockConfig.anthropicVersion,
+      max_tokens: bedrockConfig.maxTokens,
       temperature: temperature,
       system: systemPrompt,
       messages: [
@@ -78,7 +77,8 @@ export const invokeBedrockModel = async (
       ...output,
     }
   } catch (error: any) {
-    throw new Error(`Bedrock API Error: ${error.message}`)
+    console.log('Bedrock API Error:', error.message)
+    throw new Error('Failed to communicate with AI service. Please try again later.')
   }
 }
 
@@ -144,7 +144,6 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
     modelId,
     evaluationSystemPrompt,
     evaluationUserPrompt,
-    4096,
     temperature
   )
 
