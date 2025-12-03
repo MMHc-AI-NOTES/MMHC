@@ -5,6 +5,14 @@ import User from '#models/user'
 import Chat from '#models/chat'
 import Patient from '#models/patient'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
+import {
+  SessionTypeEnum,
+  AiStatusEnum,
+  HumanReviewEnum,
+  ManagerEnum,
+  WorkflowEnum,
+  PriorityEnum,
+} from '#enums/session_enum'
 
 export const sessionFilterEnum = [
   'id',
@@ -62,25 +70,75 @@ export default class Session extends BaseModel {
   @column({ columnName: 'patient_id' })
   declare patientId: number | null
 
-  @column()
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(SessionTypeEnum).find(
+        (k) => SessionTypeEnum[k as keyof typeof SessionTypeEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare type: number | null
 
   @column({ columnName: 'ai_score' })
   declare aiScore: number | null
 
-  @column({ columnName: 'ai_status' })
+  @column({
+    columnName: 'ai_status',
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(AiStatusEnum).find(
+        (k) => AiStatusEnum[k as keyof typeof AiStatusEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare aiStatus: number | null
 
-  @column({ columnName: 'human_review' })
+  @column({
+    columnName: 'human_review',
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(HumanReviewEnum).find(
+        (k) => HumanReviewEnum[k as keyof typeof HumanReviewEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare humanReview: number | null
 
-  @column()
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(ManagerEnum).find(
+        (k) => ManagerEnum[k as keyof typeof ManagerEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare manager: number | null
 
-  @column()
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(WorkflowEnum).find(
+        (k) => WorkflowEnum[k as keyof typeof WorkflowEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare workflow: number | null
 
-  @column()
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(PriorityEnum).find(
+        (k) => PriorityEnum[k as keyof typeof PriorityEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare priority: number | null
 
   @column.dateTime({ autoCreate: true })

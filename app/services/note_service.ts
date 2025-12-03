@@ -5,6 +5,8 @@ import { applyFilters } from '#services/apply_filter'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { AiStatusEnum, HumanReviewEnum, ManagerEnum, WorkflowEnum } from '#enums/session_enum'
 import { DateTime } from 'luxon'
+import Chat from '#models/chat'
+import type { updateNoteValidatorInterface } from '#validators/note_validator'
 
 export const noteListing = async (
   page?: number,
@@ -194,5 +196,66 @@ export const getQueueStatistics = async (startDate?: string, endDate?: string) =
     }
   } catch (error: any) {
     throw new Error(`Error retrieving queue statistics: ${error.message}`)
+  }
+}
+
+export const getWorkloadStatistics = async (userId: number) => {
+  try {
+    // 1. assign_notes - Count notes where user is the practitioner
+    const assignedSessions = await Session.query().where('practitioner_id', userId)
+    const assignNotes = assignedSessions.length
+
+    // 2. avg_review_time - Calculate average response_time from chats where user_id matches
+    const chatsWithResponseTime = await Chat.query()
+      .where('user_id', userId)
+      .whereNotNull('response_time')
+      .select('response_time')
+
+    let avgReviewTime = 0
+    if (chatsWithResponseTime.length > 0) {
+      const totalResponseTime = chatsWithResponseTime.reduce(
+        (sum, chat) => sum + (chat.responseTime || 0),
+        0
+      )
+      avgReviewTime = totalResponseTime / chatsWithResponseTime.length
+      // Round to 2 decimal places
+      avgReviewTime = Math.round(avgReviewTime * 100) / 100
+    }
+
+    // 3. return_rate - Dummy value for now (will be implemented in future)
+    const returnRate = 15
+
+    // 4. ai_disagreement_rate - Dummy value for now (will be implemented in future)
+    const aiDisagreementRate = 30
+
+    return {
+      assign_notes: assignNotes,
+      avg_review_time: avgReviewTime,
+      return_rate: returnRate,
+      ai_disagreement_rate: aiDisagreementRate,
+    }
+  } catch (error: any) {
+    throw new Error(`Error retrieving workload statistics: ${error.message}`)
+  }
+}
+
+export const updateNote = async (noteId: string, reqData: updateNoteValidatorInterface) => {
+  try {
+    const note = await Session.query().where('note_id', noteId).first()
+
+    if (!note) {
+      return sendError('Note not found for the provided note_id')
+    }
+
+    // Update the note
+    await note.merge(reqData).save()
+
+    // Reload with relationships
+    await note.load('practitioner')
+    await note.load('patient')
+
+    return sendSuccess('Note updated successfully', note)
+  } catch (error: any) {
+    return sendError(error.message)
   }
 }

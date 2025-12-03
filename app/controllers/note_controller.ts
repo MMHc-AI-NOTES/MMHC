@@ -1,7 +1,14 @@
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
-import { noteListing, getNoteWithChats, getQueueStatistics } from '#services/note_service'
+import {
+  noteListing,
+  getNoteWithChats,
+  getQueueStatistics,
+  getWorkloadStatistics,
+  updateNote,
+} from '#services/note_service'
 import { paginationValidator } from '#validators/pagination_validator'
+import { updateNoteValidator } from '#validators/note_validator'
 import vine from '@vinejs/vine'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -44,6 +51,29 @@ export default class NotesController {
       return sendSuccess('Queue statistics retrieved successfully', statistics)
     } catch (error) {
       console.log('Queue statistics error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async workloadStatistics(ctx: HttpContext) {
+    try {
+      const user = ctx.auth.getUserOrFail()
+      const statistics = await getWorkloadStatistics(user.id)
+      return sendSuccess('Workload statistics retrieved successfully', statistics)
+    } catch (error) {
+      console.log('Workload statistics error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async update(ctx: HttpContext) {
+    try {
+      const { noteId } = await noteIdValidator.validate(ctx.params)
+      const payload = await updateNoteValidator.validate(ctx.request.body())
+      const noteResponse = await updateNote(noteId, payload)
+      return noteResponse
+    } catch (error) {
+      console.log('Note update error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
