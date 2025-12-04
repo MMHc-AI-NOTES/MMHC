@@ -2,6 +2,7 @@ import Session, { sessionFilterEnum, sessionSortEnum } from '#models/session'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
+import { sendSuccess } from '#services/custom_response_service'
 
 export const noteListing = async (
   page?: number,
@@ -13,7 +14,7 @@ export const noteListing = async (
     let query: any
     let filterData: any
     let sortNote: any
-    let noteListings: any = Session.query().preload('practitioner')
+    let noteListings: any = Session.query().preload('practitioner').preload('chats')
 
     if (filters?.length) {
       filterData = applyFilters(noteListings, filters, sessionFilterEnum)
@@ -43,7 +44,28 @@ export const noteListing = async (
         ...note.serialize(),
       })),
     }
-  } catch (error) {
-    throw new Error(`Error retrieving notes: ${error.message}`)
+  } catch (error: any) {
+    console.log('Error in noteListing:', error.message)
+    throw new Error('Failed to retrieve notes. Please try again later.')
+  }
+}
+
+export const getNoteWithChats = async (noteId: string) => {
+  try {
+    const note = await Session.query()
+      .where('note_id', noteId)
+      .preload('practitioner')
+      .preload('chats')
+      .first()
+
+    if (!note) {
+      console.log('Error in getNoteWithChats: Note not found for note_id:', noteId)
+      throw new Error('Note not found for the provided note ID')
+    }
+
+    return sendSuccess('Note with chats retrieved successfully', note)
+  } catch (error: any) {
+    console.log('Error in getNoteWithChats:', error.message)
+    throw error
   }
 }

@@ -39,4 +39,15 @@ export default await Env.create(new URL('../', import.meta.url), {
   SMTP_USERNAME: Env.schema.string(),
   SMTP_PASSWORD: Env.schema.string(),
   SMTP_FROM: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring AWS Bedrock
+  |----------------------------------------------------------
+  */
+  AWS_REGION: Env.schema.string.optional(),
+  AWS_ACCESS_KEY_ID: Env.schema.string.optional(),
+  AWS_SECRET_ACCESS_KEY: Env.schema.string.optional(),
+  BEDROCK_MAX_TOKENS: Env.schema.number.optional(),
+  BEDROCK_ANTHROPIC_VERSION: Env.schema.string.optional(),
 })
