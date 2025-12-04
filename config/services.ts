@@ -7,5 +7,9 @@ export const emailConfig = {
 }
 
 export const bedrockConfig = {
-  maxTokens: Number(env.get('BEDROCK_MAX_TOKENS', 4096)),
+  maxTokens: env.get('BEDROCK_MAX_TOKENS', 4096),
+  region: env.get('AWS_REGION', 'us-east-1'),
+  accessKeyId: env.get('AWS_ACCESS_KEY_ID', ''),
+  secretAccessKey: env.get('AWS_SECRET_ACCESS_KEY', ''),
+  anthropicVersion: env.get('BEDROCK_ANTHROPIC_VERSION', 'bedrock-2023-05-31'),
 }

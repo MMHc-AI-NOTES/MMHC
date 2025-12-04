@@ -1,12 +1,11 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
 import { bedrockConfig } from '#config/services'
-import env from '#start/env'
 
 const client = new BedrockRuntimeClient({
-  region: env.get('AWS_REGION', 'us-east-1'),
+  region: bedrockConfig.region,
   credentials: {
-    accessKeyId: env.get('AWS_ACCESS_KEY_ID', ''),
-    secretAccessKey: env.get('AWS_SECRET_ACCESS_KEY', ''),
+    accessKeyId: bedrockConfig.accessKeyId,
+    secretAccessKey: bedrockConfig.secretAccessKey,
   },
 })
 
@@ -31,10 +30,7 @@ export const invokeBedrockModel = async (
   modelId: string,
   systemPrompt: string,
   userPrompt: string,
-  maxTokens: number = 2048,
-  temperature: number = 0.7,
-  topP?: number | null,
-  topK?: number | null
+  temperature: number = 0.7
 ): Promise<BedrockEvaluationResponse> => {
   try {
     // Claude 3 API format requires:
@@ -42,9 +38,9 @@ export const invokeBedrockModel = async (
     // - max_tokens (not maxTokens)
     // - system message in separate field (not in messages array)
     // - No inferenceConfig wrapper
-    const body: any = {
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: maxTokens,
+    const body = {
+      anthropic_version: bedrockConfig.anthropicVersion,
+      max_tokens: bedrockConfig.maxTokens,
       temperature: temperature,
       system: systemPrompt,
       messages: [
@@ -53,14 +49,6 @@ export const invokeBedrockModel = async (
           content: [{ type: 'text', text: userPrompt }],
         },
       ],
-    }
-
-    if (typeof topP === 'number') {
-      body.top_p = topP
-    }
-
-    if (typeof topK === 'number') {
-      body.top_k = topK
     }
 
     const command = new InvokeModelCommand({
@@ -89,7 +77,8 @@ export const invokeBedrockModel = async (
       ...output,
     }
   } catch (error: any) {
-    throw new Error(`Bedrock API Error: ${error.message}`)
+    console.log('Bedrock API Error:', error.message)
+    throw new Error('Failed to communicate with AI service. Please try again later.')
   }
 }
 
@@ -98,9 +87,7 @@ export const evaluateChatWithBedrock = async (
   currentNote: string,
   previousNote: string | undefined,
   systemPrompt: string,
-  temperature: number,
-  topP?: number | null,
-  topK?: number | null
+  temperature: number
 ): Promise<{
   'score': number
   'pass': boolean
@@ -158,10 +145,7 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
     modelId,
     evaluationSystemPrompt,
     evaluationUserPrompt,
-    bedrockConfig.maxTokens,
-    temperature,
-    topP ?? undefined,
-    topK ?? undefined
+    temperature
   )
 
   try {
