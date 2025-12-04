@@ -7,6 +7,7 @@ import { applyFilters } from '#services/apply_filter'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { evaluateChatWithBedrock } from '#services/bedrock_service'
 import { AiStatusEnum } from '#enums/session_enum'
+import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
 import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
 import type {
@@ -78,6 +79,30 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const endTime = DateTime.fromMillis(endTimeMs)
     const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
+    // Map validation status to severity enum
+    let severity = ChatSeverityEnum.minor // default to info
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'error') {
+        severity = ChatSeverityEnum.critical
+      } else if (evaluation.validation_result.status === 'fail') {
+        severity = ChatSeverityEnum.moderate
+      } else {
+        severity = ChatSeverityEnum.minor
+      }
+    }
+
+    // Map validation status to result enum
+    let result: number | null = null
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'pass') {
+        result = ChatResultEnum.pass
+      } else if (evaluation.validation_result.status === 'fail') {
+        result = ChatResultEnum.fail
+      } else if (evaluation.validation_result.status === 'error') {
+        result = ChatResultEnum.error
+      }
+    }
+
     const chatData = {
       prompt: prompt,
       userNote: currentNote,
@@ -91,6 +116,10 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       evaluation: evaluation.evaluation,
       bedrockResponse: evaluation,
       userId: userId,
+      agentId: reqData.prompt_id,
+      triggerSource: ChatTriggerSourceEnum.rerun,
+      severity: severity,
+      result: result,
     }
 
     const chat = await Chat.create(chatData)
@@ -183,6 +212,30 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
       const endTime = DateTime.fromMillis(endTimeMs)
       const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
+      // Map validation status to severity enum
+      let severity = ChatSeverityEnum.minor // default to info
+      if (evaluation.validation_result) {
+        if (evaluation.validation_result.status === 'error') {
+          severity = ChatSeverityEnum.critical
+        } else if (evaluation.validation_result.status === 'fail') {
+          severity = ChatSeverityEnum.moderate
+        } else {
+          severity = ChatSeverityEnum.minor
+        }
+      }
+
+      // Map validation status to result enum
+      let result: number | null = null
+      if (evaluation.validation_result) {
+        if (evaluation.validation_result.status === 'pass') {
+          result = ChatResultEnum.pass
+        } else if (evaluation.validation_result.status === 'fail') {
+          result = ChatResultEnum.fail
+        } else if (evaluation.validation_result.status === 'error') {
+          result = ChatResultEnum.error
+        }
+      }
+
       chat.evaluationScore = evaluation.score
       chat.responseTime = responseTime
       chat.startTime = startTime
@@ -190,6 +243,8 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
       chat.sentiment = evaluation.sentiment
       chat.evaluation = evaluation.evaluation
       chat.bedrockResponse = evaluation
+      chat.severity = severity
+      chat.result = result
 
       // Update session with AI score and status
       const session = await Session.query().where('note_id', chat.noteId).first()
@@ -355,6 +410,30 @@ export const reevaluateChat = async (chatId: number) => {
     const endTime = DateTime.fromMillis(endTimeMs)
     const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
+    // Map validation status to severity enum
+    let severity = ChatSeverityEnum.minor // default to info
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'error') {
+        severity = ChatSeverityEnum.critical
+      } else if (evaluation.validation_result.status === 'fail') {
+        severity = ChatSeverityEnum.moderate
+      } else {
+        severity = ChatSeverityEnum.minor
+      }
+    }
+
+    // Map validation status to result enum
+    let result: number | null = null
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'pass') {
+        result = ChatResultEnum.pass
+      } else if (evaluation.validation_result.status === 'fail') {
+        result = ChatResultEnum.fail
+      } else if (evaluation.validation_result.status === 'error') {
+        result = ChatResultEnum.error
+      }
+    }
+
     chat.evaluationScore = evaluation.score
     chat.responseTime = responseTime
     chat.startTime = startTime
@@ -362,6 +441,8 @@ export const reevaluateChat = async (chatId: number) => {
     chat.sentiment = evaluation.sentiment
     chat.evaluation = evaluation.evaluation
     chat.bedrockResponse = evaluation
+    chat.severity = severity
+    chat.result = result
 
     await chat.save()
 

@@ -4,7 +4,7 @@ import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import HumanReview from '#models/human_review'
 import Agent from '#models/agent'
-import { ChatSeverityEnum, ChatTriggerSourceEnum } from '#enums/chat_enum'
+import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 
 export const chatFilterEnum = [
@@ -16,6 +16,8 @@ export const chatFilterEnum = [
   'note_id',
   'created_at',
   'agent_id',
+  'severity',
+  'result',
 ]
 export const chatSortEnum = [
   'id',
@@ -26,6 +28,8 @@ export const chatSortEnum = [
   'note_id',
   'created_at',
   'updated_at',
+  'severity',
+  'result',
 ]
 
 export default class Chat extends BaseModel {
@@ -107,8 +111,16 @@ export default class Chat extends BaseModel {
   })
   declare triggerSource: number | null
 
-  @column()
-  declare result: string | null
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(ChatResultEnum).find(
+        (k) => ChatResultEnum[k as keyof typeof ChatResultEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
+  declare result: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

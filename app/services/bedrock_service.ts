@@ -93,6 +93,78 @@ export const invokeBedrockModel = async (
   }
 }
 
+// Validation function to check Bedrock response structure
+const validateBedrockResponse = (
+  parsed: any
+): {
+  isValid: boolean
+  status: 'pass' | 'fail' | 'error'
+  message: string
+} => {
+  // Required main fields
+  const requiredMainFields = ['score', 'pass', 'issues', 'summary', 'sentiment', 'evaluation']
+  const missingMainFields: string[] = []
+
+  // Check if main fields exist
+  requiredMainFields.forEach((field) => {
+    if (parsed[field] === undefined || parsed[field] === null) {
+      missingMainFields.push(field)
+    }
+  })
+
+  // If no main fields are present, return error
+  if (missingMainFields.length === requiredMainFields.length) {
+    return {
+      isValid: false,
+      status: 'error',
+      message: `Missing all required main fields: ${requiredMainFields.join(', ')}`,
+    }
+  }
+
+  // If some main fields are missing, return fail
+  if (missingMainFields.length > 0) {
+    return {
+      isValid: false,
+      status: 'fail',
+      message: `Missing required main fields: ${missingMainFields.join(', ')}`,
+    }
+  }
+
+  // Check issues array subfields if issues array exists
+  if (Array.isArray(parsed.issues)) {
+    const requiredIssueFields = ['severity', 'points_deducted', 'section', 'justification']
+    const issuesWithMissingFields: number[] = []
+
+    parsed.issues.forEach((issue: any, index: number) => {
+      const missingFields: string[] = []
+      requiredIssueFields.forEach((field) => {
+        if (issue[field] === undefined || issue[field] === null || issue[field] === '') {
+          missingFields.push(field)
+        }
+      })
+      if (missingFields.length > 0) {
+        issuesWithMissingFields.push(index)
+      }
+    })
+
+    // If issues array has items but subfields are missing, return fail
+    if (issuesWithMissingFields.length > 0) {
+      return {
+        isValid: false,
+        status: 'fail',
+        message: `Issues array items at indices [${issuesWithMissingFields.join(', ')}] are missing required subfields`,
+      }
+    }
+  }
+
+  // All validations passed
+  return {
+    isValid: true,
+    status: 'pass',
+    message: 'All required fields are present',
+  }
+}
+
 export const evaluateChatWithBedrock = async (
   modelId: string,
   currentNote: string,
@@ -123,6 +195,11 @@ export const evaluateChatWithBedrock = async (
   'gm4p-1_progress'?: string
   'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string
   'raw_response': string
+  'validation_result'?: {
+    isValid: boolean
+    status: 'pass' | 'fail' | 'error'
+    message: string
+  }
 }> => {
   // Use the provided system prompt from agent
   const evaluationSystemPrompt = systemPrompt
@@ -170,6 +247,10 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
 
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])
+
+      // Validate response structure
+      const validation = validateBedrockResponse(parsed)
+
       // Map issues format: convert points_deducted to severity if needed, ensure section_id and section are present
       const issues = (parsed.issues || []).map((issue: any) => {
         // Determine severity based on points_deducted if not provided
@@ -212,6 +293,7 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
         'kxgx-7_&_kxgx-8_suicidality/homicidality':
           parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] || '',
         'raw_response': responseText,
+        'validation_result': validation,
       }
     }
 
@@ -221,6 +303,23 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
 
     const rawScore = scoreMatch ? Number.parseInt(scoreMatch[1]) : 0
     const clampedScore = Math.max(0, Math.min(100, rawScore))
+
+    // Try to parse as JSON for validation
+    let validation: {
+      isValid: boolean
+      status: 'pass' | 'fail' | 'error'
+      message: string
+    } = {
+      isValid: false,
+      status: 'error',
+      message: 'No valid JSON structure found in response',
+    }
+    try {
+      const fallbackParsed = JSON.parse(responseText)
+      validation = validateBedrockResponse(fallbackParsed)
+    } catch {
+      // Already set validation to error
+    }
 
     return {
       'score': clampedScore,
@@ -238,8 +337,10 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
       'raw_response': responseText,
+      'validation_result': validation,
     }
-  } catch (error) {
+  } catch (error: any) {
+    // For errors, return fallback response with error validation status
     return {
       'score': 0,
       'pass': false,
@@ -256,6 +357,11 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
       'raw_response': response.output_text || 'Evaluation completed',
+      'validation_result': {
+        isValid: false,
+        status: 'error',
+        message: error.message || 'Failed to parse Bedrock response',
+      },
     }
   }
 }
