@@ -15,6 +15,7 @@ export const chatFilterEnum = [
   'evaluation_score',
   'note_id',
   'created_at',
+  'agent_id',
 ]
 export const chatSortEnum = [
   'id',
