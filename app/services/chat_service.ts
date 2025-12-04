@@ -123,7 +123,13 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
 
 export const getChatById = async (chatId: number) => {
   try {
-    const chat = await Chat.query().where('id', chatId).preload('user').first()
+    const chat = await Chat.query()
+      .where('id', chatId)
+      .preload('user')
+      .preload('agent', (agentQuery) => {
+        agentQuery.select('id', 'name', 'model', 'agent_key')
+      })
+      .first()
 
     if (!chat) {
       return sendError('Chat not found')
@@ -249,7 +255,12 @@ export const listChats = async (
     let query: any
     let filterData: any
     let sortChat: any
-    let chatListings: any = Chat.query().preload('user')
+    let chatListings: any = Chat.query()
+      .preload('user')
+      .preload('agent', (agentQuery) => {
+        agentQuery.select('id', 'name', 'model', 'agent_key')
+      })
+      .preload('humanReviews', (reviewsQuery) => reviewsQuery.orderBy('id', 'desc'))
 
     if (filters?.length) {
       filterData = applyFilters(chatListings, filters, chatFilterEnum)

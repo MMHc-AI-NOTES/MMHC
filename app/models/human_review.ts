@@ -3,6 +3,7 @@ import { BaseModel, beforeFetch, beforeFind, belongsTo, column } from '@adonisjs
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import Session from '#models/session'
+import Chat from '#models/chat'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 
@@ -25,6 +26,9 @@ export default class HumanReview extends BaseModel {
 
   @column({ columnName: 'note_id' })
   declare noteId: string
+
+  @column({ columnName: 'chat_id' })
+  declare chatId: number | null
 
   @column({ columnName: 'practitioner_id' })
   declare practitionerId: number
@@ -54,6 +58,11 @@ export default class HumanReview extends BaseModel {
     localKey: 'noteId',
   })
   declare note: BelongsTo<typeof Session>
+
+  @belongsTo(() => Chat, {
+    foreignKey: 'chatId',
+  })
+  declare chat: BelongsTo<typeof Chat>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery

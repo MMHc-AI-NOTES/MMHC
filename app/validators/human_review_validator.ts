@@ -6,6 +6,7 @@ export const createHumanReviewValidator = vine.compile(
     note_id: vine.string().trim().minLength(1),
     practitioner_id: vine.number().withoutDecimals(),
     decision: vine.number().withoutDecimals(),
+    chat_id: vine.number().withoutDecimals().optional(),
     manual_score: vine.number().optional(),
     comment: vine.string().trim().optional(),
   })

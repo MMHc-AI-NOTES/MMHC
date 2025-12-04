@@ -39,5 +39,17 @@ export default class UserSeeder extends BaseSeeder {
         isActive: true,
       }
     )
+
+    await User.updateOrCreate(
+      { id: 4 },
+      {
+        id: 4,
+        email: 'practitioner3@experts.com',
+        password: 'Abc@1234',
+        fullName: 'Carol Black',
+        type: UserTypeEnum.practitioner,
+        isActive: true,
+      }
+    )
   }
 }

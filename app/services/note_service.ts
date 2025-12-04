@@ -21,7 +21,9 @@ export const noteListing = async (
     let noteListings: any = Session.query()
       .preload('practitioner')
       .preload('patient')
-      .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc'))
+      .preload('chats', (chatsQuery) => {
+        chatsQuery.orderBy('id', 'desc')
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
       })
@@ -104,7 +106,9 @@ export const getNoteWithChats = async (noteId: string) => {
       .where('note_id', noteId)
       .preload('practitioner')
       .preload('patient')
-      .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc').limit(10))
+      .preload('chats', (chatsQuery) => {
+        chatsQuery.orderBy('id', 'desc').limit(10)
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
       })
