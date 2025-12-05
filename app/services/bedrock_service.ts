@@ -112,20 +112,20 @@ const validateBedrockResponse = (
     }
   })
 
-  // If no main fields are present, return error
+  // If all main fields are missing, return fail
   if (missingMainFields.length === requiredMainFields.length) {
     return {
       isValid: false,
-      status: 'error',
+      status: 'fail',
       message: `Missing all required main fields: ${requiredMainFields.join(', ')}`,
     }
   }
 
-  // If some main fields are missing, return fail
+  // If some main fields are missing, return error
   if (missingMainFields.length > 0) {
     return {
       isValid: false,
-      status: 'fail',
+      status: 'error',
       message: `Missing required main fields: ${missingMainFields.join(', ')}`,
     }
   }
@@ -147,17 +147,17 @@ const validateBedrockResponse = (
       }
     })
 
-    // If issues array has items but subfields are missing, return fail
+    // If issues array has items but subfields are missing, return error
     if (issuesWithMissingFields.length > 0) {
       return {
         isValid: false,
-        status: 'fail',
+        status: 'error',
         message: `Issues array items at indices [${issuesWithMissingFields.join(', ')}] are missing required subfields`,
       }
     }
   }
 
-  // All validations passed
+  // All validations passed - structure is valid
   return {
     isValid: true,
     status: 'pass',
