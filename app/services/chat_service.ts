@@ -158,6 +158,9 @@ export const getChatById = async (chatId: number) => {
       .preload('agent', (agentQuery) => {
         agentQuery.select('id', 'name', 'model', 'agent_key')
       })
+      .preload('humanReviews', (reviewsQuery) =>
+        reviewsQuery.orderBy('id', 'desc').preload('practitioner')
+      )
       .first()
 
     if (!chat) {
@@ -315,7 +318,9 @@ export const listChats = async (
       .preload('agent', (agentQuery) => {
         agentQuery.select('id', 'name', 'model', 'agent_key')
       })
-      .preload('humanReviews', (reviewsQuery) => reviewsQuery.orderBy('id', 'desc'))
+      .preload('humanReviews', (reviewsQuery) =>
+        reviewsQuery.orderBy('id', 'desc').preload('practitioner')
+      )
 
     if (filters?.length) {
       filterData = applyFilters(chatListings, filters, chatFilterEnum)
