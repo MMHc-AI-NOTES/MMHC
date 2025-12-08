@@ -3,28 +3,17 @@ import Patient from '#models/patient'
 
 export default class extends BaseSeeder {
   async run() {
-    await Patient.updateOrCreate(
-      { id: 1 },
-      {
-        id: 1,
-        uuid: '550e8400-e29b-41d4-a716-446655440001',
-      }
-    )
+    const patients = []
+    for (let i = 1; i <= 19; i++) {
+      const paddedId = i.toString().padStart(3, '0')
+      patients.push({
+        id: i,
+        uuid: `550e8400-e29b-41d4-a716-446655440${paddedId}`,
+      })
+    }
 
-    await Patient.updateOrCreate(
-      { id: 2 },
-      {
-        id: 2,
-        uuid: '550e8400-e29b-41d4-a716-446655440002',
-      }
-    )
-
-    await Patient.updateOrCreate(
-      { id: 3 },
-      {
-        id: 3,
-        uuid: '550e8400-e29b-41d4-a716-446655440003',
-      }
-    )
+    for (const patient of patients) {
+      await Patient.updateOrCreate({ id: patient.id }, patient)
+    }
   }
 }

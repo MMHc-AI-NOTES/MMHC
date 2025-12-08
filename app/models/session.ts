@@ -5,6 +5,7 @@ import User from '#models/user'
 import Chat from '#models/chat'
 import Patient from '#models/patient'
 import HumanReview from '#models/human_review'
+import CptCode from '#models/cpt_code'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import {
   SessionTypeEnum,
@@ -143,6 +144,9 @@ export default class Session extends BaseModel {
   })
   declare priority: number | null
 
+  @column({ columnName: 'cpt_code_id' })
+  declare cptCodeId: number | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
@@ -161,6 +165,11 @@ export default class Session extends BaseModel {
     foreignKey: 'patientId',
   })
   declare patient: BelongsTo<typeof Patient>
+
+  @belongsTo(() => CptCode, {
+    foreignKey: 'cptCodeId',
+  })
+  declare cptCode: BelongsTo<typeof CptCode>
 
   @hasMany(() => Chat, {
     foreignKey: 'noteId',
