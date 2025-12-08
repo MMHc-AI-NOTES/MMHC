@@ -168,7 +168,7 @@ const validateBedrockResponse = (
 export const evaluateChatWithBedrock = async (
   modelId: string,
   currentNote: string,
-  previousNote: string | undefined,
+  previousNotes: string[] | undefined,
   systemPrompt: string,
   temperature: number,
   topP?: number | null,
@@ -204,10 +204,9 @@ export const evaluateChatWithBedrock = async (
   // Use the provided system prompt from agent
   const evaluationSystemPrompt = systemPrompt
 
-  // Build user prompt with current and previous note
-  // currentNote and previousNote are JSON strings, so we parse and stringify them properly
+  // Build user prompt with current and previous notes
+  // currentNote and previousNotes are JSON strings, so we parse and stringify them properly
   let currentNoteParsed: any
-  let previousNoteParsed: any
 
   try {
     currentNoteParsed = typeof currentNote === 'string' ? JSON.parse(currentNote) : currentNote
@@ -215,18 +214,35 @@ export const evaluateChatWithBedrock = async (
     currentNoteParsed = { session: currentNote }
   }
 
-  try {
-    previousNoteParsed =
-      previousNote && typeof previousNote === 'string' ? JSON.parse(previousNote) : previousNote
-  } catch {
-    previousNoteParsed = previousNote ? { session: previousNote } : null
+  // Parse all previous notes
+  const previousNotesParsed: any[] = []
+  if (previousNotes && previousNotes.length > 0) {
+    previousNotes.forEach((prevNote) => {
+      try {
+        const parsed = typeof prevNote === 'string' ? JSON.parse(prevNote) : prevNote
+        previousNotesParsed.push(parsed)
+      } catch {
+        previousNotesParsed.push({ session: prevNote })
+      }
+    })
   }
 
-  const evaluationUserPrompt = `CURRENT_NOTE:
+  // Build prompt with current note and all previous notes
+  let evaluationUserPrompt = `CURRENT_NOTE:
 ${JSON.stringify(currentNoteParsed, null, 2)}
 
-PREVIOUS_NOTE:
-${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previous note available'}`
+`
+
+  if (previousNotesParsed.length > 0) {
+    evaluationUserPrompt += `PREVIOUS_SESSIONS (${previousNotesParsed.length} session(s)):
+`
+    previousNotesParsed.forEach((prevNote, index) => {
+      evaluationUserPrompt += `\n--- Previous Session ${index + 1} ---\n${JSON.stringify(prevNote, null, 2)}\n`
+    })
+  } else {
+    evaluationUserPrompt += `PREVIOUS_SESSIONS:
+No previous sessions available for this patient`
+  }
 
   // Use detailed evaluation prompt as system prompt
   // Increased max_tokens to handle longer, more detailed responses

@@ -39,16 +39,18 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       return sendError('Agent model is not configured')
     }
 
-    // Get previous session for comparison (same practitioner, before current session)
-    const previousSession = await Session.query()
-      .where('practitioner_id', session.practitionerId)
-      .where('created_at', '<', session.createdAt.toSQL()!)
-      .orderBy('created_at', 'desc')
-      .first()
+    // Get all previous sessions for the same patient (for better evaluation based on patient history)
+    const previousSessions =
+      session.patientId !== null
+        ? await Session.query()
+            .where('patient_id', session.patientId)
+            .where('id', '<', session.id)
+            .orderBy('id', 'desc')
+        : []
 
     // Use session.session as current note and agent.prompt as prompt
     const currentNote = session.session
-    const previousNote = previousSession?.session || undefined
+    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
     const prompt = agent.prompt
     const modelId = agent.model
     const temperature = agent.temperature ?? 0.3
@@ -63,11 +65,11 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Evaluate with Bedrock (with previous note for comparison)
+    // Evaluate with Bedrock (with previous notes for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       modelId,
       currentNote,
-      previousNote,
+      previousNotes.length > 0 ? previousNotes : undefined,
       prompt,
       temperature,
       topP,
@@ -377,14 +379,16 @@ export const reevaluateChat = async (chatId: number) => {
       return sendError('Session not found for this chat')
     }
 
-    // Get previous session for comparison
-    const previousSession = await Session.query()
-      .where('practitioner_id', session.practitionerId)
-      .where('created_at', '<', session.createdAt.toSQL()!)
-      .orderBy('created_at', 'desc')
-      .first()
+    // Get all previous sessions for the same patient (for better evaluation based on patient history)
+    const previousSessions =
+      session.patientId !== null
+        ? await Session.query()
+            .where('patient_id', session.patientId)
+            .where('id', '<', session.id)
+            .orderBy('id', 'desc')
+        : []
 
-    const previousNote = previousSession?.session || undefined
+    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
 
     if (!chat.prompt) {
       return sendError('Chat prompt is required for re-evaluation')
@@ -399,11 +403,11 @@ export const reevaluateChat = async (chatId: number) => {
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Re-evaluate with Bedrock
+    // Re-evaluate with Bedrock (with previous notes for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       chat.modelId,
       chat.userNote,
-      previousNote,
+      previousNotes.length > 0 ? previousNotes : undefined,
       chat.prompt,
       temperature,
       topP,
