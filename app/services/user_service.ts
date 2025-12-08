@@ -29,6 +29,9 @@ export const userListing = async (
       }
     }
     query = filterData?.query ?? userListings
+    if (!sorts?.length) {
+      query = query.orderBy('id', 'desc')
+    }
     if (sorts?.length) {
       sortUser = applySorting(query, sorts, userSortEnum)
       if (sortUser?.status) {

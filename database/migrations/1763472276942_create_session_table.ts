@@ -16,6 +16,12 @@ export default class extends BaseSchema {
         .references('id')
         .inTable('users')
         .onDelete('CASCADE')
+      table
+        .bigInteger('patient_id')
+        .unsigned()
+        .references('id')
+        .inTable('patients')
+        .onDelete('CASCADE')
       table.timestamp('created_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
       table
         .timestamp('updated_at')

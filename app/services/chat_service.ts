@@ -131,6 +131,7 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
 
       // Use default temperature for update (agent not available)
       const temperature = 0.3
+
       const evaluation = await evaluateChatWithBedrock(
         modelId,
         userNote,
@@ -200,6 +201,9 @@ export const listChats = async (
       }
     }
     query = filterData?.query ?? chatListings
+    if (!sorts?.length) {
+      query = query.orderBy('id', 'desc')
+    }
     if (sorts?.length) {
       sortChat = applySorting(query, sorts, chatSortEnum)
       if (sortChat?.status) {
@@ -264,6 +268,7 @@ export const reevaluateChat = async (chatId: number) => {
 
     // Use default temperature for re-evaluation (agent not available)
     const temperature = 0.3
+
     // Re-evaluate with Bedrock
     const evaluation = await evaluateChatWithBedrock(
       chat.modelId,

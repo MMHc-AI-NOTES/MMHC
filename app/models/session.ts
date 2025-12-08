@@ -3,14 +3,16 @@ import { BaseModel, beforeFetch, beforeFind, belongsTo, column, hasMany } from '
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import Chat from '#models/chat'
+import Patient from '#models/patient'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 
-export const sessionFilterEnum = ['id', 'note_id', 'session_id', 'practitioner_id']
+export const sessionFilterEnum = ['id', 'note_id', 'session_id', 'practitioner_id', 'patient_id']
 export const sessionSortEnum = [
   'id',
   'note_id',
   'session_id',
   'practitioner_id',
+  'patient_id',
   'created_at',
   'updated_at',
 ]
@@ -21,20 +23,23 @@ export default class Session extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
-  @column({ columnName: 'note_id' })
+  @column()
   declare noteId: string
 
-  @column({ columnName: 'session_id' })
+  @column()
   declare sessionId: string
 
   @column()
   declare session: string
 
-  @column.dateTime({ columnName: 'session_time' })
+  @column.dateTime()
   declare sessionTime: DateTime
 
-  @column({ columnName: 'practitioner_id' })
+  @column()
   declare practitionerId: number
+
+  @column()
+  declare patientId: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -49,6 +54,11 @@ export default class Session extends BaseModel {
     foreignKey: 'practitionerId',
   })
   declare practitioner: BelongsTo<typeof User>
+
+  @belongsTo(() => Patient, {
+    foreignKey: 'patientId',
+  })
+  declare patient: BelongsTo<typeof Patient>
 
   @hasMany(() => Chat, {
     foreignKey: 'noteId',

@@ -10,14 +10,15 @@ export const createAgentValidator = vine.compile(
       .number()
       .optional()
       .transform((value) => value ?? 1),
-    frequency_penalty: vine
+    top_p: vine
       .number()
       .optional()
-      .transform((value) => value ?? 1),
-    presence_penalty: vine
+      .transform((value) => value ?? 0.9),
+    top_k: vine
       .number()
+      .withoutDecimals()
       .optional()
-      .transform((value) => value ?? 1),
+      .transform((value) => value ?? 250),
     previous_section: vine.array(vine.number().positive()).optional(),
     description: vine.string().trim().optional(),
     prompt: vine.string().trim().optional(),
@@ -36,8 +37,8 @@ export const updateAgentValidator = vine.compile(
     name: vine.string().trim().optional(),
     model: vine.enum(modelAgents).optional(),
     temperature: vine.number().optional(),
-    frequency_penalty: vine.number().optional(),
-    presence_penalty: vine.number().optional(),
+    top_p: vine.number().optional(),
+    top_k: vine.number().withoutDecimals().optional(),
     previous_section: vine.array(vine.number().positive()).optional(),
     description: vine.string().trim().optional(),
     prompt: vine.string().trim().optional(),

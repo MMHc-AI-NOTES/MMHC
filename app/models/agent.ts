@@ -24,10 +24,10 @@ export default class Agent extends BaseModel {
   declare temperature: number
 
   @column()
-  declare frequencyPenalty: number
+  declare topP: number | null
 
   @column()
-  declare presencePenalty: number
+  declare topK: number | null
 
   @column()
   declare previousSection: string | null
