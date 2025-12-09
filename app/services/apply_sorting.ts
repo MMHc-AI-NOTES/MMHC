@@ -31,11 +31,13 @@ export const applySorting = (
   }
 
   if (invalidSortColumn) {
-    throw new Error(`List of valid sorting [${sortEnum}]`)
+    console.log('Error in applySorting: Invalid sort column provided. Valid columns:', sortEnum)
+    throw new Error(`Invalid sort column. Valid columns are: ${sortEnum?.join(', ')}`)
   }
 
   if (invalidSortOrder) {
-    throw new Error(`Valid sort order types are: ['asc', 'desc']`)
+    console.log('Error in applySorting: Invalid sort order provided')
+    throw new Error("Invalid sort order. Valid orders are: 'asc', 'desc'")
   }
 
   return {

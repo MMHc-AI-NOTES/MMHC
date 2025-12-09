@@ -4,7 +4,7 @@ import Agent from '#models/agent'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
-import { sendSuccess, sendError } from '#services/custom_response_service'
+import { sendSuccess } from '#services/custom_response_service'
 import { evaluateChatWithBedrock } from '#services/bedrock_service'
 import { AiStatusEnum } from '#enums/session_enum'
 import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
@@ -20,22 +20,32 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const session = await Session.query().where('note_id', reqData.note_id).first()
 
     if (!session) {
-      return sendError('Session not found for the provided note_id')
+      console.log('Error in createChat: Session not found for note_id:', reqData.note_id)
+      throw new Error('Session not found for the provided note')
     }
 
     // Get agent (prompt) from prompt_id (agent_id)
     const agent = await Agent.find(reqData.prompt_id)
 
     if (!agent) {
-      return sendError('Agent not found for the provided prompt_id')
+      console.log('Error in createChat: Agent not found for prompt_id:', reqData.prompt_id)
+      throw new Error('Agent not found for the provided prompt')
     }
 
     if (!agent.prompt) {
-      return sendError('Agent prompt is not configured')
+      console.log(
+        'Error in createChat: Agent prompt is not configured for agent_id:',
+        reqData.prompt_id
+      )
+      throw new Error('Agent prompt is not configured')
     }
 
     if (!agent.model) {
-      return sendError('Agent model is not configured')
+      console.log(
+        'Error in createChat: Agent model is not configured for agent_id:',
+        reqData.prompt_id
+      )
+      throw new Error('Agent model is not configured')
     }
 
     // Get previous session for comparison (same practitioner, before current session)
@@ -55,7 +65,8 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const topK = agent.topK ?? 250
 
     if (!prompt) {
-      return sendError('Agent prompt is required for evaluation')
+      console.log('Error in createChat: Agent prompt is required for evaluation')
+      throw new Error('Agent prompt is required for evaluation')
     }
 
     // Record start time before Bedrock evaluation
@@ -117,7 +128,8 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
 
     return sendSuccess('Chat created and evaluated successfully', chat)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in createChat:', error.message)
+    throw error
   }
 }
 
@@ -126,12 +138,14 @@ export const getChatById = async (chatId: number) => {
     const chat = await Chat.query().where('id', chatId).preload('user').first()
 
     if (!chat) {
-      return sendError('Chat not found')
+      console.log('Error in getChatById: Chat not found with id:', chatId)
+      throw new Error('Chat not found')
     }
 
     return sendSuccess('Chat retrieved successfully', chat)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in getChatById:', error.message)
+    throw error
   }
 }
 
@@ -140,7 +154,8 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
     const chat = await Chat.find(chatId)
 
     if (!chat) {
-      return sendError('Chat not found')
+      console.log('Error in updateChat: Chat not found with id:', chatId)
+      throw new Error('Chat not found')
     }
 
     // If prompt or user_note is updated, re-evaluate
@@ -150,7 +165,8 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
       const modelId = reqData.model_id || chat.modelId
 
       if (!prompt) {
-        return sendError('Prompt is required for evaluation')
+        console.log('Error in updateChat: Prompt is required for evaluation')
+        throw new Error('Prompt is required for evaluation')
       }
 
       // Use default temperature for update (agent not available)
@@ -220,7 +236,8 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
     await chat.save()
     return sendSuccess('Chat updated successfully', chat)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in updateChat:', error.message)
+    throw error
   }
 }
 
@@ -229,13 +246,15 @@ export const deleteChat = async (chatId: number) => {
     const chat = await Chat.find(chatId)
 
     if (!chat) {
-      return sendError('Chat not found')
+      console.log('Error in deleteChat: Chat not found with id:', chatId)
+      throw new Error('Chat not found')
     }
 
     await chat.delete()
     return sendSuccess('Chat deleted successfully')
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in deleteChat:', error.message)
+    throw error
   }
 }
 
@@ -287,7 +306,8 @@ export const listChats = async (
       },
     }
   } catch (error: any) {
-    throw new Error(`Error retrieving chats: ${error.message}`)
+    console.log('Error in listChats:', error.message)
+    throw new Error('Failed to retrieve chats. Please try again later.')
   }
 }
 
@@ -296,14 +316,16 @@ export const reevaluateChat = async (chatId: number) => {
     const chat = await Chat.find(chatId)
 
     if (!chat) {
-      return sendError('Chat not found')
+      console.log('Error in reevaluateChat: Chat not found with id:', chatId)
+      throw new Error('Chat not found')
     }
 
     // Get current session
     const session = await Session.query().where('note_id', chat.noteId).first()
 
     if (!session) {
-      return sendError('Session not found for this chat')
+      console.log('Error in reevaluateChat: Session not found for note_id:', chat.noteId)
+      throw new Error('Session not found for this chat')
     }
 
     // Get previous session for comparison
@@ -316,7 +338,11 @@ export const reevaluateChat = async (chatId: number) => {
     const previousNote = previousSession?.session || undefined
 
     if (!chat.prompt) {
-      return sendError('Chat prompt is required for re-evaluation')
+      console.log(
+        'Error in reevaluateChat: Chat prompt is required for re-evaluation, chat_id:',
+        chatId
+      )
+      throw new Error('Chat prompt is required for re-evaluation')
     }
 
     // Use default temperature for re-evaluation (agent not available)
@@ -376,6 +402,7 @@ export const reevaluateChat = async (chatId: number) => {
 
     return sendSuccess('Chat re-evaluated successfully', chat)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in reevaluateChat:', error.message)
+    throw error
   }
 }

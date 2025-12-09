@@ -93,8 +93,9 @@ export const noteListing = async (
         }
       }),
     }
-  } catch (error) {
-    throw new Error(`Error retrieving notes: ${error.message}`)
+  } catch (error: any) {
+    console.log('Error in noteListing:', error.message)
+    throw new Error('Failed to retrieve notes. Please try again later.')
   }
 }
 
@@ -111,7 +112,8 @@ export const getNoteWithChats = async (noteId: string) => {
       .first()
 
     if (!note) {
-      return sendError('Note not found for the provided note_id')
+      console.log('Error in getNoteWithChats: Note not found for note_id:', noteId)
+      throw new Error('Note not found for the provided note ID')
     }
 
     const serialized = note.serialize()
@@ -256,6 +258,7 @@ export const updateNote = async (noteId: string, reqData: updateNoteValidatorInt
 
     return sendSuccess('Note updated successfully', note)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('Error in getNoteWithChats:', error.message)
+    throw error
   }
 }

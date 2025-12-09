@@ -49,4 +49,5 @@ export default await Env.create(new URL('../', import.meta.url), {
   AWS_ACCESS_KEY_ID: Env.schema.string.optional(),
   AWS_SECRET_ACCESS_KEY: Env.schema.string.optional(),
   BEDROCK_MAX_TOKENS: Env.schema.number.optional(),
+  BEDROCK_ANTHROPIC_VERSION: Env.schema.string.optional(),
 })

@@ -52,22 +52,22 @@ export default class Session extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
-  @column({ columnName: 'note_id' })
+  @column()
   declare noteId: string
 
-  @column({ columnName: 'session_id' })
+  @column()
   declare sessionId: string
 
   @column()
   declare session: string
 
-  @column.dateTime({ columnName: 'session_time' })
+  @column.dateTime()
   declare sessionTime: DateTime
 
-  @column({ columnName: 'practitioner_id' })
+  @column()
   declare practitionerId: number
 
-  @column({ columnName: 'patient_id' })
+  @column()
   declare patientId: number | null
 
   @column({
