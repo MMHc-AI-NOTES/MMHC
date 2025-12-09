@@ -56,11 +56,13 @@ export const applyFilters = (
   })
 
   if (invalidFilterType) {
-    throw new Error(`List valid filter type is [exact, like]`)
+    console.log('Error in applyFilters: Invalid filter type provided')
+    throw new Error('Invalid filter type. Valid types are: exact, like')
   }
 
   if (invalidFilter) {
-    throw new Error(`List of valid filters is [${filterEnum}]`)
+    console.log('Error in applyFilters: Invalid filter column provided. Valid filters:', filterEnum)
+    throw new Error(`Invalid filter column. Valid columns are: ${filterEnum?.join(', ')}`)
   }
 
   return {

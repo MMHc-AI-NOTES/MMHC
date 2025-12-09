@@ -41,13 +41,13 @@ export default class Chat extends BaseModel {
   @column()
   declare prompt: string
 
-  @column({ columnName: 'user_note' })
+  @column()
   declare userNote: string
 
-  @column({ columnName: 'model_id' })
+  @column()
   declare modelId: string
 
-  @column({ columnName: 'evaluation_score' })
+  @column()
   declare evaluationScore: number | null
 
   @column({ columnName: 'response_time' })
@@ -66,7 +66,6 @@ export default class Chat extends BaseModel {
   declare evaluation: string | null
 
   @column({
-    columnName: 'bedrock_response',
     prepare: (value: any) => (value ? JSON.stringify(value) : null),
     consume: (value: any) => {
       if (!value) return null
@@ -79,10 +78,10 @@ export default class Chat extends BaseModel {
   })
   declare bedrockResponse: object | null
 
-  @column({ columnName: 'note_id' })
+  @column()
   declare noteId: string
 
-  @column({ columnName: 'user_id' })
+  @column()
   declare userId: number | null
 
   @column({ columnName: 'agent_id' })

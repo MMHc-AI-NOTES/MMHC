@@ -50,8 +50,9 @@ export const userListing = async (
         ...user.serialize(),
       })),
     }
-  } catch (error) {
-    throw new Error(`Error retrieving users: ${error.message}`)
+  } catch (error: any) {
+    console.log('Error in userListing:', error.message)
+    throw new Error('Failed to retrieve users. Please try again later.')
   }
 }
 
@@ -60,11 +61,13 @@ export const getUserById = async (userId: number) => {
     const userResponse = await User.query().where('id', userId).first()
 
     if (!userResponse) {
-      throw new Error(`User with ID: ${userId} does not exist`)
+      console.log('Error in getUserById: User not found with id:', userId)
+      throw new Error('User not found')
     }
     return userResponse
-  } catch (error) {
-    throw new Error(`Error getting user: ${error.message}`)
+  } catch (error: any) {
+    console.log('Error in getUserById:', error.message)
+    throw error
   }
 }
 
@@ -73,8 +76,9 @@ export const deleteUser = async (user_id: number) => {
     const user = await getUserById(user_id)
 
     return await user.softDelete()
-  } catch (error) {
-    throw new Error(`Error deleting user: ${error.message}`)
+  } catch (error: any) {
+    console.log('Error in deleteUser:', error.message)
+    throw error
   }
 }
 
@@ -82,15 +86,17 @@ export const updateUser = async (payload: updateUserValidatorInterface, userId: 
   try {
     const user = await getUserById(userId)
     return await user.merge(payload).save()
-  } catch (error) {
-    throw new Error(`Error updating user: ${error.message}`)
+  } catch (error: any) {
+    console.log('Error in updateUser:', error.message)
+    throw error
   }
 }
 
 export const createUser = async (payload: createUserValidatorInterface) => {
   try {
     return await User.create(payload)
-  } catch (error) {
-    throw new Error(`Error creating user: ${error.message}`)
+  } catch (error: any) {
+    console.log('Error in createUser:', error.message)
+    throw error
   }
 }
