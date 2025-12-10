@@ -131,6 +131,12 @@ jobs:
 
           node ace migration:run --force
 
+
+          node ace db:seed -f "./database/seeders/1_user_seeder"
+          node ace db:seed -f "./database/seeders/2_patient_seeder"
+          node ace db:seed -f "./database/seeders/3_cpt_code_seeder"
+          node ace db:seed -f "./database/seeders/4_note_seeder"
+
           # restart PM2
           pm2 stop $_pm2_server_ref --silent
           pm2 delete $_pm2_server_ref --silent
