@@ -7,6 +7,27 @@ import Chat from '#models/chat'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 
+export const humanReviewFilterEnum = [
+  'id',
+  'note_id',
+  'chat_id',
+  'practitioner_id',
+  'decision',
+  'manual_score',
+  'created_at',
+]
+
+export const humanReviewSortEnum = [
+  'id',
+  'note_id',
+  'chat_id',
+  'practitioner_id',
+  'decision',
+  'manual_score',
+  'created_at',
+  'updated_at',
+]
+
 export default class HumanReview extends BaseModel {
   static table = 'human_reviews'
 

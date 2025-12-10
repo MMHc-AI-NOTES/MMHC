@@ -13,3 +13,24 @@ export const createHumanReviewValidator = vine.compile(
 )
 
 export type createHumanReviewValidatorInterface = Infer<typeof createHumanReviewValidator>
+
+export const updateHumanReviewValidator = vine.compile(
+  vine.object({
+    note_id: vine.string().trim().minLength(1).optional(),
+    practitioner_id: vine.number().withoutDecimals().optional(),
+    decision: vine.number().withoutDecimals().optional(),
+    chat_id: vine.number().withoutDecimals().optional().nullable(),
+    manual_score: vine.number().optional().nullable(),
+    comment: vine.string().trim().optional().nullable(),
+  })
+)
+
+export type updateHumanReviewValidatorInterface = Infer<typeof updateHumanReviewValidator>
+
+export const humanReviewIdValidator = vine.compile(
+  vine.object({
+    id: vine.number().withoutDecimals(),
+  })
+)
+
+export type humanReviewIdValidatorInterface = Infer<typeof humanReviewIdValidator>
