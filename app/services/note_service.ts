@@ -33,7 +33,9 @@ export const noteListing = async (
       .preload('practitioner')
       .preload('patient')
       .preload('chats', (chatsQuery) => {
-        chatsQuery.orderBy('id', 'desc')
+        chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
+          humanReviewsQuery.orderBy('id', 'desc')
+        })
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
@@ -120,7 +122,12 @@ export const getNoteWithChats = async (noteId: string) => {
       .preload('practitioner')
       .preload('patient')
       .preload('chats', (chatsQuery) => {
-        chatsQuery.orderBy('id', 'desc').limit(10)
+        chatsQuery
+          .orderBy('id', 'desc')
+          .limit(10)
+          .preload('humanReviews', (humanReviewsQuery) => {
+            humanReviewsQuery.orderBy('id', 'desc')
+          })
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
