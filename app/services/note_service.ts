@@ -7,7 +7,6 @@ import { AiStatusEnum, HumanReviewEnum, ManagerEnum, WorkflowEnum } from '#enums
 import { DateTime } from 'luxon'
 import Chat from '#models/chat'
 import type { updateNoteValidatorInterface } from '#validators/note_validator'
-import db from '@adonisjs/lucid/services/db'
 
 export const noteListing = async (
   page?: number,
@@ -20,16 +19,8 @@ export const noteListing = async (
     let filterData: any
     let sortNote: any
 
-    // Build base query to get only latest notes per patient using subquery with GROUP BY
-    const latestNotesSubquery = Session.query()
-      .select(db.raw('MAX(id) as max_id'))
-      .whereNotNull('patient_id')
-      .groupBy('patient_id')
-
+    // Build base query to get all notes (both previous and current)
     let noteListings: any = Session.query()
-      .where((subQuery) => {
-        subQuery.whereIn('id', latestNotesSubquery).orWhereNull('patient_id')
-      })
       .preload('practitioner')
       .preload('patient')
       .preload('chats', (chatsQuery) => {

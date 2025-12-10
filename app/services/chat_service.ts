@@ -119,6 +119,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const chatData = {
       prompt: prompt,
       userNote: currentNote,
+      userInput: evaluation.user_input,
       modelId: modelId,
       noteId: reqData.note_id,
       evaluationScore: evaluation.score,
@@ -476,6 +477,7 @@ export const reevaluateChat = async (chatId: number) => {
     chat.sentiment = evaluation.sentiment
     chat.evaluation = evaluation.evaluation
     chat.bedrockResponse = evaluation
+    chat.userInput = evaluation.user_input
     chat.severity = severity
     chat.result = result
 

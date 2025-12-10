@@ -45,18 +45,21 @@ export default class Chat extends BaseModel {
   declare userNote: string
 
   @column()
+  declare userInput: string | null
+
+  @column()
   declare modelId: string
 
   @column()
   declare evaluationScore: number | null
 
-  @column({ columnName: 'response_time' })
+  @column()
   declare responseTime: number | null
 
-  @column.dateTime({ columnName: 'start_time' })
+  @column.dateTime()
   declare startTime: DateTime | null
 
-  @column.dateTime({ columnName: 'end_time' })
+  @column.dateTime()
   declare endTime: DateTime | null
 
   @column()
@@ -84,7 +87,7 @@ export default class Chat extends BaseModel {
   @column()
   declare userId: number | null
 
-  @column({ columnName: 'agent_id' })
+  @column()
   declare agentId: number | null
 
   @column({

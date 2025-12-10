@@ -194,6 +194,7 @@ export const evaluateChatWithBedrock = async (
   'gm4p-1_progress'?: string
   'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string
   'raw_response': string
+  'user_input': string
   'validation_result'?: {
     isValid: boolean
     status: 'pass' | 'fail' | 'error'
@@ -307,6 +308,7 @@ No previous sessions available for this patient`
         'kxgx-7_&_kxgx-8_suicidality/homicidality':
           parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] || '',
         'raw_response': responseText,
+        'user_input': evaluationUserPrompt,
         'validation_result': validation,
       }
     }
@@ -351,6 +353,7 @@ No previous sessions available for this patient`
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
       'raw_response': responseText,
+      'user_input': evaluationUserPrompt,
       'validation_result': validation,
     }
   } catch (error: any) {
@@ -371,6 +374,7 @@ No previous sessions available for this patient`
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
       'raw_response': response.output_text || 'Evaluation completed',
+      'user_input': evaluationUserPrompt,
       'validation_result': {
         isValid: false,
         status: 'error',
