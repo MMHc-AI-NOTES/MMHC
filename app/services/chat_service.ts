@@ -153,9 +153,13 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     }
 
     // Determine workflow based on evaluation result
+    // If status is pass → completed, otherwise (fail/warning) → in_queue
     let workflow = WorkflowEnum.in_queue // default to in_queue
     if (evaluation.validation_result && evaluation.validation_result.status === 'pass') {
       workflow = WorkflowEnum.completed
+    } else {
+      // fail or warning or error → keep in_queue
+      workflow = WorkflowEnum.in_queue
     }
 
     await session
@@ -163,7 +167,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
         aiScore: aiScore,
         aiStatus: aiStatus,
         workflow: workflow,
-        reviewCycle: ReviewCycleEnum.cycle_1_initial,
+        reviewCycle: ReviewCycleEnum.cycle_1_of_3,
       })
       .save()
 
@@ -506,9 +510,13 @@ export const reevaluateChat = async (chatId: number) => {
     }
 
     // Determine workflow based on evaluation result
+    // If status is pass → completed, otherwise (fail/warning) → in_queue
     let workflow = WorkflowEnum.in_queue // default to in_queue
     if (evaluation.validation_result && evaluation.validation_result.status === 'pass') {
       workflow = WorkflowEnum.completed
+    } else {
+      // fail or warning or error → keep in_queue
+      workflow = WorkflowEnum.in_queue
     }
 
     await session
@@ -516,7 +524,7 @@ export const reevaluateChat = async (chatId: number) => {
         aiScore: aiScore,
         aiStatus: aiStatus,
         workflow: workflow,
-        reviewCycle: ReviewCycleEnum.cycle_1_initial,
+        reviewCycle: ReviewCycleEnum.cycle_1_of_3,
       })
       .save()
 

@@ -15,7 +15,7 @@ import {
   WorkflowEnum,
   PriorityEnum,
 } from '#enums/session_enum'
-import { ReviewCycleEnum } from '#enums/review_cycle_enum'
+import { ReviewCycleEnum, ReviewCycleDisplayNames } from '#enums/review_cycle_enum'
 
 export const sessionFilterEnum = [
   'id',
@@ -157,7 +157,8 @@ export default class Session extends BaseModel {
       const key = Object.keys(ReviewCycleEnum).find(
         (k) => ReviewCycleEnum[k as keyof typeof ReviewCycleEnum] === value
       )
-      return key ? { id: value, name: key } : { id: value, name: null }
+      const displayName = ReviewCycleDisplayNames[value] || null
+      return key ? { id: value, name: displayName || key } : { id: value, name: null }
     },
   })
   declare reviewCycle: number | null

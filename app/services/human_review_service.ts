@@ -36,7 +36,7 @@ export const createHumanReview = async (reqData: createHumanReviewValidatorInter
     await note
       .merge({
         humanReview: HumanReviewEnum.completed,
-        reviewCycle: ReviewCycleEnum.cycle_2_therapist_revision,
+        reviewCycle: ReviewCycleEnum.cycle_2_of_3_therapist_revision,
       })
       .save()
 
