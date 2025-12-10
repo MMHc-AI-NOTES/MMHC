@@ -30,6 +30,7 @@ export const sessionFilterEnum = [
   'workflow',
   'priority',
   'search',
+  'cpt_code_id',
   'created_at',
 ]
 export const sessionSortEnum = [
@@ -45,6 +46,7 @@ export const sessionSortEnum = [
   'manager',
   'workflow',
   'priority',
+  'cpt_code_id',
   'created_at',
   'updated_at',
 ]
@@ -144,7 +146,7 @@ export default class Session extends BaseModel {
   })
   declare priority: number | null
 
-  @column({ columnName: 'cpt_code_id' })
+  @column()
   declare cptCodeId: number | null
 
   @column.dateTime({ autoCreate: true })
