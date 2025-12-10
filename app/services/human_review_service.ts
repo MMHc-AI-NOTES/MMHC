@@ -8,6 +8,8 @@ import type {
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
+import { HumanReviewEnum } from '#enums/session_enum'
+import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 
 export const createHumanReview = async (reqData: createHumanReviewValidatorInterface) => {
   try {
@@ -29,6 +31,14 @@ export const createHumanReview = async (reqData: createHumanReviewValidatorInter
     }
 
     const humanReview = await HumanReview.create(humanReviewData)
+
+    // Update note (session) with completed human review status and review cycle
+    await note
+      .merge({
+        humanReview: HumanReviewEnum.completed,
+        reviewCycle: ReviewCycleEnum.cycle_2_therapist_revision,
+      })
+      .save()
 
     // Reload with relationships
     await humanReview.load('practitioner')

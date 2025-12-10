@@ -15,6 +15,7 @@ import {
   WorkflowEnum,
   PriorityEnum,
 } from '#enums/session_enum'
+import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 
 export const sessionFilterEnum = [
   'id',
@@ -148,6 +149,18 @@ export default class Session extends BaseModel {
 
   @column()
   declare cptCodeId: number | null
+
+  @column({
+    columnName: 'review_cycle',
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(ReviewCycleEnum).find(
+        (k) => ReviewCycleEnum[k as keyof typeof ReviewCycleEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
+  declare reviewCycle: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

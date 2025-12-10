@@ -301,6 +301,7 @@ export default class extends BaseSeeder {
             manager: ManagerEnum.not_needed,
             workflow: WorkflowEnum.in_queue,
             priority: PriorityEnum.low,
+            reviewCycle: null,
           }
         )
       }

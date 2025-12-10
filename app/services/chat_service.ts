@@ -6,7 +6,8 @@ import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess } from '#services/custom_response_service'
 import { evaluateChatWithBedrock } from '#services/bedrock_service'
-import { AiStatusEnum } from '#enums/session_enum'
+import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'
+import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
 import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
@@ -151,10 +152,18 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       aiStatus = AiStatusEnum.warning
     }
 
+    // Determine workflow based on evaluation result
+    let workflow = WorkflowEnum.in_queue // default to in_queue
+    if (evaluation.validation_result && evaluation.validation_result.status === 'pass') {
+      workflow = WorkflowEnum.completed
+    }
+
     await session
       .merge({
         aiScore: aiScore,
         aiStatus: aiStatus,
+        workflow: workflow,
+        reviewCycle: ReviewCycleEnum.cycle_1_initial,
       })
       .save()
 
@@ -496,10 +505,18 @@ export const reevaluateChat = async (chatId: number) => {
       aiStatus = AiStatusEnum.warning
     }
 
+    // Determine workflow based on evaluation result
+    let workflow = WorkflowEnum.in_queue // default to in_queue
+    if (evaluation.validation_result && evaluation.validation_result.status === 'pass') {
+      workflow = WorkflowEnum.completed
+    }
+
     await session
       .merge({
         aiScore: aiScore,
         aiStatus: aiStatus,
+        workflow: workflow,
+        reviewCycle: ReviewCycleEnum.cycle_1_initial,
       })
       .save()
 
