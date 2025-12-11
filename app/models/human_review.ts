@@ -6,6 +6,7 @@ import Session from '#models/session'
 import Chat from '#models/chat'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
+import { AiStatusEnum, PriorityEnum } from '#enums/session_enum'
 
 export const humanReviewFilterEnum = [
   'id',
@@ -54,10 +55,26 @@ export default class HumanReview extends BaseModel {
   @column()
   declare chatId: number | null
 
-  @column()
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(AiStatusEnum).find(
+        (k) => AiStatusEnum[k as keyof typeof AiStatusEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare aiStatus: number | null
 
-  @column()
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(PriorityEnum).find(
+        (k) => PriorityEnum[k as keyof typeof PriorityEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
   declare priority: number | null
 
   @column()
