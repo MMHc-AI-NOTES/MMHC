@@ -69,18 +69,76 @@ export const listHumanReviews = async (
       .preload('note')
       .preload('chat')
 
+    // Separate search, note filters, and human review filters
+    let searchFilter: any = null
+    let noteFilters: Array<any> = []
+    let humanReviewFilters: Array<any> = []
+
     if (filters?.length) {
-      filterData = applyFilters(humanReviewListings, filters, humanReviewFilterEnum)
+      filters.forEach((filter) => {
+        if (filter.columnName === 'search') {
+          searchFilter = filter
+        } else if (filter.columnName?.startsWith('note_')) {
+          noteFilters.push(filter)
+        } else {
+          humanReviewFilters.push(filter)
+        }
+      })
     }
-    if (filterData?.status === false) {
-      return {
-        status: filterData.status,
-        message: filterData.message,
+
+    // Apply human review filters
+    if (humanReviewFilters?.length) {
+      filterData = applyFilters(humanReviewListings, humanReviewFilters, humanReviewFilterEnum)
+      if (filterData?.status === false) {
+        return {
+          status: filterData.status,
+          message: filterData.message,
+        }
+      }
+      humanReviewListings = filterData?.query ?? humanReviewListings
+    }
+
+    // Apply note filters by joining with session table
+    if (noteFilters?.length) {
+      humanReviewListings = humanReviewListings
+        .innerJoin('session_table as note', 'human_reviews.note_id', 'note.note_id')
+        .select('human_reviews.*')
+        .groupBy('human_reviews.id')
+
+      noteFilters.forEach((filter) => {
+        const noteColumnName = filter.columnName.replace('note_', '')
+        if (filter.type === 'exact') {
+          humanReviewListings = humanReviewListings.andWhere(`note.${noteColumnName}`, filter.value)
+        } else if (filter.type === 'like') {
+          humanReviewListings = humanReviewListings.andWhereILike(
+            `note.${noteColumnName}`,
+            `%${filter.value}%`
+          )
+        }
+      })
+    }
+
+    // Apply search filter (note_id contains, practitioner_id exact if numeric)
+    if (searchFilter && searchFilter.value) {
+      const searchValue = String(searchFilter.value).trim()
+      if (searchValue) {
+        const searchPattern = `%${searchValue}%`
+        const searchNumber = Number.parseInt(searchValue)
+
+        humanReviewListings = humanReviewListings.where((subQuery: any) => {
+          subQuery.whereILike('human_reviews.note_id', searchPattern)
+
+          // If numeric, search practitioner_id as well
+          if (!Number.isNaN(searchNumber)) {
+            subQuery.orWhere('human_reviews.practitioner_id', searchNumber)
+          }
+        })
       }
     }
-    query = filterData?.query ?? humanReviewListings
+
+    query = humanReviewListings
     if (!sorts?.length) {
-      query = query.orderBy('id', 'desc')
+      query = query.orderBy('human_reviews.id', 'desc')
     }
     if (sorts?.length) {
       sortHumanReview = applySorting(query, sorts, humanReviewSortEnum)

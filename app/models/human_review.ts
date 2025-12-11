@@ -15,6 +15,11 @@ export const humanReviewFilterEnum = [
   'decision',
   'manual_score',
   'created_at',
+  'search',
+  // Note (Session) table filters
+  'note_ai_status',
+  'note_patient_id',
+  'note_priority',
 ]
 
 export const humanReviewSortEnum = [
@@ -45,16 +50,16 @@ export default class HumanReview extends BaseModel {
   })
   declare decision: number
 
-  @column({ columnName: 'note_id' })
+  @column()
   declare noteId: string
 
-  @column({ columnName: 'chat_id' })
+  @column()
   declare chatId: number | null
 
-  @column({ columnName: 'practitioner_id' })
+  @column()
   declare practitionerId: number
 
-  @column({ columnName: 'manual_score' })
+  @column()
   declare manualScore: number | null
 
   @column()
