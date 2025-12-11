@@ -28,6 +28,8 @@ export const createHumanReview = async (reqData: createHumanReviewValidatorInter
       chatId: reqData.chat_id ?? null,
       manualScore: reqData.manual_score ?? null,
       comment: reqData.comment ?? null,
+      aiStatus: reqData.ai_status ?? null,
+      priority: reqData.priority ?? null,
     }
 
     const humanReview = await HumanReview.create(humanReviewData)
@@ -64,27 +66,25 @@ export const listHumanReviews = async (
     let filterData: any
     let sortHumanReview: any
 
-    let humanReviewListings: any = HumanReview.query()
-      .preload('practitioner')
-      .preload('note')
-      .preload('chat')
-
-    // Separate search, note filters, and human review filters
+    // Separate search and human review filters
     let searchFilter: any = null
-    let noteFilters: Array<any> = []
     let humanReviewFilters: Array<any> = []
 
     if (filters?.length) {
       filters.forEach((filter) => {
         if (filter.columnName === 'search') {
           searchFilter = filter
-        } else if (filter.columnName?.startsWith('note_')) {
-          noteFilters.push(filter)
         } else {
           humanReviewFilters.push(filter)
         }
       })
     }
+
+    // Start with base query and add preloads
+    let humanReviewListings: any = HumanReview.query()
+      .preload('practitioner')
+      .preload('note')
+      .preload('chat')
 
     // Apply human review filters
     if (humanReviewFilters?.length) {
@@ -96,31 +96,6 @@ export const listHumanReviews = async (
         }
       }
       humanReviewListings = filterData?.query ?? humanReviewListings
-    }
-
-    // Apply note filters by joining with session table
-    if (noteFilters?.length) {
-      humanReviewListings = humanReviewListings
-        .innerJoin('session_table as note', 'human_reviews.note_id', 'note.note_id')
-        .select('human_reviews.*')
-        .groupBy('human_reviews.id')
-
-      noteFilters.forEach((filter) => {
-        const noteColumnName = filter.columnName.replace('note_', '')
-        if (filter.type === 'exact') {
-          // Convert value to number for enum fields (ai_status, priority, etc.)
-          const filterValue =
-            noteColumnName === 'ai_status' || noteColumnName === 'priority'
-              ? Number(filter.value)
-              : filter.value
-          humanReviewListings = humanReviewListings.andWhere(`note.${noteColumnName}`, filterValue)
-        } else if (filter.type === 'like') {
-          humanReviewListings = humanReviewListings.andWhereILike(
-            `note.${noteColumnName}`,
-            `%${filter.value}%`
-          )
-        }
-      })
     }
 
     // Apply search filter (note_id contains, practitioner_id exact if numeric)
@@ -217,6 +192,14 @@ export const updateHumanReview = async (
 
     if (reqData.decision !== undefined) {
       updatePayload.decision = reqData.decision
+    }
+
+    if (reqData.ai_status !== undefined) {
+      updatePayload.aiStatus = reqData.ai_status ?? null
+    }
+
+    if (reqData.priority !== undefined) {
+      updatePayload.priority = reqData.priority ?? null
     }
 
     if (reqData.chat_id !== undefined) {

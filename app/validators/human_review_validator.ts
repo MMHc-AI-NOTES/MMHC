@@ -9,6 +9,8 @@ export const createHumanReviewValidator = vine.compile(
     chat_id: vine.number().withoutDecimals().optional(),
     manual_score: vine.number().optional(),
     comment: vine.string().trim().optional(),
+    ai_status: vine.number().withoutDecimals().optional(),
+    priority: vine.number().withoutDecimals().optional(),
   })
 )
 
@@ -22,6 +24,8 @@ export const updateHumanReviewValidator = vine.compile(
     chat_id: vine.number().withoutDecimals().optional().nullable(),
     manual_score: vine.number().optional().nullable(),
     comment: vine.string().trim().optional().nullable(),
+    ai_status: vine.number().withoutDecimals().optional().nullable(),
+    priority: vine.number().withoutDecimals().optional().nullable(),
   })
 )
 
