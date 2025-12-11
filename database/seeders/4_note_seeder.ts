@@ -298,7 +298,7 @@ export default class extends BaseSeeder {
             aiScore: null,
             aiStatus: AiStatusEnum.not_reviewed,
             humanReview: HumanReviewEnum.pending,
-            manager: ManagerEnum.not_needed,
+            manager: ManagerEnum.pending,
             workflow: WorkflowEnum.in_queue,
             priority: PriorityEnum.low,
             reviewCycle: null,
