@@ -108,7 +108,12 @@ export const listHumanReviews = async (
       noteFilters.forEach((filter) => {
         const noteColumnName = filter.columnName.replace('note_', '')
         if (filter.type === 'exact') {
-          humanReviewListings = humanReviewListings.andWhere(`note.${noteColumnName}`, filter.value)
+          // Convert value to number for enum fields (ai_status, priority, etc.)
+          const filterValue =
+            noteColumnName === 'ai_status' || noteColumnName === 'priority'
+              ? Number(filter.value)
+              : filter.value
+          humanReviewListings = humanReviewListings.andWhere(`note.${noteColumnName}`, filterValue)
         } else if (filter.type === 'like') {
           humanReviewListings = humanReviewListings.andWhereILike(
             `note.${noteColumnName}`,
