@@ -252,11 +252,7 @@ export const listAgents = async (
 export const getagentDefaultSettings = async (model: string) => {
   try {
     // Free Claude Haiku models use temperature + top_p/top_k controls
-    if (
-      model === agentModelKeys.CLAUDE_3_HAIKU ||
-      model === agentModelKeys.CLAUDE_3_5_HAIKU_V2 ||
-      model === agentModelKeys.CLAUDE_3_5_HAIKU_V1
-    ) {
+    if (model === agentModelKeys.CLAUDE_3_HAIKU || model === agentModelKeys.CLAUDE_3_5_HAIKU_V1) {
       return {
         temperature: aiDefaultConfig.temperature,
         top_p: aiDefaultConfig.top_p ?? null,

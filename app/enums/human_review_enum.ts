@@ -6,3 +6,9 @@ export const HumanReviewDecisionEnum = {
   needs_practitioner_correction: 4,
   escalate_to_office_manager: 5,
 }
+
+// Human Review Result Enum
+export const HumanReviewResultEnum = {
+  pass: 1,
+  fail: 2,
+}

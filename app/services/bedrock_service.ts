@@ -35,6 +35,9 @@ export const invokeBedrockModel = async (
   topK?: number | null
 ): Promise<BedrockEvaluationResponse> => {
   try {
+    // Use modelId as-is (no conversion)
+    const actualModelId = modelId
+
     // Claude 3 API format requires:
     // - anthropic_version field
     // - max_tokens (not maxTokens)
@@ -62,12 +65,13 @@ export const invokeBedrockModel = async (
     }
 
     const command = new InvokeModelCommand({
-      modelId: modelId,
+      modelId: actualModelId,
       contentType: 'application/json',
       accept: 'application/json',
       body: JSON.stringify(body),
     })
 
+    console.log('Invoking Bedrock model:', actualModelId, 'in region:', bedrockConfig.region)
     const res = await client.send(command)
     const output = JSON.parse(new TextDecoder().decode(res.body))
 

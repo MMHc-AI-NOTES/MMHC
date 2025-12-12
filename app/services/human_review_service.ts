@@ -30,6 +30,7 @@ export const createHumanReview = async (reqData: createHumanReviewValidatorInter
       comment: reqData.comment ?? null,
       aiStatus: reqData.ai_status ?? null,
       priority: reqData.priority ?? null,
+      humanResult: reqData.human_result ?? null,
     }
 
     const humanReview = await HumanReview.create(humanReviewData)
@@ -212,6 +213,10 @@ export const updateHumanReview = async (
 
     if (reqData.comment !== undefined) {
       updatePayload.comment = reqData.comment ?? null
+    }
+
+    if (reqData.human_result !== undefined) {
+      updatePayload.humanResult = reqData.human_result ?? null
     }
 
     await review.merge(updatePayload).save()

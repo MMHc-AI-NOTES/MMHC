@@ -1,5 +1,6 @@
 import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
+import { HumanReviewResultEnum } from '#enums/human_review_enum'
 
 export const createHumanReviewValidator = vine.compile(
   vine.object({
@@ -11,6 +12,11 @@ export const createHumanReviewValidator = vine.compile(
     comment: vine.string().trim().optional(),
     ai_status: vine.number().withoutDecimals().optional(),
     priority: vine.number().withoutDecimals().optional(),
+    human_result: vine
+      .number()
+      .withoutDecimals()
+      .in([HumanReviewResultEnum.pass, HumanReviewResultEnum.fail])
+      .optional(),
   })
 )
 
@@ -26,6 +32,12 @@ export const updateHumanReviewValidator = vine.compile(
     comment: vine.string().trim().optional().nullable(),
     ai_status: vine.number().withoutDecimals().optional().nullable(),
     priority: vine.number().withoutDecimals().optional().nullable(),
+    human_result: vine
+      .number()
+      .withoutDecimals()
+      .in([HumanReviewResultEnum.pass, HumanReviewResultEnum.fail])
+      .optional()
+      .nullable(),
   })
 )
 
