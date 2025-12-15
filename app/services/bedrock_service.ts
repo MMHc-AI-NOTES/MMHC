@@ -1,5 +1,6 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
 import { bedrockConfig } from '#config/services'
+import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 
 const client = new BedrockRuntimeClient({
   region: bedrockConfig.region,
@@ -8,11 +9,6 @@ const client = new BedrockRuntimeClient({
     secretAccessKey: bedrockConfig.secretAccessKey,
   },
 })
-
-export const EvaluationPromptKeys = {
-  currentNote: 'CURRENT_NOTE',
-  previousSessions: 'PREVIOUS_SESSIONS',
-} as const
 
 export interface BedrockEvaluationResponse {
   score?: number
