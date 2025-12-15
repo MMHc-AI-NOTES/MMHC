@@ -9,6 +9,11 @@ const client = new BedrockRuntimeClient({
   },
 })
 
+export const EvaluationPromptKeys = {
+  currentNote: 'CURRENT_NOTE',
+  previousSessions: 'PREVIOUS_SESSIONS',
+} as const
+
 export interface BedrockEvaluationResponse {
   score?: number
   pass?: boolean
@@ -232,19 +237,19 @@ export const evaluateChatWithBedrock = async (
   }
 
   // Build prompt with current note and all previous notes
-  let evaluationUserPrompt = `CURRENT_NOTE:
+  let evaluationUserPrompt = `${EvaluationPromptKeys.currentNote}:
 ${JSON.stringify(currentNoteParsed, null, 2)}
 
 `
 
   if (previousNotesParsed.length > 0) {
-    evaluationUserPrompt += `PREVIOUS_SESSIONS (${previousNotesParsed.length} session(s)):
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesParsed.length} session(s)):
 `
     previousNotesParsed.forEach((prevNote, index) => {
       evaluationUserPrompt += `\n--- Previous Session ${index + 1} ---\n${JSON.stringify(prevNote, null, 2)}\n`
     })
   } else {
-    evaluationUserPrompt += `PREVIOUS_SESSIONS:
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
 No previous sessions available for this patient`
   }
 
