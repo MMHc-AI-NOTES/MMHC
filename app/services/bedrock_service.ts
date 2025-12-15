@@ -270,36 +270,46 @@ No previous sessions available for this patient`
       // Validate response structure
       const validation = validateBedrockResponse(parsed)
 
-      // Map issues format: convert points_deducted to severity if needed, ensure section_id and section are present
+      // Normalise issues and compute numeric score based on deductions
       const issues = (parsed.issues || []).map((issue: any) => {
-        // Determine severity based on points_deducted if not provided
-        let severity = issue.severity
-        if (!severity) {
-          if (issue.points_deducted >= 25) severity = 'Critical'
-          else if (issue.points_deducted >= 15) severity = 'Moderate'
-          else severity = 'Minor'
+        let severity = issue.severity as string | undefined
+        // If severity not provided, derive from points_deducted
+        if (!severity && typeof issue.points_deducted === 'number') {
+          if (issue.points_deducted >= 25) {
+            severity = 'critical'
+          } else if (issue.points_deducted >= 15) {
+            severity = 'moderate'
+          } else {
+            severity = 'minor'
+          }
         }
         return {
-          severity: severity,
-          points_deducted: issue.points_deducted || 0,
+          severity: (severity || '') as string,
+          points_deducted: typeof issue.points_deducted === 'number' ? issue.points_deducted : 0,
           section_id: issue.section_id || '',
           section: issue.section || '',
           justification: issue.justification || '',
         }
       })
 
-      // Ensure score is between 0 and 100
-      const rawScore = parsed.score || 0
-      const clampedScore = Math.max(0, Math.min(100, rawScore))
+      // Start from 100 and subtract the absolute value of each issue's deduction
+      let score = 100
+      if (Array.isArray(issues) && issues.length > 0) {
+        const totalDeduction = issues.reduce((sum: number, item: any) => {
+          const penalty =
+            typeof item.points_deducted === 'number' ? Math.abs(item.points_deducted) : 0
+          return sum + penalty
+        }, 0)
+        score = Math.max(0, 100 - totalDeduction)
+      }
 
       return {
-        'score': clampedScore,
-        'pass': parsed.pass ?? clampedScore > 75,
+        'score': score,
+        'pass': score >= 75,
         'issues': issues,
         'summary': parsed.summary || '',
         'sentiment':
-          parsed.sentiment ||
-          (parsed.pass ? 'positive' : clampedScore >= 50 ? 'neutral' : 'negative'),
+          parsed.sentiment || (score > 75 ? 'positive' : score >= 50 ? 'neutral' : 'negative'),
         'evaluation': parsed.evaluation || parsed.summary || responseText,
         '6tx9-1_subjective': parsed['6tx9-1_subjective'] || '',
         'rb2f-1_objective': parsed['rb2f-1_objective'] || '',
@@ -319,7 +329,6 @@ No previous sessions available for this patient`
 
     // Fallback: extract from text
     const scoreMatch = responseText.match(/score[:\s]*(\d+)/i)
-    const passMatch = responseText.match(/pass[:\s]*(true|false)/i)
 
     const rawScore = scoreMatch ? Number.parseInt(scoreMatch[1]) : 0
     const clampedScore = Math.max(0, Math.min(100, rawScore))
@@ -343,7 +352,7 @@ No previous sessions available for this patient`
 
     return {
       'score': clampedScore,
-      'pass': passMatch ? passMatch[1].toLowerCase() === 'true' : false,
+      'pass': clampedScore >= 75,
       'issues': [],
       'summary': responseText,
       'sentiment': 'neutral',
