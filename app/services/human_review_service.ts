@@ -1,5 +1,7 @@
 import HumanReview, { humanReviewFilterEnum, humanReviewSortEnum } from '#models/human_review'
+import ManagerReview from '#models/manager_review'
 import Session from '#models/session'
+import User from '#models/user'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type {
   createHumanReviewValidatorInterface,
@@ -8,8 +10,9 @@ import type {
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
-import { HumanReviewEnum } from '#enums/session_enum'
+import { HumanReviewEnum, ManagerEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
+import { UserTypeEnum } from '#enums/user_type_enum'
 
 export const createHumanReview = async (reqData: createHumanReviewValidatorInterface) => {
   try {
@@ -35,10 +38,32 @@ export const createHumanReview = async (reqData: createHumanReviewValidatorInter
 
     const humanReview = await HumanReview.create(humanReviewData)
 
-    // Update note (session) with completed human review status and review cycle
+    // Find superadmin user (manager) - for now using superAdmin type, in future will be based on user type
+    const manager = await User.query().where('type', UserTypeEnum.superAdmin).first()
+
+    if (manager) {
+      // Create manager review entry
+      await ManagerReview.create({
+        managerId: manager.id,
+        reviewId: humanReview.id,
+        noteId: reqData.note_id,
+        chatId: reqData.chat_id ?? null,
+        decision: reqData.decision,
+        practitionerId: reqData.practitioner_id,
+        manualScore: reqData.manual_score ?? null,
+        aiScore: note.aiScore ?? null,
+        disagreement: null,
+        aiStatus: reqData.ai_status ?? null,
+        priority: reqData.priority ?? null,
+        humanResult: reqData.human_result ?? null,
+      })
+    }
+
+    // Update note (session) with completed human review status, in_progress manager status, and review cycle
     await note
       .merge({
         humanReview: HumanReviewEnum.completed,
+        manager: ManagerEnum.in_progress,
         reviewCycle: ReviewCycleEnum.cycle_2_of_3_therapist_revision,
       })
       .save()

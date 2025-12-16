@@ -27,6 +27,7 @@ export const ManagerEnum = {
   not_needed: 1,
   pending: 2,
   in_progress: 3,
+  completed: 4,
 }
 
 // Workflow Enum
