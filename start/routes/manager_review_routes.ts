@@ -8,6 +8,7 @@ router
     router.post('/listing', [ManagerReviewController, 'listing'])
     router.get('/:id', [ManagerReviewController, 'show'])
     router.patch('/:id', [ManagerReviewController, 'update'])
+    router.delete('/:id', [ManagerReviewController, 'destroy'])
   })
   .prefix('api/manager-reviews')
   .use(middleware.auth())

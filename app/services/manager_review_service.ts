@@ -243,3 +243,19 @@ export const updateManagerReview = async (
     return sendError(error.message)
   }
 }
+
+export const deleteManagerReview = async (id: number) => {
+  try {
+    const review = await ManagerReview.query().where('id', id).first()
+
+    if (!review) {
+      return sendError('Manager review not found')
+    }
+
+    await review.delete()
+
+    return sendSuccess('Manager review deleted successfully', { id })
+  } catch (error: any) {
+    return sendError(error.message)
+  }
+}

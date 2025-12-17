@@ -8,6 +8,7 @@ import {
   listManagerReviews,
   getManagerReview,
   updateManagerReview,
+  deleteManagerReview,
 } from '#services/manager_review_service'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
@@ -45,6 +46,17 @@ export default class ManagerReviewController {
       return response
     } catch (error) {
       console.log('Manager review updating error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async destroy(ctx: HttpContext) {
+    try {
+      const { id } = await managerReviewIdValidator.validate(ctx.params)
+      const response = await deleteManagerReview(id)
+      return response
+    } catch (error) {
+      console.log('Manager review deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
