@@ -9,7 +9,7 @@ import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { HumanReviewResultEnum, HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { ManagerReviewDecisionEnum } from '#enums/manager_review_enum'
 import { AiStatusEnum, PriorityEnum } from '#enums/session_enum'
-import { DisagreementEnum } from '#enums/disagreement_enum'
+import { DisagreementLevelEnum } from '#enums/disagreement_enum'
 
 export const managerReviewFilterEnum = [
   'id',
@@ -87,8 +87,8 @@ export default class ManagerReview extends BaseModel {
   @column({
     serialize: (value: number | null) => {
       if (value === null) return null
-      const key = Object.keys(DisagreementEnum).find(
-        (k) => DisagreementEnum[k as keyof typeof DisagreementEnum] === value
+      const key = Object.keys(DisagreementLevelEnum).find(
+        (k) => DisagreementLevelEnum[k as keyof typeof DisagreementLevelEnum] === value
       )
       return key ? { id: value, name: key } : { id: value, name: null }
     },

@@ -3,7 +3,7 @@ import { Infer } from '@vinejs/vine/types'
 import { HumanReviewResultEnum, HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { ManagerReviewDecisionEnum } from '#enums/manager_review_enum'
 import { AiStatusEnum, PriorityEnum } from '#enums/session_enum'
-import { DisagreementEnum } from '#enums/disagreement_enum'
+import { DisagreementLevelEnum } from '#enums/disagreement_enum'
 
 export const managerReviewIdValidator = vine.compile(
   vine.object({
@@ -31,7 +31,7 @@ export const updateManagerReviewValidator = vine.compile(
     disagreement: vine
       .number()
       .withoutDecimals()
-      .in(Object.values(DisagreementEnum))
+      .in(Object.values(DisagreementLevelEnum))
       .optional()
       .nullable(),
     comment: vine.string().trim().optional().nullable(),

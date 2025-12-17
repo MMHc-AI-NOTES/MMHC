@@ -13,6 +13,7 @@ import { paginateQuery } from '#services/apply_pagination'
 import { HumanReviewEnum, ManagerEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { UserTypeEnum } from '#enums/user_type_enum'
+import { DisagreementLevelEnum } from '#enums/disagreement_enum'
 
 export const createHumanReview = async (reqData: createHumanReviewValidatorInterface) => {
   try {
@@ -52,7 +53,7 @@ export const createHumanReview = async (reqData: createHumanReviewValidatorInter
         practitionerId: reqData.practitioner_id,
         manualScore: reqData.manual_score ?? null,
         aiScore: note.aiScore ?? null,
-        disagreement: null,
+        disagreement: DisagreementLevelEnum.none,
         aiStatus: reqData.ai_status ?? null,
         priority: reqData.priority ?? null,
         humanResult: reqData.human_result ?? null,

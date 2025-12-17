@@ -1,6 +1,7 @@
-// Disagreement Enum
-export const DisagreementEnum = {
-  low: 1,
+// Disagreement Level Enum
+export const DisagreementLevelEnum = {
+  high: 1,
   medium: 2,
-  high: 3,
-}
+  low: 3,
+  none: 4,
+} as const
