@@ -124,7 +124,16 @@ export const getManagerReview = async (id: number) => {
       return sendError('Manager review not found')
     }
 
-    return sendSuccess('Manager review retrieved successfully', review)
+    // Get chat count for this note_id
+    const chatCount = await Chat.query().where('note_id', review.noteId).count('* as count')
+    const count = Number(chatCount[0].$extras.count) || 0
+
+    const reviewWithCount = {
+      ...review.serialize(),
+      chat_count: count,
+    }
+
+    return sendSuccess('Manager review retrieved successfully', reviewWithCount)
   } catch (error: any) {
     return sendError(error.message)
   }
