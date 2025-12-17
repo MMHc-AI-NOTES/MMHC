@@ -1,6 +1,6 @@
 import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
-import { HumanReviewResultEnum } from '#enums/human_review_enum'
+import { HumanReviewResultEnum, HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { ManagerReviewDecisionEnum } from '#enums/manager_review_enum'
 import { AiStatusEnum, PriorityEnum } from '#enums/session_enum'
 import { DisagreementEnum } from '#enums/disagreement_enum'
@@ -46,6 +46,12 @@ export const updateManagerReviewValidator = vine.compile(
       .number()
       .withoutDecimals()
       .in(Object.values(HumanReviewResultEnum))
+      .optional()
+      .nullable(),
+    human_decision: vine
+      .number()
+      .withoutDecimals()
+      .in(Object.values(HumanReviewDecisionEnum))
       .optional()
       .nullable(),
   })

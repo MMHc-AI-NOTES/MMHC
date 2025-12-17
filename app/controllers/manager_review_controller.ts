@@ -10,6 +10,7 @@ import {
   updateManagerReview,
 } from '#services/manager_review_service'
 import ErrorService from '#services/error_service'
+import { sendSuccess } from '#services/custom_response_service'
 
 export default class ManagerReviewController {
   public async listing(ctx: HttpContext) {
@@ -18,7 +19,7 @@ export default class ManagerReviewController {
         ctx.request.body()
       )
       const managerReviewResponse = await listManagerReviews(page, pageSize, filters, sorts)
-      return managerReviewResponse
+      return sendSuccess('Manager reviews listed successfully', managerReviewResponse)
     } catch (error) {
       console.log('Manager review listing error', error)
       return ErrorService.handleError(ctx, error)

@@ -218,6 +218,10 @@ export const updateManagerReview = async (
       updatePayload.humanResult = reqData.human_result ?? null
     }
 
+    if (reqData.human_decision !== undefined) {
+      updatePayload.humanDecision = reqData.human_decision ?? null
+    }
+
     await review.merge(updatePayload).save()
 
     // Update note (session) manager status to completed when manager review is updated

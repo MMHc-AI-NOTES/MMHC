@@ -6,7 +6,7 @@ import HumanReview from '#models/human_review'
 import Session from '#models/session'
 import Chat from '#models/chat'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
-import { HumanReviewResultEnum } from '#enums/human_review_enum'
+import { HumanReviewResultEnum, HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { ManagerReviewDecisionEnum } from '#enums/manager_review_enum'
 import { AiStatusEnum, PriorityEnum } from '#enums/session_enum'
 import { DisagreementEnum } from '#enums/disagreement_enum'
@@ -25,6 +25,7 @@ export const managerReviewFilterEnum = [
   'ai_status',
   'priority',
   'human_result',
+  'human_decision',
   'created_at',
   'search',
 ]
@@ -40,6 +41,7 @@ export const managerReviewSortEnum = [
   'manual_score',
   'ai_score',
   'disagreement',
+  'human_decision',
   'created_at',
   'updated_at',
 ]
@@ -128,6 +130,17 @@ export default class ManagerReview extends BaseModel {
     },
   })
   declare humanResult: number | null
+
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(HumanReviewDecisionEnum).find(
+        (k) => HumanReviewDecisionEnum[k as keyof typeof HumanReviewDecisionEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
+  declare humanDecision: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

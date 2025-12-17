@@ -56,6 +56,7 @@ export const createHumanReview = async (reqData: createHumanReviewValidatorInter
         aiStatus: reqData.ai_status ?? null,
         priority: reqData.priority ?? null,
         humanResult: reqData.human_result ?? null,
+        humanDecision: reqData.decision ?? null,
       })
     }
 
