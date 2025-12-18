@@ -32,7 +32,8 @@
     "#database/*": "./database/*.js",
     "#start/*": "./start/*.js",
     "#tests/*": "./tests/*.js",
-    "#config/*": "./config/*.js"
+    "#config/*": "./config/*.js",
+    "#jobs/*": "./app/jobs/*.js"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^7.8.2",
@@ -63,7 +64,9 @@
     "@adonisjs/mail": "^9.2.2",
     "@aws-sdk/client-bedrock-runtime": "^3.939.0",
     "@vinejs/vine": "^2.1.0",
+    "bullmq": "^5.66.1",
     "edge.js": "^6.2.1",
+    "ioredis": "^5.8.2",
     "luxon": "^3.5.0",
     "mjml": "^4.15.3",
     "moment": "^2.30.1",

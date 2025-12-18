@@ -50,4 +50,21 @@ export default await Env.create(new URL('../', import.meta.url), {
   AWS_SECRET_ACCESS_KEY: Env.schema.string.optional(),
   BEDROCK_MAX_TOKENS: Env.schema.number.optional(),
   BEDROCK_ANTHROPIC_VERSION: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring Redis (BullMQ)
+  |----------------------------------------------------------
+  */
+  REDIS_HOST: Env.schema.string.optional(),
+  REDIS_PORT: Env.schema.number.optional(),
+  REDIS_PASSWORD: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for PracticeQ API
+  |----------------------------------------------------------
+  */
+  PRACTICEQ_API_KEY: Env.schema.string.optional(),
+  PRACTICEQ_BASE_URL: Env.schema.string.optional(),
 })
