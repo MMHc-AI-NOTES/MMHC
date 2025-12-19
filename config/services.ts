@@ -6,6 +6,14 @@ export const emailConfig = {
   from: env.get('SMTP_FROM', 'noreply@example.com'),
 }
 
+export const smtpConfig = {
+  host: env.get('SMTP_HOST', ''),
+  port: env.get('SMTP_PORT', '587'),
+  username: env.get('SMTP_USERNAME', ''),
+  password: env.get('SMTP_PASSWORD', ''),
+  from: env.get('SMTP_FROM', 'noreply@example.com'),
+}
+
 export const bedrockConfig = {
   maxTokens: env.get('BEDROCK_MAX_TOKENS', 4096),
   region: env.get('AWS_REGION', 'us-east-1'),

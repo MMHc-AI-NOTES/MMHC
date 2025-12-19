@@ -8,7 +8,6 @@ export default class WebhookController {
     try {
       const payload = await webhookValidator.validate(ctx.request.body())
 
-      // Add job to queue instead of processing directly
       await addWebhookJob({
         NoteId: payload.NoteId,
         Type: payload.Type || 'Unknown',
@@ -23,7 +22,6 @@ export default class WebhookController {
       })
     } catch (error: any) {
       ctx.logger.error('Webhook error', error)
-      // Return 400 to trigger retry from PracticeQ
       return ctx.response.status(400).send({
         status: false,
         message: error?.message || 'Webhook processing failed',
