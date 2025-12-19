@@ -233,7 +233,7 @@ export const evaluateChatWithBedrock = async (
   }
 
   // Build prompt with current note and all previous notes
-  let evaluationUserPrompt = `${EvaluationPromptKeys.currentNote}:
+  let evaluationUserPrompt = `${EvaluationPromptKeys.currentSession}:
 ${JSON.stringify(currentNoteParsed, null, 2)}
 
 `

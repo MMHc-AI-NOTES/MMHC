@@ -1,5 +1,5 @@
 // Evaluation Prompt Keys Enum
 export const EvaluationPromptKeys = {
-  currentNote: 'CURRENT_NOTE',
+  currentSession: 'CURRENT_SESSION',
   previousSessions: 'PREVIOUS_SESSIONS',
 }
