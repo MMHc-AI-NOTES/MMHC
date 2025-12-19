@@ -239,13 +239,13 @@ ${JSON.stringify(currentNoteParsed, null, 2)}
 `
 
   if (previousNotesParsed.length > 0) {
-    evaluationUserPrompt += `${EvaluationPromptKeys.previousSession} (${previousNotesParsed.length} session(s)):
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesParsed.length} session(s)):
 `
     previousNotesParsed.forEach((prevNote, index) => {
       evaluationUserPrompt += `\n--- Previous Session ${index + 1} ---\n${JSON.stringify(prevNote, null, 2)}\n`
     })
   } else {
-    evaluationUserPrompt += `${EvaluationPromptKeys.previousSession}:
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
 No previous sessions available for this patient`
   }
 
