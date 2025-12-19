@@ -233,19 +233,19 @@ export const evaluateChatWithBedrock = async (
   }
 
   // Build prompt with current note and all previous notes
-  let evaluationUserPrompt = `${EvaluationPromptKeys.currentNote}:
+  let evaluationUserPrompt = `${EvaluationPromptKeys.currentSession}:
 ${JSON.stringify(currentNoteParsed, null, 2)}
 
 `
 
   if (previousNotesParsed.length > 0) {
-    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesParsed.length} session(s)):
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSession} (${previousNotesParsed.length} session(s)):
 `
     previousNotesParsed.forEach((prevNote, index) => {
       evaluationUserPrompt += `\n--- Previous Session ${index + 1} ---\n${JSON.stringify(prevNote, null, 2)}\n`
     })
   } else {
-    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSession}:
 No previous sessions available for this patient`
   }
 
