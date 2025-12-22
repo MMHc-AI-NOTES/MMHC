@@ -1,6 +1,7 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
 import { bedrockConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
+import { agentModelKeys } from '#enums/agent_enum'
 
 const client = new BedrockRuntimeClient({
   region: bedrockConfig.region,
@@ -44,10 +45,12 @@ export const invokeBedrockModel = async (
     // - max_tokens (not maxTokens)
     // - system message in separate field (not in messages array)
     // - No inferenceConfig wrapper
+    // Claude 4.5 models don't support both temperature and top_p together
+    const isClaude45 = actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1
+
     const body: any = {
       anthropic_version: bedrockConfig.anthropicVersion,
       max_tokens: bedrockConfig.maxTokens,
-      temperature: temperature,
       system: systemPrompt,
       messages: [
         {
@@ -57,12 +60,18 @@ export const invokeBedrockModel = async (
       ],
     }
 
-    if (typeof topP === 'number') {
-      body.top_p = topP
-    }
-
-    if (typeof topK === 'number') {
-      body.top_k = topK
+    // For Claude 4.5, only use temperature (not top_p)
+    if (isClaude45) {
+      body.temperature = temperature
+    } else {
+      // For other models, use temperature and optionally top_p/top_k
+      body.temperature = temperature
+      if (typeof topP === 'number') {
+        body.top_p = topP
+      }
+      if (typeof topK === 'number') {
+        body.top_k = topK
+      }
     }
 
     const command = new InvokeModelCommand({
