@@ -43,6 +43,14 @@ cp .env.test.example .env.test
 npm run dev
 ```
 
+### Additional Commands
+
+- **Start webhook worker:**
+  ```bash
+  node ace webhook:worker
+  ```
+  This command starts the BullMQ webhook queue worker to process webhook jobs asynchronously. Press `Ctrl+C` to stop the worker gracefully.
+
 ### Building for Production
 
 ```bash

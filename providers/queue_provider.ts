@@ -8,12 +8,8 @@ export default class QueueProvider {
   }
 
   async ready() {
-    // Only start worker in web environment (not during migrations, etc.)
-    if (this.app.getEnvironment() === 'web') {
-      const { startWebhookWorker } = await import('#jobs/workers/webhook_worker')
-      startWebhookWorker()
-      console.log('Queue workers initialized')
-    }
+    // Worker is now started manually via command: node ace webhook:worker
+    // Auto-start removed to allow manual control
   }
 
   async shutdown() {
