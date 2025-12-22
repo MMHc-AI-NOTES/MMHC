@@ -1,7 +1,8 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
+import Session from '#models/session'
 
 export default class extends BaseSchema {
-  protected tableName = 'session_table'
+  protected tableName = Session.table
 
   async up() {
     this.schema.createTable(this.tableName, (table) => {
