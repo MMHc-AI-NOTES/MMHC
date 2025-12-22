@@ -5,10 +5,12 @@
 export const modelAgents = [
   'anthropic.claude-3-haiku-20240307-v1:0', // Most stable, widely available
   'us.anthropic.claude-3-5-haiku-20241022-v1:0', // Claude 3.5 Haiku v1 (inference profile)
+  'us.anthropic.claude-haiku-4-5-20251001-v1:0', // Claude 4.5 Haiku v1 (inference profile)
 ] as const
 
 export const agentModelKeys = {
   // Free/Low-cost models (on-demand support)
   CLAUDE_3_HAIKU: 'anthropic.claude-3-haiku-20240307-v1:0',
   CLAUDE_3_5_HAIKU_V1: 'us.anthropic.claude-3-5-haiku-20241022-v1:0', // Inference profile format
+  CLAUDE_4_5_HAIKU_V1: 'us.anthropic.claude-haiku-4-5-20251001-v1:0', // Inference profile format
 } as const
