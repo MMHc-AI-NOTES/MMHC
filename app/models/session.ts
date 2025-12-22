@@ -53,7 +53,7 @@ export const sessionSortEnum = [
 ]
 
 export default class Session extends BaseModel {
-  static table = 'session_table'
+  static table = 'session'
 
   @column({ isPrimary: true })
   declare id: number

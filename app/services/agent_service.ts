@@ -63,7 +63,7 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
         ? JSON.stringify(reqData.previous_section)
         : null,
       prompt: reqData.prompt,
-      description: reqData.description,
+      description: reqData.description ?? null,
       isActive: reqData.isActive ?? true,
       isDefault: reqData.is_default ?? false,
       aiSafetySettings: null,
