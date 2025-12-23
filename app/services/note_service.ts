@@ -197,7 +197,7 @@ export const getQueueStatistics = async (startDate?: string, endDate?: string) =
       blacklist: blacklist,
     }
   } catch (error: any) {
-    throw new Error(`Error retrieving queue statistics: ${error.message}`)
+    throw new Error(`Error retrieving queue statistics`)
   }
 }
 
@@ -237,7 +237,7 @@ export const getWorkloadStatistics = async (userId: number) => {
       ai_disagreement_rate: aiDisagreementRate,
     }
   } catch (error: any) {
-    throw new Error(`Error retrieving workload statistics: ${error.message}`)
+    throw new Error(`Error retrieving workload statistics`)
   }
 }
 
