@@ -281,30 +281,25 @@ export default class extends BaseSeeder {
         throw new Error('CPT code 90791 not found. Please run CPT code seeder first.')
       }
 
-      for (const sessionData of sessionsData) {
-        await Session.updateOrCreate(
-          {
-            noteId: sessionData.noteId,
-            sessionId: sessionData.sessionId,
-          },
-          {
-            noteId: sessionData.noteId,
-            sessionId: sessionData.sessionId,
-            session: sessionData.session,
-            practitionerId: sessionData.practitionerId,
-            patientId: sessionData.patientId,
-            type: sessionData.type,
-            cptCodeId: cptCode.id,
-            aiScore: null,
-            aiStatus: AiStatusEnum.not_reviewed,
-            humanReview: HumanReviewEnum.pending,
-            manager: ManagerEnum.pending,
-            workflow: WorkflowEnum.in_queue,
-            priority: PriorityEnum.low,
-            reviewCycle: null,
-          }
-        )
-      }
+      await Session.fetchOrCreateMany(
+        ['noteId', 'sessionId'],
+        sessionsData.map((sessionData) => ({
+          noteId: sessionData.noteId,
+          sessionId: sessionData.sessionId,
+          session: sessionData.session,
+          practitionerId: sessionData.practitionerId,
+          patientId: sessionData.patientId,
+          type: sessionData.type,
+          cptCodeId: cptCode.id,
+          aiScore: null,
+          aiStatus: AiStatusEnum.not_reviewed,
+          humanReview: HumanReviewEnum.pending,
+          manager: ManagerEnum.pending,
+          workflow: WorkflowEnum.in_queue,
+          priority: PriorityEnum.low,
+          reviewCycle: null,
+        }))
+      )
     } catch (error) {
       console.log(`Error in seeding sessions: ${error}`)
       throw error
