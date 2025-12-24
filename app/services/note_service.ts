@@ -124,7 +124,8 @@ export const getNoteWithChats = async (noteId: string) => {
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)
   } catch (error: any) {
-    return sendError(error.message)
+    console.log('error while getting note with chat', error.message)
+    throw new Error('error while getting note with chat')
   }
 }
 
@@ -259,6 +260,6 @@ export const updateNote = async (noteId: string, reqData: updateNoteValidatorInt
     return sendSuccess('Note updated successfully', note)
   } catch (error: any) {
     console.log('Error in getNoteWithChats:', error.message)
-    throw error
+    throw new Error('error while getting note with chat')
   }
 }
