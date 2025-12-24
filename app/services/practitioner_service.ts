@@ -49,6 +49,6 @@ export const practitionerListing = async (
       })),
     }
   } catch (error) {
-    throw new Error(`Error retrieving practitioners: ${error.message}`)
+    throw new Error(`Error retrieving practitioners listings`)
   }
 }

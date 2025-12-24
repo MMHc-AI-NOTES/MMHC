@@ -47,6 +47,6 @@ export const patientListing = async (
       })),
     }
   } catch (error) {
-    throw new Error(`Error retrieving patients: ${error.message}`)
+    throw new Error(`Error retrieving patients listings`)
   }
 }

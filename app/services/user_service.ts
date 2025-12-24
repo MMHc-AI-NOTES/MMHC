@@ -67,7 +67,7 @@ export const getUserById = async (userId: number) => {
     return userResponse
   } catch (error: any) {
     console.log('Error in getUserById:', error.message)
-    throw error
+    throw new Error('Failed to get users by id. Please try again later.')
   }
 }
 
@@ -78,7 +78,7 @@ export const deleteUser = async (user_id: number) => {
     return await user.softDelete()
   } catch (error: any) {
     console.log('Error in deleteUser:', error.message)
-    throw error
+    throw new Error('Failed to delete user. Please try again later.')
   }
 }
 
@@ -88,7 +88,7 @@ export const updateUser = async (payload: updateUserValidatorInterface, userId: 
     return await user.merge(payload).save()
   } catch (error: any) {
     console.log('Error in updateUser:', error.message)
-    throw error
+    throw new Error('Failed to udpate user. Please try again later.')
   }
 }
 
@@ -97,6 +97,6 @@ export const createUser = async (payload: createUserValidatorInterface) => {
     return await User.create(payload)
   } catch (error: any) {
     console.log('Error in createUser:', error.message)
-    throw error
+    throw new Error('Failed to create user. Please try again later.')
   }
 }
