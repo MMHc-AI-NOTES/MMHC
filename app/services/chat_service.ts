@@ -6,6 +6,9 @@ import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess } from '#services/custom_response_service'
 import { evaluateChatWithBedrock } from '#services/bedrock_service'
+import { AiStatusEnum } from '#enums/session_enum'
+import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
+import { DateTime } from 'luxon'
 import type {
   createChatValidatorInterface,
   updateChatValidatorInterface,
@@ -58,11 +61,17 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const prompt = agent.prompt
     const modelId = agent.model
     const temperature = agent.temperature ?? 0.3
+    const topP = agent.topP ?? 0.9
+    const topK = agent.topK ?? 250
 
     if (!prompt) {
       console.log('Error in createChat: Agent prompt is required for evaluation')
       throw new Error('Agent prompt is required for evaluation')
     }
+
+    // Record start time before Bedrock evaluation
+    const startTimeMs = Date.now()
+    const startTime = DateTime.fromMillis(startTimeMs)
 
     // Evaluate with Bedrock (with previous note for comparison)
     const evaluation = await evaluateChatWithBedrock(
@@ -70,8 +79,15 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       currentNote,
       previousNote,
       prompt,
-      temperature
+      temperature,
+      topP,
+      topK
     )
+
+    // Record end time and calculate response time in seconds
+    const endTimeMs = Date.now()
+    const endTime = DateTime.fromMillis(endTimeMs)
+    const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
     const chatData = {
       prompt: prompt,
@@ -79,6 +95,9 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       modelId: modelId,
       noteId: reqData.note_id,
       evaluationScore: evaluation.score,
+      responseTime: responseTime,
+      startTime: startTime,
+      endTime: endTime,
       sentiment: evaluation.sentiment,
       evaluation: evaluation.evaluation,
       bedrockResponse: evaluation,
@@ -86,6 +105,27 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     }
 
     const chat = await Chat.create(chatData)
+
+    // Update session with AI score and status
+    const aiScore = evaluation.score
+    let aiStatus = AiStatusEnum.not_reviewed
+
+    // Determine AI status based on score
+    if (aiScore >= aiScoreThresholds.passed) {
+      aiStatus = AiStatusEnum.passed
+    } else if (aiScore < aiScoreThresholds.failed) {
+      aiStatus = AiStatusEnum.failed
+    } else {
+      aiStatus = AiStatusEnum.warning
+    }
+
+    await session
+      .merge({
+        aiScore: aiScore,
+        aiStatus: aiStatus,
+      })
+      .save()
+
     return sendSuccess('Chat created and evaluated successfully', chat)
   } catch (error: any) {
     console.log('Error in createChat:', error.message)
@@ -130,20 +170,59 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
       }
 
       // Use default temperature for update (agent not available)
-      const temperature = 0.3
+      const temperature = aiDefaultConfig.temperature
+      const topP = aiDefaultConfig.top_p ?? 0.9
+      const topK = aiDefaultConfig.top_k ?? 250
+
+      // Record start time before Bedrock evaluation
+      const startTimeMs = Date.now()
+      const startTime = DateTime.fromMillis(startTimeMs)
 
       const evaluation = await evaluateChatWithBedrock(
         modelId,
         userNote,
         undefined,
         prompt,
-        temperature
+        temperature,
+        topP,
+        topK
       )
 
+      // Record end time and calculate response time in seconds
+      const endTimeMs = Date.now()
+      const endTime = DateTime.fromMillis(endTimeMs)
+      const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
+
       chat.evaluationScore = evaluation.score
+      chat.responseTime = responseTime
+      chat.startTime = startTime
+      chat.endTime = endTime
       chat.sentiment = evaluation.sentiment
       chat.evaluation = evaluation.evaluation
       chat.bedrockResponse = evaluation
+
+      // Update session with AI score and status
+      const session = await Session.query().where('note_id', chat.noteId).first()
+      if (session) {
+        const aiScore = evaluation.score
+        let aiStatus = AiStatusEnum.not_reviewed
+
+        // Determine AI status based on score
+        if (aiScore >= aiScoreThresholds.passed) {
+          aiStatus = AiStatusEnum.passed
+        } else if (aiScore < aiScoreThresholds.failed) {
+          aiStatus = AiStatusEnum.failed
+        } else {
+          aiStatus = AiStatusEnum.warning
+        }
+
+        await session
+          .merge({
+            aiScore: aiScore,
+            aiStatus: aiStatus,
+          })
+          .save()
+      }
     }
 
     // Update other fields
@@ -267,7 +346,13 @@ export const reevaluateChat = async (chatId: number) => {
     }
 
     // Use default temperature for re-evaluation (agent not available)
-    const temperature = 0.3
+    const temperature = aiDefaultConfig.temperature
+    const topP = aiDefaultConfig.top_p ?? 0.9
+    const topK = aiDefaultConfig.top_k ?? 250
+
+    // Record start time before Bedrock evaluation
+    const startTimeMs = Date.now()
+    const startTime = DateTime.fromMillis(startTimeMs)
 
     // Re-evaluate with Bedrock
     const evaluation = await evaluateChatWithBedrock(
@@ -275,15 +360,46 @@ export const reevaluateChat = async (chatId: number) => {
       chat.userNote,
       previousNote,
       chat.prompt,
-      temperature
+      temperature,
+      topP,
+      topK
     )
 
+    // Record end time and calculate response time in seconds
+    const endTimeMs = Date.now()
+    const endTime = DateTime.fromMillis(endTimeMs)
+    const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
+
     chat.evaluationScore = evaluation.score
+    chat.responseTime = responseTime
+    chat.startTime = startTime
+    chat.endTime = endTime
     chat.sentiment = evaluation.sentiment
     chat.evaluation = evaluation.evaluation
     chat.bedrockResponse = evaluation
 
     await chat.save()
+
+    // Update session with AI score and status
+    const aiScore = evaluation.score
+    let aiStatus = AiStatusEnum.not_reviewed
+
+    // Determine AI status based on score
+    if (aiScore >= aiScoreThresholds.passed) {
+      aiStatus = AiStatusEnum.passed
+    } else if (aiScore < aiScoreThresholds.failed) {
+      aiStatus = AiStatusEnum.failed
+    } else {
+      aiStatus = AiStatusEnum.warning
+    }
+
+    await session
+      .merge({
+        aiScore: aiScore,
+        aiStatus: aiStatus,
+      })
+      .save()
+
     return sendSuccess('Chat re-evaluated successfully', chat)
   } catch (error: any) {
     console.log('Error in reevaluateChat:', error.message)

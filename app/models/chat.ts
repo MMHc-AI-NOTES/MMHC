@@ -41,6 +41,15 @@ export default class Chat extends BaseModel {
   @column()
   declare evaluationScore: number | null
 
+  @column({ columnName: 'response_time' })
+  declare responseTime: number | null
+
+  @column.dateTime({ columnName: 'start_time' })
+  declare startTime: DateTime | null
+
+  @column.dateTime({ columnName: 'end_time' })
+  declare endTime: DateTime | null
+
   @column()
   declare sentiment: string | null
 
