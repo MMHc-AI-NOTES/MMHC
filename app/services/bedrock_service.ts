@@ -314,34 +314,14 @@ No previous sessions available for this patient`
         score = 100 - totalDeduction
       }
 
-      // Ensure summary is not the full response - if it's too long or matches responseText, use empty string
-      let summary = parsed.summary || ''
-      if (summary && (summary === responseText || summary.length > responseText.length * 0.9)) {
-        summary = ''
-      }
-
-      // Calculate sentiment considering negative scores
-      let sentiment = parsed.sentiment
-      if (!sentiment) {
-        if (score > 75) {
-          sentiment = 'positive'
-        } else if (score >= 50) {
-          sentiment = 'neutral'
-        } else if (score >= 0) {
-          sentiment = 'negative'
-        } else {
-          // Negative scores indicate severe issues
-          sentiment = 'critical'
-        }
-      }
-
       return {
         'score': score,
         'pass': score >= 75,
         'issues': issues,
-        'summary': summary,
-        'sentiment': sentiment,
-        'evaluation': parsed.evaluation || summary || '',
+        'summary': parsed.summary || '',
+        'sentiment':
+          parsed.sentiment || (score > 75 ? 'positive' : score >= 50 ? 'neutral' : 'negative'),
+        'evaluation': parsed.evaluation || parsed.summary || responseText,
         '6tx9-1_subjective': parsed['6tx9-1_subjective'] || '',
         'rb2f-1_objective': parsed['rb2f-1_objective'] || '',
         'zad8-1_asment_&_therapeutic_intervention':
@@ -358,12 +338,11 @@ No previous sessions available for this patient`
       }
     }
 
-    // Fallback: extract from text (support negative scores)
-    const scoreMatch = responseText.match(/score[:\s]*(-?\d+)/i)
+    // Fallback: extract from text
+    const scoreMatch = responseText.match(/score[:\s]*(\d+)/i)
 
     const rawScore = scoreMatch ? Number.parseInt(scoreMatch[1]) : 0
-    // Don't clamp - allow negative scores but cap at reasonable maximum (100)
-    const clampedScore = Math.min(100, rawScore)
+    const clampedScore = Math.max(0, Math.min(100, rawScore))
 
     // Try to parse as JSON for validation
     let validation: {
@@ -382,36 +361,13 @@ No previous sessions available for this patient`
       // Already set validation to error
     }
 
-    // Try to extract a summary from responseText if it's too long
-    let fallbackSummary = ''
-    if (responseText.length > 500) {
-      // Try to extract first paragraph or first 200 chars
-      const firstParagraph = responseText.split('\n\n')[0]
-      fallbackSummary =
-        firstParagraph.length < 500 ? firstParagraph : responseText.substring(0, 200) + '...'
-    } else {
-      fallbackSummary = responseText
-    }
-
-    // Calculate sentiment for fallback case considering negative scores
-    let fallbackSentiment = 'neutral'
-    if (clampedScore > 75) {
-      fallbackSentiment = 'positive'
-    } else if (clampedScore >= 50) {
-      fallbackSentiment = 'neutral'
-    } else if (clampedScore >= 0) {
-      fallbackSentiment = 'negative'
-    } else {
-      fallbackSentiment = 'critical'
-    }
-
     return {
       'score': clampedScore,
       'pass': clampedScore >= 75,
       'issues': [],
-      'summary': fallbackSummary,
-      'sentiment': fallbackSentiment,
-      'evaluation': fallbackSummary,
+      'summary': responseText,
+      'sentiment': 'neutral',
+      'evaluation': responseText,
       '6tx9-1_subjective': '',
       'rb2f-1_objective': '',
       'zad8-1_asment_&_therapeutic_intervention': '',
