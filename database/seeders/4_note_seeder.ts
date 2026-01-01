@@ -586,7 +586,7 @@ export default class extends BaseSeeder {
         throw new Error('CPT code 90791 not found. Please run CPT code seeder first.')
       }
 
-      await Session.fetchOrCreateMany(
+      await Session.updateOrCreateMany(
         ['noteId', 'sessionId'],
         sessionsData.map((sessionData) => ({
           noteId: sessionData.noteId,
