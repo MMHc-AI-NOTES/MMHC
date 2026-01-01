@@ -55,7 +55,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       session.patientId !== null
         ? await Session.query()
             .where('patient_id', session.patientId)
-            .where('id', '<', session.id)
+            .where('id', '>', session.id)
             .orderBy('id', 'desc')
         : []
 
