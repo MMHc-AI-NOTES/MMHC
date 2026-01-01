@@ -51,7 +51,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     }
 
     // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // Order by created_at to ensure chronological order (older sessions first)
+    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
     const previousSessions =
       session.patientId !== null
         ? await Session.query()
@@ -417,7 +417,7 @@ export const reevaluateChat = async (chatId: number) => {
     }
 
     // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // Order by created_at to ensure chronological order (older sessions first)
+    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
     const previousSessions =
       session.patientId !== null
         ? await Session.query()
