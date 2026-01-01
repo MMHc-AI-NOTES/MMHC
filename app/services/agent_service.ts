@@ -1,4 +1,5 @@
 import Agent, { FILTER_AGENT_ENUM, SORT_AGENT_ENUM } from '#models/agent'
+import AgentPrompt from '#models/agent_prompt'
 import { agentModelKeys } from '#enums/agent_enum'
 import { aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { applyFilters } from '#services/apply_filter'
@@ -77,11 +78,32 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
       }
     }
 
+    // Create agent prompts if provided
+    if (reqData.prompts && reqData.prompts.length > 0) {
+      const promptsData = reqData.prompts.map((promptData) => ({
+        agentId: agent.id,
+        key: promptData.key,
+        prompt: promptData.prompt,
+        modelId: promptData.model_id,
+        temperature: promptData.temperature ?? aiDefaultConfig.temperature,
+        topP: promptData.top_p ?? null,
+        topK: promptData.top_k ?? null,
+      }))
+      await AgentPrompt.createMany(promptsData)
+    }
+
     if (agent.isDefault) {
       await setDefaultAgent(agent.id)
     }
 
-    return sendSuccess('Agent created successfully', agent)
+    // Load prompts for response
+    const prompts = await AgentPrompt.query().where('agent_id', agent.id)
+    const agentWithPrompts = {
+      ...agent.toJSON(),
+      prompts: prompts.map((p) => p.toJSON()),
+    }
+
+    return sendSuccess('Agent created successfully', agentWithPrompts)
   } catch (error: any) {
     console.log('Error in createAgent:', error.message)
     throw error
@@ -91,7 +113,12 @@ export const createAgent = async (reqData: createAgentValidatorInterface) => {
 export const getAgentById = async (agent_id: number) => {
   try {
     const agent = await fetchAgentById(agent_id)
-    return sendSuccess('Agent details', agent)
+    const prompts = await AgentPrompt.query().where('agent_id', agent_id)
+    const agentWithPrompts = {
+      ...agent.toJSON(),
+      prompts: prompts.map((p) => p.toJSON()),
+    }
+    return sendSuccess('Agent details', agentWithPrompts)
   } catch (error: any) {
     console.log('Error in getAgentById:', error.message)
     throw error
@@ -175,11 +202,38 @@ export const updateAgent = async (payload: updateAgentValidatorInterface, agent_
       }
     }
 
+    // Update prompts if provided
+    if (payload.prompts !== undefined) {
+      // Delete existing prompts
+      await AgentPrompt.query().where('agent_id', agent_id).delete()
+
+      // Create new prompts
+      if (payload.prompts.length > 0) {
+        const promptsData = payload.prompts.map((promptData) => ({
+          agentId: agent_id,
+          key: promptData.key,
+          prompt: promptData.prompt,
+          modelId: promptData.model_id,
+          temperature: promptData.temperature ?? agent.temperature,
+          topP: promptData.top_p ?? agent.topP,
+          topK: promptData.top_k ?? agent.topK,
+        }))
+        await AgentPrompt.createMany(promptsData)
+      }
+    }
+
     if (agentPayload.is_default === true) {
       await setDefaultAgent(agent.id)
     }
 
-    return sendSuccess('Agent updated successfully', agent)
+    // Load prompts for response
+    const prompts = await AgentPrompt.query().where('agent_id', agent_id)
+    const agentWithPrompts = {
+      ...agent.toJSON(),
+      prompts: prompts.map((p) => p.toJSON()),
+    }
+
+    return sendSuccess('Agent updated successfully', agentWithPrompts)
   } catch (error: any) {
     console.log('Error in updateAgent:', error.message)
     throw error
@@ -233,15 +287,25 @@ export const listAgents = async (
         }
       }
     }
+
+    // Load prompts for each agent
+    const agentsWithPrompts = await Promise.all(
+      agentListingPaginated['rows'].map(async (agent: any) => {
+        const prompts = await AgentPrompt.query().where('agent_id', agent.id)
+        return {
+          ...agent.serialize(),
+          prompts: prompts.map((p) => p.toJSON()),
+        }
+      })
+    )
+
     return sendSuccess('Agents listed successfully', {
       count: agentListingPaginated['rows'].length,
       total_count: agentListingPaginated.total,
       total_page_count: agentListingPaginated.lastPage,
       page: agentListingPaginated.currentPage,
       page_size: agentListingPaginated.perPage,
-      data: agentListingPaginated['rows'].map((agent: any) => ({
-        ...agent.serialize(),
-      })),
+      data: agentsWithPrompts,
     })
   } catch (error: any) {
     console.log('Error in listAgents:', error.message)

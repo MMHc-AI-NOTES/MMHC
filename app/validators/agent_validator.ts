@@ -1,6 +1,17 @@
 import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
 import { modelAgents } from '#enums/agent_enum'
+import { PromptKeyEnum } from '#enums/prompt_key_enum'
+
+// Prompt schema for agent prompts
+const agentPromptSchema = vine.object({
+  key: vine.enum(Object.values(PromptKeyEnum)),
+  prompt: vine.string().trim(),
+  model_id: vine.enum(modelAgents),
+  temperature: vine.number().optional(),
+  top_p: vine.number().optional().nullable(),
+  top_k: vine.number().withoutDecimals().optional().nullable(),
+})
 
 export const createAgentValidator = vine.compile(
   vine.object({
@@ -27,6 +38,8 @@ export const createAgentValidator = vine.compile(
       .boolean()
       .optional()
       .transform((value) => value ?? false),
+    // New field for multiple prompts
+    prompts: vine.array(agentPromptSchema).optional(),
   })
 )
 
@@ -44,6 +57,8 @@ export const updateAgentValidator = vine.compile(
     prompt: vine.string().trim().optional(),
     isActive: vine.boolean().optional(),
     is_default: vine.boolean().optional(),
+    // New field for updating prompts
+    prompts: vine.array(agentPromptSchema).optional(),
   })
 )
 

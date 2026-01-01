@@ -185,7 +185,8 @@ export const evaluateChatWithBedrock = async (
   systemPrompt: string,
   temperature: number,
   topP?: number | null,
-  topK?: number | null
+  topK?: number | null,
+  skipValidation: boolean = false
 ): Promise<{
   'score': number
   'pass': boolean
@@ -277,8 +278,14 @@ No previous sessions available for this patient`
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])
 
-      // Validate response structure
-      const validation = validateBedrockResponse(parsed)
+      // Validate response structure only if not skipped (for aggregator only)
+      const validation = skipValidation
+        ? {
+            isValid: true,
+            status: 'pass' as const,
+            message: 'Validation skipped',
+          }
+        : validateBedrockResponse(parsed)
 
       // Normalise issues and compute numeric score based on deductions
       const issues = (parsed.issues || []).map((issue: any) => {
@@ -344,21 +351,29 @@ No previous sessions available for this patient`
     const rawScore = scoreMatch ? Number.parseInt(scoreMatch[1]) : 0
     const clampedScore = Math.max(0, Math.min(100, rawScore))
 
-    // Try to parse as JSON for validation
+    // Try to parse as JSON for validation (only if not skipped)
     let validation: {
       isValid: boolean
       status: 'pass' | 'fail' | 'error'
       message: string
-    } = {
-      isValid: false,
-      status: 'error',
-      message: 'No valid JSON structure found in response',
-    }
-    try {
-      const fallbackParsed = JSON.parse(responseText)
-      validation = validateBedrockResponse(fallbackParsed)
-    } catch {
-      // Already set validation to error
+    } = skipValidation
+      ? {
+          isValid: true,
+          status: 'pass' as const,
+          message: 'Validation skipped',
+        }
+      : {
+          isValid: false,
+          status: 'error',
+          message: 'No valid JSON structure found in response',
+        }
+    if (!skipValidation) {
+      try {
+        const fallbackParsed = JSON.parse(responseText)
+        validation = validateBedrockResponse(fallbackParsed)
+      } catch {
+        // Already set validation to error
+      }
     }
 
     return {
@@ -399,11 +414,17 @@ No previous sessions available for this patient`
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
       'raw_response': response.output_text || 'Evaluation completed',
       'user_input': evaluationUserPrompt,
-      'validation_result': {
-        isValid: false,
-        status: 'error',
-        message: error.message || 'Failed to parse Bedrock response',
-      },
+      'validation_result': skipValidation
+        ? {
+            isValid: true,
+            status: 'pass' as const,
+            message: 'Validation skipped',
+          }
+        : {
+            isValid: false,
+            status: 'error',
+            message: error.message || 'Failed to parse Bedrock response',
+          },
     }
   }
 }

@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeFetch, beforeFind, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, column, hasMany } from '@adonisjs/lucid/orm'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
+import AgentPrompt from '#models/agent_prompt'
 
 export const SORT_AGENT_ENUM = ['id', 'name']
 export const FILTER_AGENT_ENUM = ['id', 'name']
@@ -58,6 +60,9 @@ export default class Agent extends BaseModel {
 
   @column.dateTime({ serializeAs: null })
   declare deletedAt: DateTime | null
+
+  @hasMany(() => AgentPrompt)
+  declare prompts: HasMany<typeof AgentPrompt>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery

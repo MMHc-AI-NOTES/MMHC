@@ -26,20 +26,12 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       throw new Error('Session not found for the provided note')
     }
 
-    // Get agent (prompt) from prompt_id (agent_id)
-    const agent = await Agent.find(reqData.prompt_id)
+    // Get agent (prompt) from prompt_id (agent_id) and preload agent prompts
+    const agent = await Agent.query().where('id', reqData.prompt_id).preload('prompts').first()
 
     if (!agent) {
       console.log('Error in createChat: Agent not found for prompt_id:', reqData.prompt_id)
       throw new Error('Agent not found for the provided prompt')
-    }
-
-    if (!agent.prompt) {
-      console.log(
-        'Error in createChat: Agent prompt is not configured for agent_id:',
-        reqData.prompt_id
-      )
-      throw new Error('Agent prompt is not configured')
     }
 
     if (!agent.model) {
@@ -48,6 +40,14 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
         reqData.prompt_id
       )
       throw new Error('Agent model is not configured')
+    }
+
+    // Get all agent prompts
+    const agentPrompts = agent.prompts
+
+    if (!agentPrompts || agentPrompts.length === 0) {
+      console.log('Error in createChat: No agent prompts found for agent_id:', reqData.prompt_id)
+      throw new Error('No agent prompts found for this agent')
     }
 
     // Get all previous sessions for the same patient (for better evaluation based on patient history)
@@ -59,33 +59,103 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
             .orderBy('id', 'desc')
         : []
 
-    // Use session.session as current note and agent.prompt as prompt
+    // Use session.session as current note
     const currentNote = session.session
     const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
-    const prompt = agent.prompt
-    const modelId = agent.model
-    const temperature = agent.temperature ?? 0.3
-    const topP = agent.topP ?? 0.9
-    const topK = agent.topK ?? 250
-
-    if (!prompt) {
-      console.log('Error in createChat: Agent prompt is required for evaluation')
-      throw new Error('Agent prompt is required for evaluation')
-    }
 
     // Record start time before Bedrock evaluation
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Evaluate with Bedrock (with previous notes for comparison based on patient history)
-    const evaluation = await evaluateChatWithBedrock(
-      modelId,
+    // Helper function to add delay between batches
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+    // Step 1: Run all prompts individually to calculate scores for each
+    // Process in batches to avoid rate limiting while maintaining parallelism
+    const BATCH_SIZE = 3 // Process 3 prompts at a time
+    const individualEvaluationResults = []
+
+    for (let i = 0; i < agentPrompts.length; i += BATCH_SIZE) {
+      const batch = agentPrompts.slice(i, i + BATCH_SIZE)
+
+      // Process batch in parallel
+      // Skip validation for individual prompts (only aggregator will have validation)
+      const batchPromises = batch.map((agentPrompt) =>
+        evaluateChatWithBedrock(
+          agentPrompt.modelId,
+          currentNote,
+          previousNotes.length > 0 ? previousNotes : undefined,
+          agentPrompt.prompt,
+          agentPrompt.temperature ?? 0.3,
+          agentPrompt.topP ?? null,
+          agentPrompt.topK ?? null,
+          true // skipValidation = true for individual prompts
+        )
+          .then((evaluation) => {
+            // Remove validation_result from individual prompt evaluations
+            const evaluationWithoutValidation = { ...evaluation }
+            delete evaluationWithoutValidation.validation_result
+            return {
+              key: agentPrompt.key,
+              score: evaluation.score || 0,
+              evaluation: evaluationWithoutValidation,
+            }
+          })
+          .catch((error: any) => {
+            console.error(`❌ Error evaluating prompt ${agentPrompt.key}:`, error)
+            return {
+              key: agentPrompt.key,
+              score: 0,
+              evaluation: {
+                score: 0,
+                pass: false,
+                sentiment: 'neutral',
+                summary: 'Not Present',
+                // No validation_result for individual prompts
+              },
+            }
+          })
+      )
+
+      // Wait for batch to complete
+      const batchResults = await Promise.all(batchPromises)
+      individualEvaluationResults.push(...batchResults)
+
+      // Add delay between batches (except after the last batch)
+      if (i + BATCH_SIZE < agentPrompts.length) {
+        await delay(500) // 0.5 second delay between batches
+      }
+    }
+
+    // Store individual prompt scores - only summary for each key
+    const promptScores: Record<string, any> = {}
+    individualEvaluationResults.forEach((result) => {
+      // Only store summary for individual prompt keys
+      // If summary is empty or "Evaluation failed", use "not present"
+      const summary = result.evaluation?.summary || ''
+      promptScores[result.key] = {
+        summary: summary === '' || summary === 'Evaluation failed' ? 'not present' : summary,
+      }
+    })
+
+    // Step 2: Join all prompts together
+    const joinedPrompts = agentPrompts
+      .map((prompt) => {
+        return `[${prompt.key}]\n${prompt.prompt}`
+      })
+      .join('\n\n---\n\n')
+
+    // Step 3: Run final evaluation with joined prompts
+    // Use the first prompt's model and settings for the final evaluation
+    const firstPrompt = agentPrompts[0]
+    const finalEvaluation = await evaluateChatWithBedrock(
+      firstPrompt.modelId,
       currentNote,
       previousNotes.length > 0 ? previousNotes : undefined,
-      prompt,
-      temperature,
-      topP,
-      topK
+      joinedPrompts,
+      firstPrompt.temperature ?? 0.3,
+      firstPrompt.topP ?? null,
+      firstPrompt.topK ?? null
     )
 
     // Record end time and calculate response time in seconds
@@ -94,11 +164,11 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
     // Map validation status to severity enum
-    let severity = ChatSeverityEnum.minor // default to info
-    if (evaluation.validation_result) {
-      if (evaluation.validation_result.status === 'error') {
+    let severity = ChatSeverityEnum.minor // default to minor
+    if (finalEvaluation.validation_result) {
+      if (finalEvaluation.validation_result.status === 'error') {
         severity = ChatSeverityEnum.critical
-      } else if (evaluation.validation_result.status === 'fail') {
+      } else if (finalEvaluation.validation_result.status === 'fail') {
         severity = ChatSeverityEnum.moderate
       } else {
         severity = ChatSeverityEnum.minor
@@ -107,29 +177,47 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
 
     // Map validation status to result enum
     let result: number | null = null
-    if (evaluation.validation_result) {
-      if (evaluation.validation_result.status === 'pass') {
+    if (finalEvaluation.validation_result) {
+      if (finalEvaluation.validation_result.status === 'pass') {
         result = ChatResultEnum.pass
-      } else if (evaluation.validation_result.status === 'fail') {
+      } else if (finalEvaluation.validation_result.status === 'fail') {
         result = ChatResultEnum.fail
-      } else if (evaluation.validation_result.status === 'error') {
+      } else if (finalEvaluation.validation_result.status === 'error') {
         result = ChatResultEnum.error
       }
     }
 
+    // Prepare bedrockResponse with final evaluation and prompt scores
+    const bedrockResponse = {
+      ...finalEvaluation,
+      prompt_scores: {
+        ...promptScores,
+        aggregator: {
+          score: finalEvaluation.score,
+          pass: finalEvaluation.pass,
+          status: finalEvaluation.validation_result?.status || 'unknown',
+          sentiment: finalEvaluation.sentiment,
+          summary: finalEvaluation.summary,
+          evaluation: finalEvaluation.evaluation,
+          issues: finalEvaluation.issues,
+          validation_result: finalEvaluation.validation_result,
+        },
+      },
+    }
+
     const chatData = {
-      prompt: prompt,
+      prompt: joinedPrompts,
       userNote: currentNote,
-      userInput: evaluation.user_input,
-      modelId: modelId,
+      userInput: finalEvaluation.user_input,
+      modelId: firstPrompt.modelId,
       noteId: reqData.note_id,
-      evaluationScore: evaluation.score,
+      evaluationScore: finalEvaluation.score,
       responseTime: responseTime,
       startTime: startTime,
       endTime: endTime,
-      sentiment: evaluation.sentiment,
-      evaluation: evaluation.evaluation,
-      bedrockResponse: evaluation,
+      sentiment: finalEvaluation.sentiment,
+      evaluation: finalEvaluation.evaluation,
+      bedrockResponse: bedrockResponse,
       userId: userId,
       agentId: reqData.prompt_id,
       triggerSource: ChatTriggerSourceEnum.rerun,
@@ -140,7 +228,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const chat = await Chat.create(chatData)
 
     // Update session with AI score and status
-    const aiScore = evaluation.score
+    const aiScore = finalEvaluation.score
     let aiStatus = AiStatusEnum.not_reviewed
 
     // Determine AI status based on score
@@ -155,7 +243,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     // Determine workflow based on evaluation result
     // If status is pass → completed, otherwise (fail/warning) → in_queue
     let workflow = WorkflowEnum.in_queue // default to in_queue
-    if (evaluation.validation_result && evaluation.validation_result.status === 'pass') {
+    if (result === ChatResultEnum.pass) {
       workflow = WorkflowEnum.completed
     } else {
       // fail or warning or error → keep in_queue
