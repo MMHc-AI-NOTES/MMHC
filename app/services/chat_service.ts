@@ -51,12 +51,13 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     }
 
     // Get all previous sessions for the same patient (for better evaluation based on patient history)
+    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
     const previousSessions =
       session.patientId !== null
         ? await Session.query()
             .where('patient_id', session.patientId)
-            .where('id', '<', session.id)
-            .orderBy('id', 'desc')
+            .where('created_at', '<', session.createdAt.toJSDate())
+            .orderBy('created_at', 'desc')
         : []
 
     // Use session.session as current note
@@ -504,12 +505,13 @@ export const reevaluateChat = async (chatId: number) => {
     }
 
     // Get all previous sessions for the same patient (for better evaluation based on patient history)
+    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
     const previousSessions =
       session.patientId !== null
         ? await Session.query()
             .where('patient_id', session.patientId)
-            .where('id', '<', session.id)
-            .orderBy('id', 'desc')
+            .where('created_at', '<', session.createdAt.toJSDate())
+            .orderBy('created_at', 'desc')
         : []
 
     const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
