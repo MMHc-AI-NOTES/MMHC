@@ -154,21 +154,45 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       }
     }
 
-    // Store individual prompt scores - only summary for each key
+    // Store individual prompt scores with summary and issues for each key
     const promptScores: Record<string, any> = {}
+    const allMergedIssues: Array<{
+      severity: string
+      points_deducted: number
+      section_id?: string
+      section: string
+      justification: string
+      reason?: string
+    }> = []
+
     individualEvaluationResults.forEach((result) => {
-      // Only store summary for individual prompt keys
+      // Store summary for individual prompt keys
       // If summary is empty or "Evaluation failed", use "not present"
       const summary = result.evaluation?.summary || ''
       promptScores[result.key] = {
         summary: summary === '' || summary === 'Evaluation failed' ? 'not present' : summary,
+      }
+
+      // Extract and merge issues from individual prompt evaluations
+      if (result.evaluation?.issues && Array.isArray(result.evaluation.issues)) {
+        result.evaluation.issues.forEach((issue: any) => {
+          // Add issues to merged array with section_id from prompt key if not present
+          allMergedIssues.push({
+            severity: issue.severity || 'minor',
+            points_deducted: issue.points_deducted || 0,
+            section_id: issue.section_id || result.key || '',
+            section: issue.section || result.key || '',
+            justification: issue.justification || '',
+            reason: issue.reason || issue.justification || issue.section || '',
+          })
+        })
       }
     })
 
     // Step 2: Join all prompts together
     const joinedPrompts = agentPrompts
       .map((prompt) => {
-        return `[${prompt.key}]\n${prompt.prompt}`
+        return `\n${prompt.prompt}`
       })
       .join('\n\n---\n\n')
 
@@ -214,9 +238,14 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       }
     }
 
+    // Merge all issues: individual prompt issues + final evaluation issues
+    const finalMergedIssues = [...allMergedIssues, ...(finalEvaluation.issues || [])]
+
     // Prepare bedrockResponse with final evaluation and prompt scores
     const bedrockResponse = {
       ...finalEvaluation,
+      // Replace issues with merged issues from all prompts
+      issues: finalMergedIssues,
       prompt_scores: {
         ...promptScores,
         aggregator: {
@@ -226,7 +255,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
           sentiment: finalEvaluation.sentiment,
           summary: finalEvaluation.summary,
           evaluation: finalEvaluation.evaluation,
-          issues: finalEvaluation.issues,
+          issues: finalEvaluation.issues, // Keep original issues in aggregator
           validation_result: finalEvaluation.validation_result,
         },
       },
