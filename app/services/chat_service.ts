@@ -71,60 +71,86 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     // Helper function to add delay between batches
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+    // Helper function to retry with exponential backoff for rate limit errors
+    const retryWithBackoff = async (
+      fn: () => Promise<any>,
+      maxRetries: number = 3,
+      baseDelay: number = 1000
+    ): Promise<any> => {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          return await fn()
+        } catch (error: any) {
+          if (error.isRateLimit && attempt < maxRetries - 1) {
+            const delayMs = baseDelay * Math.pow(2, attempt) // Exponential backoff: 1s, 2s, 4s
+            console.log(
+              `Rate limit hit, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`
+            )
+            await delay(delayMs)
+            continue
+          }
+          throw error
+        }
+      }
+    }
+
     // Step 1: Run all prompts individually to calculate scores for each
-    // Process in batches to avoid rate limiting while maintaining parallelism
-    const BATCH_SIZE = 3 // Process 3 prompts at a time
+    // Process in smaller batches with longer delays to avoid rate limiting
+    const BATCH_SIZE = 2 // Reduced to 2 prompts at a time
     const individualEvaluationResults = []
 
     for (let i = 0; i < agentPrompts.length; i += BATCH_SIZE) {
       const batch = agentPrompts.slice(i, i + BATCH_SIZE)
 
-      // Process batch in parallel
+      // Process batch in parallel with retry logic
       // Skip validation for individual prompts (only aggregator will have validation)
       const batchPromises = batch.map((agentPrompt) =>
-        evaluateChatWithBedrock(
-          agentPrompt.modelId,
-          currentNote,
-          previousNotes.length > 0 ? previousNotes : undefined,
-          agentPrompt.prompt,
-          agentPrompt.temperature ?? 0.3,
-          agentPrompt.topP ?? null,
-          agentPrompt.topK ?? null,
-          true // skipValidation = true for individual prompts
-        )
-          .then((evaluation) => {
-            // Remove validation_result from individual prompt evaluations
-            const evaluationWithoutValidation = { ...evaluation }
-            delete evaluationWithoutValidation.validation_result
-            return {
-              key: agentPrompt.key,
-              score: evaluation.score || 0,
-              evaluation: evaluationWithoutValidation,
-            }
-          })
-          .catch((error: any) => {
-            console.error(`❌ Error evaluating prompt ${agentPrompt.key}:`, error)
-            return {
-              key: agentPrompt.key,
+        retryWithBackoff(
+          () =>
+            evaluateChatWithBedrock(
+              agentPrompt.modelId,
+              currentNote,
+              previousNotes.length > 0 ? previousNotes : undefined,
+              agentPrompt.prompt,
+              agentPrompt.temperature ?? 0.3,
+              agentPrompt.topP ?? null,
+              agentPrompt.topK ?? null,
+              true // skipValidation = true for individual prompts
+            ).then((evaluation) => {
+              // Remove validation_result from individual prompt evaluations
+              const evaluationWithoutValidation = { ...evaluation }
+              delete evaluationWithoutValidation.validation_result
+              return {
+                key: agentPrompt.key,
+                score: evaluation.score || 0,
+                evaluation: evaluationWithoutValidation,
+              }
+            }),
+          3, // maxRetries
+          2000 // baseDelay: 2s, 4s, 8s
+        ).catch((error: any) => {
+          console.error(`❌ Error evaluating prompt ${agentPrompt.key}:`, error.message)
+          return {
+            key: agentPrompt.key,
+            score: 0,
+            evaluation: {
               score: 0,
-              evaluation: {
-                score: 0,
-                pass: false,
-                sentiment: 'neutral',
-                summary: 'Not Present',
-                // No validation_result for individual prompts
-              },
-            }
-          })
+              pass: false,
+              sentiment: 'neutral',
+              summary: 'Not Present',
+              // No validation_result for individual prompts
+            },
+          }
+        })
       )
 
       // Wait for batch to complete
       const batchResults = await Promise.all(batchPromises)
       individualEvaluationResults.push(...batchResults)
 
-      // Add delay between batches (except after the last batch)
+      // Add longer delay between batches (except after the last batch)
       if (i + BATCH_SIZE < agentPrompts.length) {
-        await delay(500) // 0.5 second delay between batches
+        await delay(2000) // 2 second delay between batches
       }
     }
 

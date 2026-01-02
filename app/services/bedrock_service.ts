@@ -20,6 +20,7 @@ export interface BedrockEvaluationResponse {
     section_id?: string
     section: string
     justification: string
+    reason?: string
   }>
   summary?: string
   sentiment?: string
@@ -102,6 +103,18 @@ export const invokeBedrockModel = async (
     }
   } catch (error: any) {
     console.log('Bedrock API Error:', error.message)
+    // Check if it's a rate limit error
+    if (
+      error.message?.includes('Too many requests') ||
+      error.message?.includes('rate limit') ||
+      error.message?.includes('429') ||
+      error.code === 'TooManyRequestsException' ||
+      error.$metadata?.httpStatusCode === 429
+    ) {
+      const rateLimitError: any = new Error('RATE_LIMIT_ERROR')
+      rateLimitError.isRateLimit = true
+      throw rateLimitError
+    }
     throw new Error('Failed to communicate with AI service. Please try again later.')
   }
 }
@@ -196,6 +209,7 @@ export const evaluateChatWithBedrock = async (
     section_id?: string
     section: string
     justification: string
+    reason?: string
   }>
   'summary': string
   'sentiment': string
@@ -208,6 +222,9 @@ export const evaluateChatWithBedrock = async (
   '9z5t-1_therapist_reflection'?: string
   'gm4p-1_progress'?: string
   'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string
+  'p9m9-1_session_duration'?: string
+  '1hye-1_mental_status'?: string
+  '4lbp-1_therapist_initials'?: string
   'raw_response': string
   'user_input': string
   'validation_result'?: {
@@ -288,47 +305,75 @@ No previous sessions available for this patient`
         : validateBedrockResponse(parsed)
 
       // Normalise issues and compute numeric score based on deductions
+      // Points must be strictly 5, 15, or 25 (Minor, Moderate, Critical)
+      const normalizePointsDeducted = (points: number): number => {
+        if (points <= 5) return 5
+        if (points <= 15) return 15
+        return 25
+      }
+
       const issues = (parsed.issues || []).map((issue: any) => {
         let severity = issue.severity as string | undefined
+        let pointsDeducted = typeof issue.points_deducted === 'number' ? issue.points_deducted : 0
+
+        // Normalize points to strict values: 5, 15, or 25
+        pointsDeducted = normalizePointsDeducted(Math.abs(pointsDeducted))
+
         // If severity not provided, derive from points_deducted
-        if (!severity && typeof issue.points_deducted === 'number') {
-          if (issue.points_deducted >= 25) {
+        if (!severity) {
+          if (pointsDeducted === 25) {
             severity = 'critical'
-          } else if (issue.points_deducted >= 15) {
+          } else if (pointsDeducted === 15) {
             severity = 'moderate'
           } else {
             severity = 'minor'
           }
         }
+
+        // Extract reason from justification or section
+        const reason = issue.reason || issue.justification || issue.section || ''
+
         return {
           severity: (severity || '') as string,
-          points_deducted: typeof issue.points_deducted === 'number' ? issue.points_deducted : 0,
+          points_deducted: pointsDeducted,
           section_id: issue.section_id || '',
           section: issue.section || '',
           justification: issue.justification || '',
+          reason: reason,
         }
       })
 
-      // Start from 100 and subtract the absolute value of each issue's deduction
-      // Score can go negative if there are many issues (e.g., -20 for severe problems)
-      let score = 100
+      // Calculate total deduction and round to nearest multiple of 5
+      const roundToNearestFive = (num: number): number => {
+        return Math.round(num / 5) * 5
+      }
+
+      // Start from 100 and subtract the total deduction (rounded to nearest multiple of 5)
+      let totalDeduction = 0
       if (Array.isArray(issues) && issues.length > 0) {
-        const totalDeduction = issues.reduce((sum: number, item: any) => {
+        totalDeduction = issues.reduce((sum: number, item: any) => {
           const penalty =
             typeof item.points_deducted === 'number' ? Math.abs(item.points_deducted) : 0
           return sum + penalty
         }, 0)
-        score = 100 - totalDeduction
+        // Round total deduction to nearest multiple of 5
+        totalDeduction = roundToNearestFive(totalDeduction)
       }
+
+      // Final score = 100 - totalDeduction
+      const score = Math.max(0, 100 - totalDeduction)
+      // Pass is true if score > 75 (not >= 75)
+      const pass = score > 75
 
       return {
         'score': score,
-        'pass': score >= 75,
+        'pass': pass,
         'issues': issues,
         'summary': parsed.summary || '',
         'sentiment':
           parsed.sentiment || (score > 75 ? 'positive' : score >= 50 ? 'neutral' : 'negative'),
         'evaluation': parsed.evaluation || parsed.summary || responseText,
+        // Per-field evaluations
         '6tx9-1_subjective': parsed['6tx9-1_subjective'] || '',
         'rb2f-1_objective': parsed['rb2f-1_objective'] || '',
         'zad8-1_asment_&_therapeutic_intervention':
@@ -339,6 +384,9 @@ No previous sessions available for this patient`
         'gm4p-1_progress': parsed['gm4p-1_progress'] || '',
         'kxgx-7_&_kxgx-8_suicidality/homicidality':
           parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] || '',
+        'p9m9-1_session_duration': parsed['p9m9-1_session_duration'] || '',
+        '1hye-1_mental_status': parsed['1hye-1_mental_status'] || '',
+        '4lbp-1_therapist_initials': parsed['4lbp-1_therapist_initials'] || '',
         'raw_response': responseText,
         'user_input': evaluationUserPrompt,
         'validation_result': validation,
@@ -378,7 +426,7 @@ No previous sessions available for this patient`
 
     return {
       'score': clampedScore,
-      'pass': clampedScore >= 75,
+      'pass': clampedScore > 75,
       'issues': [],
       'summary': responseText,
       'sentiment': 'neutral',
@@ -391,6 +439,9 @@ No previous sessions available for this patient`
       '9z5t-1_therapist_reflection': '',
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
+      'p9m9-1_session_duration': '',
+      '1hye-1_mental_status': '',
+      '4lbp-1_therapist_initials': '',
       'raw_response': responseText,
       'user_input': evaluationUserPrompt,
       'validation_result': validation,
@@ -412,6 +463,9 @@ No previous sessions available for this patient`
       '9z5t-1_therapist_reflection': '',
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
+      'p9m9-1_session_duration': '',
+      '1hye-1_mental_status': '',
+      '4lbp-1_therapist_initials': '',
       'raw_response': response.output_text || 'Evaluation completed',
       'user_input': evaluationUserPrompt,
       'validation_result': skipValidation
