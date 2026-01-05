@@ -10,7 +10,9 @@ export const paginationValidator = vine.compile(
         vine.object({
           columnName: vine.string().trim().optional(),
           type: vine.string().trim().optional(),
-          value: vine.unionOfTypes([vine.string(), vine.number()]),
+          value: vine.any().optional(),
+          startDate: vine.string().trim().optional(),
+          endDate: vine.string().trim().optional(),
         })
       )
       .optional(),

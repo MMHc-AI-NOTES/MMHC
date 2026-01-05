@@ -1,4 +1,5 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
+import Session from '#models/session'
 import {
   SessionTypeEnum,
   AiStatusEnum,
@@ -9,7 +10,7 @@ import {
 } from '#enums/session_enum'
 
 export default class extends BaseSchema {
-  protected tableName = 'session_table'
+  protected tableName = Session.table
 
   async up() {
     this.schema.alterTable(this.tableName, (table) => {

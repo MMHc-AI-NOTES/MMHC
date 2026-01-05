@@ -18,10 +18,16 @@ export const noteListing = async (
     let query: any
     let filterData: any
     let sortNote: any
+
+    // Build base query to get all notes (both previous and current)
     let noteListings: any = Session.query()
       .preload('practitioner')
       .preload('patient')
-      .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc'))
+      .preload('chats', (chatsQuery) => {
+        chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
+          humanReviewsQuery.orderBy('id', 'desc')
+        })
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
       })
@@ -79,6 +85,7 @@ export const noteListing = async (
     }
     let sortQuery = sortNote?.query ?? query
     let noteListingPaginated = await paginateQuery(sortQuery, pageSize, page)
+
     return {
       count: noteListingPaginated['rows'].length,
       total_count: noteListingPaginated.total,
@@ -105,7 +112,14 @@ export const getNoteWithChats = async (noteId: string) => {
       .where('note_id', noteId)
       .preload('practitioner')
       .preload('patient')
-      .preload('chats', (chatsQuery) => chatsQuery.orderBy('id', 'desc').limit(10))
+      .preload('chats', (chatsQuery) => {
+        chatsQuery
+          .orderBy('id', 'desc')
+          .limit(10)
+          .preload('humanReviews', (humanReviewsQuery) => {
+            humanReviewsQuery.orderBy('id', 'desc')
+          })
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
       })

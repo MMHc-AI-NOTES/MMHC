@@ -1,5 +1,7 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
 import { bedrockConfig } from '#config/services'
+import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
+import { agentModelKeys } from '#enums/agent_enum'
 
 const client = new BedrockRuntimeClient({
   region: bedrockConfig.region,
@@ -35,15 +37,20 @@ export const invokeBedrockModel = async (
   topK?: number | null
 ): Promise<BedrockEvaluationResponse> => {
   try {
+    // Use modelId as-is (no conversion)
+    const actualModelId = modelId
+
     // Claude 3 API format requires:
     // - anthropic_version field
     // - max_tokens (not maxTokens)
     // - system message in separate field (not in messages array)
     // - No inferenceConfig wrapper
+    // Claude 4.5 models don't support both temperature and top_p together
+    const isClaude45 = actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1
+
     const body: any = {
       anthropic_version: bedrockConfig.anthropicVersion,
       max_tokens: bedrockConfig.maxTokens,
-      temperature: temperature,
       system: systemPrompt,
       messages: [
         {
@@ -53,21 +60,28 @@ export const invokeBedrockModel = async (
       ],
     }
 
-    if (typeof topP === 'number') {
-      body.top_p = topP
-    }
-
-    if (typeof topK === 'number') {
-      body.top_k = topK
+    // For Claude 4.5, only use temperature (not top_p)
+    if (isClaude45) {
+      body.temperature = temperature
+    } else {
+      // For other models, use temperature and optionally top_p/top_k
+      body.temperature = temperature
+      if (typeof topP === 'number') {
+        body.top_p = topP
+      }
+      if (typeof topK === 'number') {
+        body.top_k = topK
+      }
     }
 
     const command = new InvokeModelCommand({
-      modelId: modelId,
+      modelId: actualModelId,
       contentType: 'application/json',
       accept: 'application/json',
       body: JSON.stringify(body),
     })
 
+    console.log('Invoking Bedrock model:', actualModelId, 'in region:', bedrockConfig.region)
     const res = await client.send(command)
     const output = JSON.parse(new TextDecoder().decode(res.body))
 
@@ -92,10 +106,82 @@ export const invokeBedrockModel = async (
   }
 }
 
+// Validation function to check Bedrock response structure
+const validateBedrockResponse = (
+  parsed: any
+): {
+  isValid: boolean
+  status: 'pass' | 'fail' | 'error'
+  message: string
+} => {
+  // Required main fields
+  const requiredMainFields = ['score', 'pass', 'issues', 'summary', 'sentiment', 'evaluation']
+  const missingMainFields: string[] = []
+
+  // Check if main fields exist
+  requiredMainFields.forEach((field) => {
+    if (parsed[field] === undefined || parsed[field] === null) {
+      missingMainFields.push(field)
+    }
+  })
+
+  // If all main fields are missing, return fail
+  if (missingMainFields.length === requiredMainFields.length) {
+    return {
+      isValid: false,
+      status: 'fail',
+      message: `Missing all required main fields: ${requiredMainFields.join(', ')}`,
+    }
+  }
+
+  // If some main fields are missing, return error
+  if (missingMainFields.length > 0) {
+    return {
+      isValid: false,
+      status: 'error',
+      message: `Missing required main fields: ${missingMainFields.join(', ')}`,
+    }
+  }
+
+  // Check issues array subfields if issues array exists
+  if (Array.isArray(parsed.issues)) {
+    const requiredIssueFields = ['severity', 'points_deducted', 'section', 'justification']
+    const issuesWithMissingFields: number[] = []
+
+    parsed.issues.forEach((issue: any, index: number) => {
+      const missingFields: string[] = []
+      requiredIssueFields.forEach((field) => {
+        if (issue[field] === undefined || issue[field] === null || issue[field] === '') {
+          missingFields.push(field)
+        }
+      })
+      if (missingFields.length > 0) {
+        issuesWithMissingFields.push(index)
+      }
+    })
+
+    // If issues array has items but subfields are missing, return error
+    if (issuesWithMissingFields.length > 0) {
+      return {
+        isValid: false,
+        status: 'error',
+        message: `Issues array items at indices [${issuesWithMissingFields.join(', ')}] are missing required subfields`,
+      }
+    }
+  }
+
+  // All validations passed - structure is valid
+  return {
+    isValid: true,
+    status: 'pass',
+    message: 'All required fields are present',
+  }
+}
+
 export const evaluateChatWithBedrock = async (
   modelId: string,
   currentNote: string,
-  previousNote: string | undefined,
+  previousNotes: string[] | undefined,
   systemPrompt: string,
   temperature: number,
   topP?: number | null,
@@ -122,14 +208,19 @@ export const evaluateChatWithBedrock = async (
   'gm4p-1_progress'?: string
   'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string
   'raw_response': string
+  'user_input': string
+  'validation_result'?: {
+    isValid: boolean
+    status: 'pass' | 'fail' | 'error'
+    message: string
+  }
 }> => {
   // Use the provided system prompt from agent
   const evaluationSystemPrompt = systemPrompt
 
-  // Build user prompt with current and previous note
-  // currentNote and previousNote are JSON strings, so we parse and stringify them properly
+  // Build user prompt with current and previous notes
+  // currentNote and previousNotes are JSON strings, so we parse and stringify them properly
   let currentNoteParsed: any
-  let previousNoteParsed: any
 
   try {
     currentNoteParsed = typeof currentNote === 'string' ? JSON.parse(currentNote) : currentNote
@@ -137,18 +228,35 @@ export const evaluateChatWithBedrock = async (
     currentNoteParsed = { session: currentNote }
   }
 
-  try {
-    previousNoteParsed =
-      previousNote && typeof previousNote === 'string' ? JSON.parse(previousNote) : previousNote
-  } catch {
-    previousNoteParsed = previousNote ? { session: previousNote } : null
+  // Parse all previous notes
+  const previousNotesParsed: any[] = []
+  if (previousNotes && previousNotes.length > 0) {
+    previousNotes.forEach((prevNote) => {
+      try {
+        const parsed = typeof prevNote === 'string' ? JSON.parse(prevNote) : prevNote
+        previousNotesParsed.push(parsed)
+      } catch {
+        previousNotesParsed.push({ session: prevNote })
+      }
+    })
   }
 
-  const evaluationUserPrompt = `CURRENT_NOTE:
+  // Build prompt with current note and all previous notes
+  let evaluationUserPrompt = `${EvaluationPromptKeys.currentSession}:
 ${JSON.stringify(currentNoteParsed, null, 2)}
 
-PREVIOUS_NOTE:
-${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previous note available'}`
+`
+
+  if (previousNotesParsed.length > 0) {
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesParsed.length} session(s)):
+`
+    previousNotesParsed.forEach((prevNote, index) => {
+      evaluationUserPrompt += `\n--- Previous Session ${index + 1} ---\n${JSON.stringify(prevNote, null, 2)}\n`
+    })
+  } else {
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
+No previous sessions available for this patient`
+  }
 
   // Use detailed evaluation prompt as system prompt
   // Increased max_tokens to handle longer, more detailed responses
@@ -168,36 +276,51 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
 
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])
-      // Map issues format: convert points_deducted to severity if needed, ensure section_id and section are present
+
+      // Validate response structure
+      const validation = validateBedrockResponse(parsed)
+
+      // Normalise issues and compute numeric score based on deductions
       const issues = (parsed.issues || []).map((issue: any) => {
-        // Determine severity based on points_deducted if not provided
-        let severity = issue.severity
-        if (!severity) {
-          if (issue.points_deducted >= 25) severity = 'Critical'
-          else if (issue.points_deducted >= 15) severity = 'Moderate'
-          else severity = 'Minor'
+        let severity = issue.severity as string | undefined
+        // If severity not provided, derive from points_deducted
+        if (!severity && typeof issue.points_deducted === 'number') {
+          if (issue.points_deducted >= 25) {
+            severity = 'critical'
+          } else if (issue.points_deducted >= 15) {
+            severity = 'moderate'
+          } else {
+            severity = 'minor'
+          }
         }
         return {
-          severity: severity,
-          points_deducted: issue.points_deducted || 0,
+          severity: (severity || '') as string,
+          points_deducted: typeof issue.points_deducted === 'number' ? issue.points_deducted : 0,
           section_id: issue.section_id || '',
           section: issue.section || '',
           justification: issue.justification || '',
         }
       })
 
-      // Ensure score is between 0 and 100
-      const rawScore = parsed.score || 0
-      const clampedScore = Math.max(0, Math.min(100, rawScore))
+      // Start from 100 and subtract the absolute value of each issue's deduction
+      // Score can go negative if there are many issues (e.g., -20 for severe problems)
+      let score = 100
+      if (Array.isArray(issues) && issues.length > 0) {
+        const totalDeduction = issues.reduce((sum: number, item: any) => {
+          const penalty =
+            typeof item.points_deducted === 'number' ? Math.abs(item.points_deducted) : 0
+          return sum + penalty
+        }, 0)
+        score = 100 - totalDeduction
+      }
 
       return {
-        'score': clampedScore,
-        'pass': parsed.pass ?? clampedScore > 75,
+        'score': score,
+        'pass': score >= 75,
         'issues': issues,
         'summary': parsed.summary || '',
         'sentiment':
-          parsed.sentiment ||
-          (parsed.pass ? 'positive' : clampedScore >= 50 ? 'neutral' : 'negative'),
+          parsed.sentiment || (score > 75 ? 'positive' : score >= 50 ? 'neutral' : 'negative'),
         'evaluation': parsed.evaluation || parsed.summary || responseText,
         '6tx9-1_subjective': parsed['6tx9-1_subjective'] || '',
         'rb2f-1_objective': parsed['rb2f-1_objective'] || '',
@@ -210,19 +333,37 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
         'kxgx-7_&_kxgx-8_suicidality/homicidality':
           parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] || '',
         'raw_response': responseText,
+        'user_input': evaluationUserPrompt,
+        'validation_result': validation,
       }
     }
 
     // Fallback: extract from text
     const scoreMatch = responseText.match(/score[:\s]*(\d+)/i)
-    const passMatch = responseText.match(/pass[:\s]*(true|false)/i)
 
     const rawScore = scoreMatch ? Number.parseInt(scoreMatch[1]) : 0
     const clampedScore = Math.max(0, Math.min(100, rawScore))
 
+    // Try to parse as JSON for validation
+    let validation: {
+      isValid: boolean
+      status: 'pass' | 'fail' | 'error'
+      message: string
+    } = {
+      isValid: false,
+      status: 'error',
+      message: 'No valid JSON structure found in response',
+    }
+    try {
+      const fallbackParsed = JSON.parse(responseText)
+      validation = validateBedrockResponse(fallbackParsed)
+    } catch {
+      // Already set validation to error
+    }
+
     return {
       'score': clampedScore,
-      'pass': passMatch ? passMatch[1].toLowerCase() === 'true' : false,
+      'pass': clampedScore >= 75,
       'issues': [],
       'summary': responseText,
       'sentiment': 'neutral',
@@ -236,8 +377,11 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
       'raw_response': responseText,
+      'user_input': evaluationUserPrompt,
+      'validation_result': validation,
     }
-  } catch (error) {
+  } catch (error: any) {
+    // For errors, return fallback response with error validation status
     return {
       'score': 0,
       'pass': false,
@@ -254,6 +398,12 @@ ${previousNoteParsed ? JSON.stringify(previousNoteParsed, null, 2) : 'No previou
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
       'raw_response': response.output_text || 'Evaluation completed',
+      'user_input': evaluationUserPrompt,
+      'validation_result': {
+        isValid: false,
+        status: 'error',
+        message: error.message || 'Failed to parse Bedrock response',
+      },
     }
   }
 }

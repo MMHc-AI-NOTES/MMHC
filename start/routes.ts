@@ -16,6 +16,9 @@ import '#start/routes/agent_routes'
 import '#start/routes/chat_routes'
 import '#start/routes/patient_routes'
 import '#start/routes/practitioner_routes'
+import '#start/routes/human_review_routes'
+import '#start/routes/manager_review_routes'
+import '#start/routes/cpt_code_routes'
 
 import { sendSuccess } from '#services/custom_response_service'
 

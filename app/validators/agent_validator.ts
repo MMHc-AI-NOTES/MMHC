@@ -20,7 +20,7 @@ export const createAgentValidator = vine.compile(
       .optional()
       .transform((value) => value ?? 250),
     previous_section: vine.array(vine.number().positive()).optional(),
-    description: vine.string().trim().optional(),
+    description: vine.string().trim().nullable().optional(),
     prompt: vine.string().trim().optional(),
     isActive: vine.boolean().optional(),
     is_default: vine
@@ -40,7 +40,7 @@ export const updateAgentValidator = vine.compile(
     top_p: vine.number().optional(),
     top_k: vine.number().withoutDecimals().optional(),
     previous_section: vine.array(vine.number().positive()).optional(),
-    description: vine.string().trim().optional(),
+    description: vine.string().trim().nullable().optional(),
     prompt: vine.string().trim().optional(),
     isActive: vine.boolean().optional(),
     is_default: vine.boolean().optional(),

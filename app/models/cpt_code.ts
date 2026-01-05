@@ -2,17 +2,23 @@ import { DateTime } from 'luxon'
 import { BaseModel, beforeFetch, beforeFind, column } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 
-export const patientFilterEnum = ['id', 'client_id', 'created_at']
-export const patientSortEnum = ['id', 'client_id', 'created_at']
+export const cptCodeFilterEnum = ['id', 'code', 'name', 'description', 'created_at']
+export const cptCodeSortEnum = ['id', 'code', 'name', 'description', 'created_at']
 
-export default class Patient extends BaseModel {
-  static table = 'patients'
+export default class CptCode extends BaseModel {
+  static table = 'cpt_codes'
 
   @column({ isPrimary: true })
   declare id: number
 
   @column()
-  declare clientId: string | null
+  declare code: string
+
+  @column()
+  declare name: string
+
+  @column()
+  declare description: string
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

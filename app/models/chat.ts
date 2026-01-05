@@ -1,8 +1,11 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeFetch, beforeFind, belongsTo, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import HumanReview from '#models/human_review'
+import Agent from '#models/agent'
+import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 
 export const chatFilterEnum = [
   'id',
@@ -11,6 +14,10 @@ export const chatFilterEnum = [
   'sentiment',
   'evaluation_score',
   'note_id',
+  'created_at',
+  'agent_id',
+  'severity',
+  'result',
 ]
 export const chatSortEnum = [
   'id',
@@ -21,6 +28,8 @@ export const chatSortEnum = [
   'note_id',
   'created_at',
   'updated_at',
+  'severity',
+  'result',
 ]
 
 export default class Chat extends BaseModel {
@@ -36,18 +45,21 @@ export default class Chat extends BaseModel {
   declare userNote: string
 
   @column()
+  declare userInput: string | null
+
+  @column()
   declare modelId: string
 
   @column()
   declare evaluationScore: number | null
 
-  @column({ columnName: 'response_time' })
+  @column()
   declare responseTime: number | null
 
-  @column.dateTime({ columnName: 'start_time' })
+  @column.dateTime()
   declare startTime: DateTime | null
 
-  @column.dateTime({ columnName: 'end_time' })
+  @column.dateTime()
   declare endTime: DateTime | null
 
   @column()
@@ -75,6 +87,43 @@ export default class Chat extends BaseModel {
   @column()
   declare userId: number | null
 
+  @column()
+  declare agentId: number | null
+
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(ChatSeverityEnum).find(
+        (k) => ChatSeverityEnum[k as keyof typeof ChatSeverityEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
+  declare severity: number | null
+
+  @column({
+    columnName: 'trigger_source',
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(ChatTriggerSourceEnum).find(
+        (k) => ChatTriggerSourceEnum[k as keyof typeof ChatTriggerSourceEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
+  declare triggerSource: number | null
+
+  @column({
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      const key = Object.keys(ChatResultEnum).find(
+        (k) => ChatResultEnum[k as keyof typeof ChatResultEnum] === value
+      )
+      return key ? { id: value, name: key } : { id: value, name: null }
+    },
+  })
+  declare result: number | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
@@ -88,6 +137,17 @@ export default class Chat extends BaseModel {
     foreignKey: 'userId',
   })
   declare user: BelongsTo<typeof User>
+
+  @belongsTo(() => Agent, {
+    foreignKey: 'agentId',
+  })
+  declare agent: BelongsTo<typeof Agent>
+
+  @hasMany(() => HumanReview, {
+    foreignKey: 'chatId',
+    localKey: 'id',
+  })
+  declare humanReviews: HasMany<typeof HumanReview>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery

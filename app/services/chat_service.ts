@@ -6,7 +6,9 @@ import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess } from '#services/custom_response_service'
 import { evaluateChatWithBedrock } from '#services/bedrock_service'
-import { AiStatusEnum } from '#enums/session_enum'
+import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'
+import { ReviewCycleEnum } from '#enums/review_cycle_enum'
+import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
 import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
 import type {
@@ -48,16 +50,19 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       throw new Error('Agent model is not configured')
     }
 
-    // Get previous session for comparison (same practitioner, before current session)
-    const previousSession = await Session.query()
-      .where('practitioner_id', session.practitionerId)
-      .where('created_at', '<', session.createdAt.toSQL()!)
-      .orderBy('created_at', 'desc')
-      .first()
+    // Get all previous sessions for the same patient (for better evaluation based on patient history)
+    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
+    const previousSessions =
+      session.patientId !== null
+        ? await Session.query()
+            .where('patient_id', session.patientId)
+            .where('created_at', '<', session.createdAt.toJSDate())
+            .orderBy('created_at', 'desc')
+        : []
 
     // Use session.session as current note and agent.prompt as prompt
     const currentNote = session.session
-    const previousNote = previousSession?.session || undefined
+    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
     const prompt = agent.prompt
     const modelId = agent.model
     const temperature = agent.temperature ?? 0.3
@@ -73,11 +78,11 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Evaluate with Bedrock (with previous note for comparison)
+    // Evaluate with Bedrock (with previous notes for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       modelId,
       currentNote,
-      previousNote,
+      previousNotes.length > 0 ? previousNotes : undefined,
       prompt,
       temperature,
       topP,
@@ -89,9 +94,34 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const endTime = DateTime.fromMillis(endTimeMs)
     const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
+    // Map validation status to severity enum
+    let severity = ChatSeverityEnum.minor // default to info
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'error') {
+        severity = ChatSeverityEnum.critical
+      } else if (evaluation.validation_result.status === 'fail') {
+        severity = ChatSeverityEnum.moderate
+      } else {
+        severity = ChatSeverityEnum.minor
+      }
+    }
+
+    // Map validation status to result enum
+    let result: number | null = null
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'pass') {
+        result = ChatResultEnum.pass
+      } else if (evaluation.validation_result.status === 'fail') {
+        result = ChatResultEnum.fail
+      } else if (evaluation.validation_result.status === 'error') {
+        result = ChatResultEnum.error
+      }
+    }
+
     const chatData = {
       prompt: prompt,
       userNote: currentNote,
+      userInput: evaluation.user_input,
       modelId: modelId,
       noteId: reqData.note_id,
       evaluationScore: evaluation.score,
@@ -102,6 +132,10 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       evaluation: evaluation.evaluation,
       bedrockResponse: evaluation,
       userId: userId,
+      agentId: reqData.prompt_id,
+      triggerSource: ChatTriggerSourceEnum.rerun,
+      severity: severity,
+      result: result,
     }
 
     const chat = await Chat.create(chatData)
@@ -119,10 +153,22 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       aiStatus = AiStatusEnum.warning
     }
 
+    // Determine workflow based on evaluation result
+    // If status is pass → completed, otherwise (fail/warning) → in_queue
+    let workflow = WorkflowEnum.in_queue // default to in_queue
+    if (evaluation.validation_result && evaluation.validation_result.status === 'pass') {
+      workflow = WorkflowEnum.completed
+    } else {
+      // fail or warning or error → keep in_queue
+      workflow = WorkflowEnum.in_queue
+    }
+
     await session
       .merge({
         aiScore: aiScore,
         aiStatus: aiStatus,
+        workflow: workflow,
+        reviewCycle: ReviewCycleEnum.cycle_1_of_3,
       })
       .save()
 
@@ -135,7 +181,16 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
 
 export const getChatById = async (chatId: number) => {
   try {
-    const chat = await Chat.query().where('id', chatId).preload('user').first()
+    const chat = await Chat.query()
+      .where('id', chatId)
+      .preload('user')
+      .preload('agent', (agentQuery) => {
+        agentQuery.select('id', 'name', 'model', 'agent_key')
+      })
+      .preload('humanReviews', (reviewsQuery) =>
+        reviewsQuery.orderBy('id', 'desc').preload('practitioner')
+      )
+      .first()
 
     if (!chat) {
       console.log('Error in getChatById: Chat not found with id:', chatId)
@@ -193,6 +248,30 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
       const endTime = DateTime.fromMillis(endTimeMs)
       const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
+      // Map validation status to severity enum
+      let severity = ChatSeverityEnum.minor // default to info
+      if (evaluation.validation_result) {
+        if (evaluation.validation_result.status === 'error') {
+          severity = ChatSeverityEnum.critical
+        } else if (evaluation.validation_result.status === 'fail') {
+          severity = ChatSeverityEnum.moderate
+        } else {
+          severity = ChatSeverityEnum.minor
+        }
+      }
+
+      // Map validation status to result enum
+      let result: number | null = null
+      if (evaluation.validation_result) {
+        if (evaluation.validation_result.status === 'pass') {
+          result = ChatResultEnum.pass
+        } else if (evaluation.validation_result.status === 'fail') {
+          result = ChatResultEnum.fail
+        } else if (evaluation.validation_result.status === 'error') {
+          result = ChatResultEnum.error
+        }
+      }
+
       chat.evaluationScore = evaluation.score
       chat.responseTime = responseTime
       chat.startTime = startTime
@@ -200,6 +279,8 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
       chat.sentiment = evaluation.sentiment
       chat.evaluation = evaluation.evaluation
       chat.bedrockResponse = evaluation
+      chat.severity = severity
+      chat.result = result
 
       // Update session with AI score and status
       const session = await Session.query().where('note_id', chat.noteId).first()
@@ -268,7 +349,14 @@ export const listChats = async (
     let query: any
     let filterData: any
     let sortChat: any
-    let chatListings: any = Chat.query().preload('user')
+    let chatListings: any = Chat.query()
+      .preload('user')
+      .preload('agent', (agentQuery) => {
+        agentQuery.select('id', 'name', 'model', 'agent_key')
+      })
+      .preload('humanReviews', (reviewsQuery) =>
+        reviewsQuery.orderBy('id', 'desc').preload('practitioner')
+      )
 
     if (filters?.length) {
       filterData = applyFilters(chatListings, filters, chatFilterEnum)
@@ -328,14 +416,17 @@ export const reevaluateChat = async (chatId: number) => {
       throw new Error('Session not found for this chat')
     }
 
-    // Get previous session for comparison
-    const previousSession = await Session.query()
-      .where('practitioner_id', session.practitionerId)
-      .where('created_at', '<', session.createdAt.toSQL()!)
-      .orderBy('created_at', 'desc')
-      .first()
+    // Get all previous sessions for the same patient (for better evaluation based on patient history)
+    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
+    const previousSessions =
+      session.patientId !== null
+        ? await Session.query()
+            .where('patient_id', session.patientId)
+            .where('created_at', '<', session.createdAt.toJSDate())
+            .orderBy('created_at', 'desc')
+        : []
 
-    const previousNote = previousSession?.session || undefined
+    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
 
     if (!chat.prompt) {
       console.log(
@@ -354,11 +445,11 @@ export const reevaluateChat = async (chatId: number) => {
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Re-evaluate with Bedrock
+    // Re-evaluate with Bedrock (with previous notes for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       chat.modelId,
       chat.userNote,
-      previousNote,
+      previousNotes.length > 0 ? previousNotes : undefined,
       chat.prompt,
       temperature,
       topP,
@@ -370,6 +461,30 @@ export const reevaluateChat = async (chatId: number) => {
     const endTime = DateTime.fromMillis(endTimeMs)
     const responseTime = (endTimeMs - startTimeMs) / 1000 // Convert milliseconds to seconds
 
+    // Map validation status to severity enum
+    let severity = ChatSeverityEnum.minor // default to info
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'error') {
+        severity = ChatSeverityEnum.critical
+      } else if (evaluation.validation_result.status === 'fail') {
+        severity = ChatSeverityEnum.moderate
+      } else {
+        severity = ChatSeverityEnum.minor
+      }
+    }
+
+    // Map validation status to result enum
+    let result: number | null = null
+    if (evaluation.validation_result) {
+      if (evaluation.validation_result.status === 'pass') {
+        result = ChatResultEnum.pass
+      } else if (evaluation.validation_result.status === 'fail') {
+        result = ChatResultEnum.fail
+      } else if (evaluation.validation_result.status === 'error') {
+        result = ChatResultEnum.error
+      }
+    }
+
     chat.evaluationScore = evaluation.score
     chat.responseTime = responseTime
     chat.startTime = startTime
@@ -377,6 +492,9 @@ export const reevaluateChat = async (chatId: number) => {
     chat.sentiment = evaluation.sentiment
     chat.evaluation = evaluation.evaluation
     chat.bedrockResponse = evaluation
+    chat.userInput = evaluation.user_input
+    chat.severity = severity
+    chat.result = result
 
     await chat.save()
 
@@ -393,10 +511,22 @@ export const reevaluateChat = async (chatId: number) => {
       aiStatus = AiStatusEnum.warning
     }
 
+    // Determine workflow based on evaluation result
+    // If status is pass → completed, otherwise (fail/warning) → in_queue
+    let workflow = WorkflowEnum.in_queue // default to in_queue
+    if (evaluation.validation_result && evaluation.validation_result.status === 'pass') {
+      workflow = WorkflowEnum.completed
+    } else {
+      // fail or warning or error → keep in_queue
+      workflow = WorkflowEnum.in_queue
+    }
+
     await session
       .merge({
         aiScore: aiScore,
         aiStatus: aiStatus,
+        workflow: workflow,
+        reviewCycle: ReviewCycleEnum.cycle_1_of_3,
       })
       .save()
 
