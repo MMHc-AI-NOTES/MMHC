@@ -192,7 +192,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     // Step 2: Join all prompts together
     const joinedPrompts = agentPrompts
       .map((prompt) => {
-        return `\n${prompt.prompt}`
+        return `${prompt.prompt}`
       })
       .join('\n\n---\n\n')
 
