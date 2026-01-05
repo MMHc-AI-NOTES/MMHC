@@ -303,6 +303,7 @@ No previous sessions available for this patient`
       })
 
       // Start from 100 and subtract the absolute value of each issue's deduction
+      // Score can go negative if there are many issues (e.g., -20 for severe problems)
       let score = 100
       if (Array.isArray(issues) && issues.length > 0) {
         const totalDeduction = issues.reduce((sum: number, item: any) => {
@@ -310,7 +311,7 @@ No previous sessions available for this patient`
             typeof item.points_deducted === 'number' ? Math.abs(item.points_deducted) : 0
           return sum + penalty
         }, 0)
-        score = Math.max(0, 100 - totalDeduction)
+        score = 100 - totalDeduction
       }
 
       return {
