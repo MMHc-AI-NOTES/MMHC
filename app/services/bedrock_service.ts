@@ -219,39 +219,48 @@ export const evaluateChatWithBedrock = async (
   const evaluationSystemPrompt = systemPrompt
 
   // Build user prompt with current and previous notes
-  // currentNote and previousNotes are JSON strings, so we parse and stringify them properly
-  let currentNoteParsed: any
+  // Extract plain text from session data (no JSON stringification - send as plain text)
+  let currentNoteText: string
 
   try {
-    currentNoteParsed = typeof currentNote === 'string' ? JSON.parse(currentNote) : currentNote
+    // Try to parse if it's JSON, otherwise use as-is
+    const parsed = typeof currentNote === 'string' ? JSON.parse(currentNote) : currentNote
+    // Extract session text from parsed object or use the string directly
+    currentNoteText = parsed.session || parsed || currentNote
   } catch {
-    currentNoteParsed = { session: currentNote }
+    // If parsing fails, use as plain text
+    currentNoteText = typeof currentNote === 'string' ? currentNote : String(currentNote)
   }
 
-  // Parse all previous notes
-  const previousNotesParsed: any[] = []
+  // Extract plain text from previous notes
+  const previousNotesText: string[] = []
   if (previousNotes && previousNotes.length > 0) {
     previousNotes.forEach((prevNote) => {
       try {
         const parsed = typeof prevNote === 'string' ? JSON.parse(prevNote) : prevNote
-        previousNotesParsed.push(parsed)
+        const sessionText = parsed.session || parsed || prevNote
+        previousNotesText.push(typeof sessionText === 'string' ? sessionText : String(sessionText))
       } catch {
-        previousNotesParsed.push({ session: prevNote })
+        previousNotesText.push(typeof prevNote === 'string' ? prevNote : String(prevNote))
       }
     })
   }
 
-  // Build prompt with current note and all previous notes
+  // Build prompt with plain text format (no JSON, no escaped quotes, no \n\n)
   let evaluationUserPrompt = `${EvaluationPromptKeys.currentSession}:
-${JSON.stringify(currentNoteParsed, null, 2)}
+${currentNoteText}
 
 `
 
-  if (previousNotesParsed.length > 0) {
-    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesParsed.length} session(s)):
+  if (previousNotesText.length > 0) {
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesText.length} session(s)):
+
 `
-    previousNotesParsed.forEach((prevNote, index) => {
-      evaluationUserPrompt += `\n--- Previous Session ${index + 1} ---\n${JSON.stringify(prevNote, null, 2)}\n`
+    previousNotesText.forEach((prevNoteText, index) => {
+      evaluationUserPrompt += `--- Previous Session ${index + 1} ---
+${prevNoteText}
+
+`
     })
   } else {
     evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
@@ -281,13 +290,23 @@ No previous sessions available for this patient`
       const validation = validateBedrockResponse(parsed)
 
       // Normalise issues and compute numeric score based on deductions
+      // Helper function to round points to nearest multiple of 5
+      const roundToNearestFive = (num: number): number => {
+        return Math.round(num / 5) * 5
+      }
+
       const issues = (parsed.issues || []).map((issue: any) => {
         let severity = issue.severity as string | undefined
+        let pointsDeducted = typeof issue.points_deducted === 'number' ? issue.points_deducted : 0
+
+        // Round points_deducted to nearest multiple of 5 (5, 10, 15, 20, 25, etc.)
+        pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
+
         // If severity not provided, derive from points_deducted
-        if (!severity && typeof issue.points_deducted === 'number') {
-          if (issue.points_deducted >= 25) {
+        if (!severity) {
+          if (pointsDeducted >= 25) {
             severity = 'critical'
-          } else if (issue.points_deducted >= 15) {
+          } else if (pointsDeducted >= 15) {
             severity = 'moderate'
           } else {
             severity = 'minor'
@@ -295,7 +314,7 @@ No previous sessions available for this patient`
         }
         return {
           severity: (severity || '') as string,
-          points_deducted: typeof issue.points_deducted === 'number' ? issue.points_deducted : 0,
+          points_deducted: pointsDeducted,
           section_id: issue.section_id || '',
           section: issue.section || '',
           justification: issue.justification || '',

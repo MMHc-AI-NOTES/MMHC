@@ -51,14 +51,20 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     }
 
     // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
-    const previousSessions =
+    // In seeder: first is current session, then incremented value is previous session
+    // Extract session number from sessionId (e.g., "session-67" -> 67)
+    const currentSessionNumber = Number.parseInt(session.sessionId.replace('session-', '')) || 0
+
+    // Find sessions with higher sessionId number (incremented value = previous)
+    const allPatientSessions =
       session.patientId !== null
-        ? await Session.query()
-            .where('patient_id', session.patientId)
-            .where('created_at', '<', session.createdAt.toJSDate())
-            .orderBy('created_at', 'desc')
+        ? await Session.query().where('patient_id', session.patientId).orderBy('id', 'asc')
         : []
+
+    const previousSessions = allPatientSessions.filter((s) => {
+      const sessionNumber = Number.parseInt(s.sessionId.replace('session-', '')) || 0
+      return sessionNumber > currentSessionNumber
+    })
 
     // Use session.session as current note and agent.prompt as prompt
     const currentNote = session.session
@@ -417,14 +423,20 @@ export const reevaluateChat = async (chatId: number) => {
     }
 
     // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
-    const previousSessions =
+    // In seeder: first is current session, then incremented value is previous session
+    // Extract session number from sessionId (e.g., "session-67" -> 67)
+    const currentSessionNumber = Number.parseInt(session.sessionId.replace('session-', '')) || 0
+
+    // Find sessions with higher sessionId number (incremented value = previous)
+    const allPatientSessions =
       session.patientId !== null
-        ? await Session.query()
-            .where('patient_id', session.patientId)
-            .where('created_at', '<', session.createdAt.toJSDate())
-            .orderBy('created_at', 'desc')
+        ? await Session.query().where('patient_id', session.patientId).orderBy('id', 'asc')
         : []
+
+    const previousSessions = allPatientSessions.filter((s) => {
+      const sessionNumber = Number.parseInt(s.sessionId.replace('session-', '')) || 0
+      return sessionNumber > currentSessionNumber
+    })
 
     const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
 
