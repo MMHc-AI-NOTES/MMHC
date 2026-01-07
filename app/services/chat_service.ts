@@ -61,14 +61,21 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
         ? await Session.query().where('patient_id', session.patientId).orderBy('id', 'asc')
         : []
 
-    const previousSessions = allPatientSessions.filter((s) => {
-      const sessionNumber = Number.parseInt(s.sessionId.replace('session-', '')) || 0
-      return sessionNumber < currentSessionNumber
-    })
+    const previousSession = allPatientSessions
+      .filter((s) => {
+        const sessionNumber = Number.parseInt(s.sessionId.replace('session-', '')) || 0
+        return sessionNumber < currentSessionNumber
+      })
+      .sort((a, b) => {
+        const numA = Number.parseInt(a.sessionId.replace('session-', '')) || 0
+        const numB = Number.parseInt(b.sessionId.replace('session-', '')) || 0
+        return numB - numA
+      })[0]
 
     // Use session.session as current note and agent.prompt as prompt
     const currentNote = session.session
-    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
+    const previousNote = previousSession?.session
+    const previousNotes = previousNote ? [previousNote] : []
     const prompt = agent.prompt
     const modelId = agent.model
     const temperature = agent.temperature ?? 0.3
