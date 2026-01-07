@@ -181,7 +181,7 @@ const validateBedrockResponse = (
 export const evaluateChatWithBedrock = async (
   modelId: string,
   currentNote: string,
-  previousNotes: string[] | undefined,
+  previousNote: string | undefined,
   systemPrompt: string,
   temperature: number,
   topP?: number | null,
@@ -232,18 +232,16 @@ export const evaluateChatWithBedrock = async (
     currentNoteText = typeof currentNote === 'string' ? currentNote : String(currentNote)
   }
 
-  // Extract plain text from previous notes
-  const previousNotesText: string[] = []
-  if (previousNotes && previousNotes.length > 0) {
-    previousNotes.forEach((prevNote) => {
-      try {
-        const parsed = typeof prevNote === 'string' ? JSON.parse(prevNote) : prevNote
-        const sessionText = parsed.session || parsed || prevNote
-        previousNotesText.push(typeof sessionText === 'string' ? sessionText : String(sessionText))
-      } catch {
-        previousNotesText.push(typeof prevNote === 'string' ? prevNote : String(prevNote))
-      }
-    })
+  // Extract plain text from previous note
+  let previousNoteText: string | undefined
+  if (previousNote) {
+    try {
+      const parsed = typeof previousNote === 'string' ? JSON.parse(previousNote) : previousNote
+      const sessionText = parsed.session || parsed || previousNote
+      previousNoteText = typeof sessionText === 'string' ? sessionText : String(sessionText)
+    } catch {
+      previousNoteText = typeof previousNote === 'string' ? previousNote : String(previousNote)
+    }
   }
 
   // Build prompt with plain text format (no JSON, no escaped quotes, no \n\n)
@@ -252,16 +250,9 @@ ${currentNoteText}
 
 `
 
-  if (previousNotesText.length > 0) {
-    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesText.length} session(s)):
-
-`
-    previousNotesText.forEach((prevNoteText, index) => {
-      evaluationUserPrompt += `--- Previous Session ${index + 1} ---
-${prevNoteText}
-
-`
-    })
+  if (previousNoteText) {
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
+${previousNoteText}`
   } else {
     evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
 No previous sessions available for this patient`

@@ -50,25 +50,27 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       throw new Error('Agent model is not configured')
     }
 
-    // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // In seeder: first is current session, then incremented value is previous session
-    // Extract session number from sessionId (e.g., "session-67" -> 67)
-    const currentSessionNumber = Number.parseInt(session.sessionId.replace('session-', '')) || 0
+    // Get single previous session for the same patient (for better evaluation based on patient history)
+    // Previous session has lower id than current session
+    let previousNote: string | undefined
+    if (session.patientId !== null) {
+      // Find the single most recent previous session (highest id < current session id)
+      const previousSession = await Session.query()
+        .where('patient_id', session.patientId)
+        .where('id', '<', session.id)
+        .orderBy('id', 'desc')
+        .first()
 
-    // Find sessions with higher sessionId number (incremented value = previous)
-    const allPatientSessions =
-      session.patientId !== null
-        ? await Session.query().where('patient_id', session.patientId).orderBy('id', 'asc')
-        : []
+      previousNote = previousSession?.session || undefined
 
-    const previousSessions = allPatientSessions.filter((s) => {
-      const sessionNumber = Number.parseInt(s.sessionId.replace('session-', '')) || 0
-      return sessionNumber < currentSessionNumber
-    })
+      // Debug logging
+      console.log(
+        `🔍 Previous session lookup: currentNoteId=${reqData.note_id}, currentId=${session.id}, patientId=${session.patientId}, previousNoteId=${previousSession?.noteId || 'none'}`
+      )
+    }
 
     // Use session.session as current note and agent.prompt as prompt
     const currentNote = session.session
-    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
     const prompt = agent.prompt
     const modelId = agent.model
     const temperature = agent.temperature ?? 0.3
@@ -84,11 +86,11 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Evaluate with Bedrock (with previous notes for comparison based on patient history)
+    // Evaluate with Bedrock (with previous note for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       modelId,
       currentNote,
-      previousNotes.length > 0 ? previousNotes : undefined,
+      previousNote,
       prompt,
       temperature,
       topP,
@@ -422,23 +424,19 @@ export const reevaluateChat = async (chatId: number) => {
       throw new Error('Session not found for this chat')
     }
 
-    // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // In seeder: first is current session, then incremented value is previous session
-    // Extract session number from sessionId (e.g., "session-67" -> 67)
-    const currentSessionNumber = Number.parseInt(session.sessionId.replace('session-', '')) || 0
+    // Get single previous session for the same patient (for better evaluation based on patient history)
+    // Previous session has lower id than current session
+    let previousNote: string | undefined
+    if (session.patientId !== null) {
+      // Find the single most recent previous session (highest id < current session id)
+      const previousSession = await Session.query()
+        .where('patient_id', session.patientId)
+        .where('id', '<', session.id)
+        .orderBy('id', 'desc')
+        .first()
 
-    // Find sessions with higher sessionId number (incremented value = previous)
-    const allPatientSessions =
-      session.patientId !== null
-        ? await Session.query().where('patient_id', session.patientId).orderBy('id', 'asc')
-        : []
-
-    const previousSessions = allPatientSessions.filter((s) => {
-      const sessionNumber = Number.parseInt(s.sessionId.replace('session-', '')) || 0
-      return sessionNumber > currentSessionNumber
-    })
-
-    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
+      previousNote = previousSession?.session || undefined
+    }
 
     if (!chat.prompt) {
       console.log(
@@ -457,11 +455,11 @@ export const reevaluateChat = async (chatId: number) => {
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Re-evaluate with Bedrock (with previous notes for comparison based on patient history)
+    // Re-evaluate with Bedrock (with previous note for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       chat.modelId,
       chat.userNote,
-      previousNotes.length > 0 ? previousNotes : undefined,
+      previousNote,
       chat.prompt,
       temperature,
       topP,
