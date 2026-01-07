@@ -63,7 +63,7 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
 
     const previousSessions = allPatientSessions.filter((s) => {
       const sessionNumber = Number.parseInt(s.sessionId.replace('session-', '')) || 0
-      return sessionNumber > currentSessionNumber
+      return sessionNumber < currentSessionNumber
     })
 
     // Use session.session as current note and agent.prompt as prompt
