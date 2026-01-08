@@ -62,11 +62,6 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
         .first()
 
       previousNote = previousSession?.session || undefined
-
-      // Debug logging
-      console.log(
-        `🔍 Previous session lookup: currentNoteId=${reqData.note_id}, currentId=${session.id}, patientId=${session.patientId}, previousNoteId=${previousSession?.noteId || 'none'}`
-      )
     }
 
     // Use session.session as current note and agent.prompt as prompt

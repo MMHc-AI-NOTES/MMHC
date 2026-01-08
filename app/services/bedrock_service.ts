@@ -223,10 +223,35 @@ export const evaluateChatWithBedrock = async (
   let currentNoteText: string
 
   try {
-    // Try to parse if it's JSON, otherwise use as-is
-    const parsed = typeof currentNote === 'string' ? JSON.parse(currentNote) : currentNote
-    // Extract session text from parsed object or use the string directly
-    currentNoteText = parsed.session || parsed || currentNote
+    // Try to parse if it's JSON string, otherwise use as-is
+    let parsed: any
+    if (typeof currentNote === 'string') {
+      try {
+        parsed = JSON.parse(currentNote)
+      } catch {
+        // Not JSON, use as plain string
+        parsed = currentNote
+      }
+    } else {
+      parsed = currentNote
+    }
+
+    // If parsed is an object, convert to plain text format
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      const parts: string[] = []
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (value && String(value).trim() !== '') {
+          parts.push(`${key}: ${value}`)
+        } else if (key.includes('optional') || key.includes('Optional')) {
+          // Include optional fields even if empty
+          parts.push(`${key}:   `)
+        }
+      })
+      currentNoteText = parts.join('  \n\n')
+    } else {
+      // Already a string or other format
+      currentNoteText = typeof parsed === 'string' ? parsed : String(parsed)
+    }
   } catch {
     // If parsing fails, use as plain text
     currentNoteText = typeof currentNote === 'string' ? currentNote : String(currentNote)
@@ -236,9 +261,35 @@ export const evaluateChatWithBedrock = async (
   let previousNoteText: string | undefined
   if (previousNote) {
     try {
-      const parsed = typeof previousNote === 'string' ? JSON.parse(previousNote) : previousNote
-      const sessionText = parsed.session || parsed || previousNote
-      previousNoteText = typeof sessionText === 'string' ? sessionText : String(sessionText)
+      // Try to parse if it's JSON string, otherwise use as-is
+      let parsed: any
+      if (typeof previousNote === 'string') {
+        try {
+          parsed = JSON.parse(previousNote)
+        } catch {
+          // Not JSON, use as plain string
+          parsed = previousNote
+        }
+      } else {
+        parsed = previousNote
+      }
+
+      // If parsed is an object, convert to plain text format
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        const parts: string[] = []
+        Object.entries(parsed).forEach(([key, value]) => {
+          if (value && String(value).trim() !== '') {
+            parts.push(`${key}: ${value}`)
+          } else if (key.includes('optional') || key.includes('Optional')) {
+            // Include optional fields even if empty
+            parts.push(`${key}:   `)
+          }
+        })
+        previousNoteText = parts.join('  \n\n')
+      } else {
+        // Already a string or other format
+        previousNoteText = typeof parsed === 'string' ? parsed : String(parsed)
+      }
     } catch {
       previousNoteText = typeof previousNote === 'string' ? previousNote : String(previousNote)
     }
