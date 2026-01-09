@@ -9,6 +9,7 @@ import {
   WorkflowEnum,
   PriorityEnum,
 } from '#enums/session_enum'
+import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 
 export default class extends BaseSeeder {
   async run() {
@@ -90,7 +91,7 @@ export default class extends BaseSeeder {
         {
           noteId: '6867b209-bb73-4608-8880-1e045e117d36',
           sessionId: 'session-10',
-          session: `First Name: Wendy  \n\nSession Duration: 6:00 pm - 6:53 pm  \n\nSuicidality: Not Present  \n\nHomicidality: Not Present  \n\nSubjective: The client reports that she has been dealing with some stress/low mood and is trying to create things to look forward to. Discussed tension with friend and difficulty with setting boundaries.  \n\nObjective: The client was alert and cooperative during the session, and her behavior was appropriate to the setting.  \n\nAssessment & Therapeutic Intervention: Worked on identifying things that the client can do for relaxation/self-care to improve mood, as well as planning things to look forward to in the future. Discussed conflict the client is experiencing with her friend: discussed how giving too much to others/not setting boundaries leads to feelings of frustration and resentment, and explored ways to improve communication.  \n\nReaction to Intervention: Positive.  \n\nPlan and Collaboration: Discuss the client's progress with improving assertiveness and standing up for herself/establishing boundaries; discuss progress prioritizing herself and taking time for relaxation.  \n\nProgress: Progress (The client is making progress trying to focus on the positives and find things to look forward to.)  \n\nTherapist Initials: AJ`,
+          session: `Session Duration: 6:00 pm - 6:53 pm  \n\nSuicidality: Not Present  \n\nHomicidality: Not Present  \n\nSubjective: The client reports that she has been dealing with some stress/low mood and is trying to create things to look forward to. Discussed tension with friend and difficulty with setting boundaries.  \n\nObjective: The client was alert and cooperative during the session, and her behavior was appropriate to the setting.  \n\nAssessment & Therapeutic Intervention: Worked on identifying things that the client can do for relaxation/self-care to improve mood, as well as planning things to look forward to in the future. Discussed conflict the client is experiencing with her friend: discussed how giving too much to others/not setting boundaries leads to feelings of frustration and resentment, and explored ways to improve communication.  \n\nReaction to Intervention: Positive.  \n\nPlan and Collaboration: Discuss the client's progress with improving assertiveness and standing up for herself/establishing boundaries; discuss progress prioritizing herself and taking time for relaxation.  \n\nProgress: Progress (The client is making progress trying to focus on the positives and find things to look forward to.)  \n\nTherapist Initials: AJ`,
           practitionerId: 6,
           patientId: 8,
           type: SessionTypeEnum.intake,
@@ -98,7 +99,7 @@ export default class extends BaseSeeder {
         {
           noteId: '34914133-3c6c-4f04-a275-e0fde9317e00',
           sessionId: 'session-11',
-          session: `First Name: James  \n\nLast Name: Piela  \n\nSession Duration: 11:00 am - 11:53 am  \n\nSuicidality: Not Present  \n\nHomicidality: Not Present  \n\nSubjective: The client reports that he has still been dealing with some stress, but overall things are going well and he's feeling confident in his ability to cope with it. Discussed how to feel prepared for uncertainty and finding ways to feel empowered rather than helpless.  \n\nObjective: The client was alert and cooperative during the session, and his behavior was appropriate to the setting.  \n\nAssessment & Therapeutic Intervention: Discussed how the client has been coping with stress and feeling more confident that he has the tools to manage it. Discussed ways for the client to feel more prepared and cultivate a sense of empowerment/agency.  \n\nReaction to Intervention: Positive; the client feels confident in his coping skills.  \n\nPlan and Collaboration: Continue to discuss the client's progress with managing anxiety and coping with current stressors; continue to discuss building confidence in himself and his practice, and focusing on what is within his control.  \n\nProgress: Progress (The client is making progress with feeling confident in his ability to cope with anxiety.)  \n\nTherapist Initials: AJ`,
+          session: `Last Name: Piela  \n\nSession Duration: 11:00 am - 11:53 am  \n\nSuicidality: Not Present  \n\nHomicidality: Not Present  \n\nSubjective: The client reports that he has still been dealing with some stress, but overall things are going well and he's feeling confident in his ability to cope with it. Discussed how to feel prepared for uncertainty and finding ways to feel empowered rather than helpless.  \n\nObjective: The client was alert and cooperative during the session, and his behavior was appropriate to the setting.  \n\nAssessment & Therapeutic Intervention: Discussed how the client has been coping with stress and feeling more confident that he has the tools to manage it. Discussed ways for the client to feel more prepared and cultivate a sense of empowerment/agency.  \n\nReaction to Intervention: Positive; the client feels confident in his coping skills.  \n\nPlan and Collaboration: Continue to discuss the client's progress with managing anxiety and coping with current stressors; continue to discuss building confidence in himself and his practice, and focusing on what is within his control.  \n\nProgress: Progress (The client is making progress with feeling confident in his ability to cope with anxiety.)  \n\nTherapist Initials: AJ`,
           practitionerId: 6,
           patientId: 9,
           type: SessionTypeEnum.intake,
@@ -1076,7 +1077,7 @@ export default class extends BaseSeeder {
             manager: ManagerEnum.pending,
             workflow: WorkflowEnum.in_queue,
             priority: PriorityEnum.low,
-            reviewCycle: null,
+            reviewCycle: ReviewCycleEnum.cycle_1_of_3,
           }
         })
       )
