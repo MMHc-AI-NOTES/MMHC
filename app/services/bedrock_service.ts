@@ -181,7 +181,7 @@ const validateBedrockResponse = (
 export const evaluateChatWithBedrock = async (
   modelId: string,
   currentNote: string,
-  previousNotes: string[] | undefined,
+  previousNote: string | undefined,
   systemPrompt: string,
   temperature: number,
   topP?: number | null,
@@ -219,40 +219,91 @@ export const evaluateChatWithBedrock = async (
   const evaluationSystemPrompt = systemPrompt
 
   // Build user prompt with current and previous notes
-  // currentNote and previousNotes are JSON strings, so we parse and stringify them properly
-  let currentNoteParsed: any
+  // Extract plain text from session data (no JSON stringification - send as plain text)
+  let currentNoteText: string
 
   try {
-    currentNoteParsed = typeof currentNote === 'string' ? JSON.parse(currentNote) : currentNote
-  } catch {
-    currentNoteParsed = { session: currentNote }
-  }
-
-  // Parse all previous notes
-  const previousNotesParsed: any[] = []
-  if (previousNotes && previousNotes.length > 0) {
-    previousNotes.forEach((prevNote) => {
+    // Try to parse if it's JSON string, otherwise use as-is
+    let parsed: any
+    if (typeof currentNote === 'string') {
       try {
-        const parsed = typeof prevNote === 'string' ? JSON.parse(prevNote) : prevNote
-        previousNotesParsed.push(parsed)
+        parsed = JSON.parse(currentNote)
       } catch {
-        previousNotesParsed.push({ session: prevNote })
+        // Not JSON, use as plain string
+        parsed = currentNote
       }
-    })
+    } else {
+      parsed = currentNote
+    }
+
+    // If parsed is an object, convert to plain text format
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      const parts: string[] = []
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (value && String(value).trim() !== '') {
+          parts.push(`${key}: ${value}`)
+        } else if (key.includes('optional') || key.includes('Optional')) {
+          // Include optional fields even if empty
+          parts.push(`${key}:   `)
+        }
+      })
+      currentNoteText = parts.join('  \n\n')
+    } else {
+      // Already a string or other format
+      currentNoteText = typeof parsed === 'string' ? parsed : String(parsed)
+    }
+  } catch {
+    // If parsing fails, use as plain text
+    currentNoteText = typeof currentNote === 'string' ? currentNote : String(currentNote)
   }
 
-  // Build prompt with current note and all previous notes
+  // Extract plain text from previous note
+  let previousNoteText: string | undefined
+  if (previousNote) {
+    try {
+      // Try to parse if it's JSON string, otherwise use as-is
+      let parsed: any
+      if (typeof previousNote === 'string') {
+        try {
+          parsed = JSON.parse(previousNote)
+        } catch {
+          // Not JSON, use as plain string
+          parsed = previousNote
+        }
+      } else {
+        parsed = previousNote
+      }
+
+      // If parsed is an object, convert to plain text format
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        const parts: string[] = []
+        Object.entries(parsed).forEach(([key, value]) => {
+          if (value && String(value).trim() !== '') {
+            parts.push(`${key}: ${value}`)
+          } else if (key.includes('optional') || key.includes('Optional')) {
+            // Include optional fields even if empty
+            parts.push(`${key}:   `)
+          }
+        })
+        previousNoteText = parts.join('  \n\n')
+      } else {
+        // Already a string or other format
+        previousNoteText = typeof parsed === 'string' ? parsed : String(parsed)
+      }
+    } catch {
+      previousNoteText = typeof previousNote === 'string' ? previousNote : String(previousNote)
+    }
+  }
+
+  // Build prompt with plain text format (no JSON, no escaped quotes, no \n\n)
   let evaluationUserPrompt = `${EvaluationPromptKeys.currentSession}:
-${JSON.stringify(currentNoteParsed, null, 2)}
+${currentNoteText}
 
 `
 
-  if (previousNotesParsed.length > 0) {
-    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions} (${previousNotesParsed.length} session(s)):
-`
-    previousNotesParsed.forEach((prevNote, index) => {
-      evaluationUserPrompt += `\n--- Previous Session ${index + 1} ---\n${JSON.stringify(prevNote, null, 2)}\n`
-    })
+  if (previousNoteText) {
+    evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
+${previousNoteText}`
   } else {
     evaluationUserPrompt += `${EvaluationPromptKeys.previousSessions}:
 No previous sessions available for this patient`
@@ -271,7 +322,14 @@ No previous sessions available for this patient`
   )
 
   try {
-    const responseText = response.output_text || ''
+    let responseText = response.output_text || ''
+
+    responseText = responseText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim()
+
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
 
     if (jsonMatch) {
@@ -281,13 +339,23 @@ No previous sessions available for this patient`
       const validation = validateBedrockResponse(parsed)
 
       // Normalise issues and compute numeric score based on deductions
+      // Helper function to round points to nearest multiple of 5
+      const roundToNearestFive = (num: number): number => {
+        return Math.round(num / 5) * 5
+      }
+
       const issues = (parsed.issues || []).map((issue: any) => {
         let severity = issue.severity as string | undefined
+        let pointsDeducted = typeof issue.points_deducted === 'number' ? issue.points_deducted : 0
+
+        // Round points_deducted to nearest multiple of 5 (5, 10, 15, 20, 25, etc.)
+        pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
+
         // If severity not provided, derive from points_deducted
-        if (!severity && typeof issue.points_deducted === 'number') {
-          if (issue.points_deducted >= 25) {
+        if (!severity) {
+          if (pointsDeducted >= 25) {
             severity = 'critical'
-          } else if (issue.points_deducted >= 15) {
+          } else if (pointsDeducted >= 15) {
             severity = 'moderate'
           } else {
             severity = 'minor'
@@ -295,7 +363,7 @@ No previous sessions available for this patient`
         }
         return {
           severity: (severity || '') as string,
-          points_deducted: typeof issue.points_deducted === 'number' ? issue.points_deducted : 0,
+          points_deducted: pointsDeducted,
           section_id: issue.section_id || '',
           section: issue.section || '',
           justification: issue.justification || '',
@@ -382,13 +450,21 @@ No previous sessions available for this patient`
     }
   } catch (error: any) {
     // For errors, return fallback response with error validation status
+    // Clean markdown code blocks from response text
+    let cleanedResponseText = response.output_text || 'Evaluation completed'
+    cleanedResponseText = cleanedResponseText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim()
+
     return {
       'score': 0,
       'pass': false,
       'issues': [],
-      'summary': response.output_text || 'Evaluation completed',
+      'summary': cleanedResponseText,
       'sentiment': 'neutral',
-      'evaluation': response.output_text || 'Evaluation completed',
+      'evaluation': cleanedResponseText,
       '6tx9-1_subjective': '',
       'rb2f-1_objective': '',
       'zad8-1_asment_&_therapeutic_intervention': '',
@@ -397,7 +473,7 @@ No previous sessions available for this patient`
       '9z5t-1_therapist_reflection': '',
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
-      'raw_response': response.output_text || 'Evaluation completed',
+      'raw_response': cleanedResponseText,
       'user_input': evaluationUserPrompt,
       'validation_result': {
         isValid: false,
