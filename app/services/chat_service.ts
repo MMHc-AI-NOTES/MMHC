@@ -50,19 +50,22 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
       throw new Error('Agent model is not configured')
     }
 
-    // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
-    const previousSessions =
-      session.patientId !== null
-        ? await Session.query()
-            .where('patient_id', session.patientId)
-            .where('created_at', '<', session.createdAt.toJSDate())
-            .orderBy('created_at', 'desc')
-        : []
+    // Get single previous session for the same patient (for better evaluation based on patient history)
+    // Previous session has lower id than current session
+    let previousNote: string | undefined
+    if (session.patientId !== null) {
+      // Find the single most recent previous session (highest id < current session id)
+      const previousSession = await Session.query()
+        .where('patient_id', session.patientId)
+        .where('id', '<', session.id)
+        .orderBy('id', 'desc')
+        .first()
+
+      previousNote = previousSession?.session || undefined
+    }
 
     // Use session.session as current note and agent.prompt as prompt
     const currentNote = session.session
-    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
     const prompt = agent.prompt
     const modelId = agent.model
     const temperature = agent.temperature ?? 0.3
@@ -78,11 +81,11 @@ export const createChat = async (reqData: createChatValidatorInterface, userId: 
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Evaluate with Bedrock (with previous notes for comparison based on patient history)
+    // Evaluate with Bedrock (with previous note for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       modelId,
       currentNote,
-      previousNotes.length > 0 ? previousNotes : undefined,
+      previousNote,
       prompt,
       temperature,
       topP,
@@ -416,17 +419,19 @@ export const reevaluateChat = async (chatId: number) => {
       throw new Error('Session not found for this chat')
     }
 
-    // Get all previous sessions for the same patient (for better evaluation based on patient history)
-    // Filter sessions created before the current session and order by created_at desc (most recent previous session first)
-    const previousSessions =
-      session.patientId !== null
-        ? await Session.query()
-            .where('patient_id', session.patientId)
-            .where('created_at', '<', session.createdAt.toJSDate())
-            .orderBy('created_at', 'desc')
-        : []
+    // Get single previous session for the same patient (for better evaluation based on patient history)
+    // Previous session has lower id than current session
+    let previousNote: string | undefined
+    if (session.patientId !== null) {
+      // Find the single most recent previous session (highest id < current session id)
+      const previousSession = await Session.query()
+        .where('patient_id', session.patientId)
+        .where('id', '<', session.id)
+        .orderBy('id', 'desc')
+        .first()
 
-    const previousNotes = previousSessions.map((prevSession) => prevSession.session).filter(Boolean)
+      previousNote = previousSession?.session || undefined
+    }
 
     if (!chat.prompt) {
       console.log(
@@ -445,11 +450,11 @@ export const reevaluateChat = async (chatId: number) => {
     const startTimeMs = Date.now()
     const startTime = DateTime.fromMillis(startTimeMs)
 
-    // Re-evaluate with Bedrock (with previous notes for comparison based on patient history)
+    // Re-evaluate with Bedrock (with previous note for comparison based on patient history)
     const evaluation = await evaluateChatWithBedrock(
       chat.modelId,
       chat.userNote,
-      previousNotes.length > 0 ? previousNotes : undefined,
+      previousNote,
       chat.prompt,
       temperature,
       topP,
