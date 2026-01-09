@@ -1,0 +1,152 @@
+name: Deploy to Stag Remote Server
+
+on:
+  push:
+    branches:
+      - stag
+  workflow_dispatch:
+
+# These permissions are required for the OIDC token exchange with AWS.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Application to EC2
+    runs-on: ubuntu-latest
+
+    env:
+      LOCAL_PATH: build
+      REMOTE_PATH: /home/ubuntu/mmhc-backend-stag
+      AVAILABILITY_ZONE: us-east-1f
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Npm Run Build
+        run: npm run build
+
+      - name: Create env file
+        run: |
+          echo "${{ vars.ENV_STAG }}" > .env
+          cat .env > ./build/.env  # Copy .env to the build directory
+
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: build/
+          key: build-${{ github.sha }}
+
+      - name: Configure AWS Credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          # The ARN of the IAM role to assume.
+          # This role MUST be configured in your AWS account to trust the GitHub OIDC provider.
+          # Store this as a secret in GitHub repository settings: Settings > Secrets and variables > Actions > New repository secret
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_GITHUB }}
+
+          # The AWS region where your resources are located.
+          # Store this as a variable in GitHub repository settings: Settings > Secrets and variables > Actions > New repository variable
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # ---------- Generate SSH key for temporary login ----------
+      - name: Generate SSH Key
+        run: |
+          ssh-keygen -t rsa -N "" -f temp_key
+          echo "Key generated"
+
+      # ---------- Push public key using EC2 Instance Connect ----------
+      - name: Send SSH Key to EC2
+        run: |
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id ${{ secrets.EC2_INSTANCE_ID }} \
+            --instance-os-user ubuntu \
+            --availability-zone ${{ env.AVAILABILITY_ZONE }} \
+            --ssh-public-key file://temp_key.pub \
+
+      - name: Clean build artifacts
+        run: |
+          find ./build -type f -name ".DS_Store" -delete
+          find ./build -type d -name ".git" -exec rm -rf {} + 2>/dev/null || true
+
+      - name: Rsync to EC2
+        run: |
+          rsync -avz --delete --progress \
+            --compress-level=9 \
+            --exclude="node_modules" \
+            --exclude="tmp" \
+            --exclude=".github" \
+            --exclude=".gitignore" \
+            --exclude=".DS_Store" \
+            -e "ssh -i temp_key -o StrictHostKeyChecking=no -o ConnectTimeout=10" \
+            ./build/ \
+            ubuntu@${{ secrets.EC2_PUBLIC_IP }}:${{ env.REMOTE_PATH }}
+
+      - name: Running commands on remote host
+        run: |
+          echo
+          echo "** Running commands on remote host named $_remote **"
+          echo
+
+      - name: Execute Remote Commands
+        run: |
+          ssh -i temp_key -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_PUBLIC_IP }} "bash -s /home/ubuntu/mmhc-backend-stag" <<'EOL'
+          #!/bin/bash
+
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          export HOME="/home/ubuntu/"
+
+          now="$(date)"
+          name="$HOSTNAME"
+          up="$(uptime)"
+          echo "Server name is $name"
+          echo "Server date and time is $now"
+          echo "Server uptime: $up"
+          echo "remote_directory_name : $1"
+          _remote_directory_name=$1
+          _pm2_server_ref=$1
+          NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
+
+
+          ## go to desired directory
+          cd $_remote_directory_name
+
+          nvm use v22.21
+
+          npm i
+
+          node ace migration:run --force
+
+
+          node ace db:seed -f "./database/seeders/1_user_seeder"
+          node ace db:seed -f "./database/seeders/2_patient_seeder"
+          node ace db:seed -f "./database/seeders/3_cpt_code_seeder"
+          # node ace db:seed -f "./database/seeders/4_note_seeder"
+
+          # restart PM2
+          pm2 stop $_pm2_server_ref --silent
+          pm2 delete $_pm2_server_ref --silent
+          pm2 start bin/server.js --name $_pm2_server_ref --time
+
+          echo "Deployment Ended Local system name: $HOSTNAME"
+          echo "Deployment Ended Local date and time: $(date)"
+          echo "Bye"
+
+          EOL
+
+      - name: Deployment Successful
+        run: echo "Deployment successful."
