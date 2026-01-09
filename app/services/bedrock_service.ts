@@ -322,7 +322,14 @@ No previous sessions available for this patient`
   )
 
   try {
-    const responseText = response.output_text || ''
+    let responseText = response.output_text || ''
+
+    responseText = responseText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim()
+
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
 
     if (jsonMatch) {
@@ -443,13 +450,21 @@ No previous sessions available for this patient`
     }
   } catch (error: any) {
     // For errors, return fallback response with error validation status
+    // Clean markdown code blocks from response text
+    let cleanedResponseText = response.output_text || 'Evaluation completed'
+    cleanedResponseText = cleanedResponseText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim()
+
     return {
       'score': 0,
       'pass': false,
       'issues': [],
-      'summary': response.output_text || 'Evaluation completed',
+      'summary': cleanedResponseText,
       'sentiment': 'neutral',
-      'evaluation': response.output_text || 'Evaluation completed',
+      'evaluation': cleanedResponseText,
       '6tx9-1_subjective': '',
       'rb2f-1_objective': '',
       'zad8-1_asment_&_therapeutic_intervention': '',
@@ -458,7 +473,7 @@ No previous sessions available for this patient`
       '9z5t-1_therapist_reflection': '',
       'gm4p-1_progress': '',
       'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
-      'raw_response': response.output_text || 'Evaluation completed',
+      'raw_response': cleanedResponseText,
       'user_input': evaluationUserPrompt,
       'validation_result': {
         isValid: false,
