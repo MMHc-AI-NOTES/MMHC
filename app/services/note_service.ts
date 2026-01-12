@@ -28,8 +28,14 @@ export const noteListing = async (
           humanReviewsQuery.orderBy('id', 'desc')
         })
       })
+      .preload('webhookVersions', (versionsQuery) => {
+        versionsQuery.orderBy('created_at', 'desc')
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
+      })
+      .withCount('webhookVersions', (countQuery) => {
+        countQuery.as('version_count')
       })
 
     // Extract search filter if present
@@ -97,6 +103,7 @@ export const noteListing = async (
         return {
           ...serialized,
           chat_count: note.$extras.chat_count || 0,
+          version_count: note.$extras.version_count || 0,
         }
       }),
     }
@@ -120,8 +127,14 @@ export const getNoteWithChats = async (noteId: string) => {
             humanReviewsQuery.orderBy('id', 'desc')
           })
       })
+      .preload('webhookVersions', (versionsQuery) => {
+        versionsQuery.orderBy('created_at', 'desc')
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
+      })
+      .withCount('webhookVersions', (countQuery) => {
+        countQuery.as('version_count')
       })
       .first()
 
@@ -130,10 +143,27 @@ export const getNoteWithChats = async (noteId: string) => {
       throw new Error('Note not found for the provided note ID')
     }
 
+    // Parse session_json for each version
+    const versionsData = note.webhookVersions.map((version) => ({
+      id: version.id,
+      session_json: version.sessionJson,
+      session_data: (() => {
+        try {
+          return JSON.parse(version.sessionJson)
+        } catch {
+          return null
+        }
+      })(),
+      created_at: version.createdAt,
+      updated_at: version.updatedAt,
+    }))
+
     const serialized = note.serialize()
     const noteWithCount = {
       ...serialized,
       chat_count: note.$extras.chat_count || 0,
+      version_count: note.$extras.version_count || 0,
+      versions: versionsData,
     }
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)

@@ -6,6 +6,7 @@ import Chat from '#models/chat'
 import Patient from '#models/patient'
 import HumanReview from '#models/human_review'
 import CptCode from '#models/cpt_code'
+import WebhookSessionVersion from '#models/webhook_session_version'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import {
   SessionTypeEnum,
@@ -198,6 +199,12 @@ export default class Session extends BaseModel {
     localKey: 'noteId',
   })
   declare humanReviews: HasMany<typeof HumanReview>
+
+  @hasMany(() => WebhookSessionVersion, {
+    foreignKey: 'noteId',
+    localKey: 'noteId',
+  })
+  declare webhookVersions: HasMany<typeof WebhookSessionVersion>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery
