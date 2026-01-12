@@ -37,7 +37,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
     }
 
     if (!practitionerId) {
-      throw new Error(`Practitioner not found for Name: ${payload.PractitionerName || 'N/A'}`)
+      throw new Error(`Practitioner not found for id: ${payload.PractitionerId || 'N/A'}`)
     }
 
     // Find patient by ClientId
