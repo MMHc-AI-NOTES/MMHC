@@ -46,7 +46,9 @@ export const invokeBedrockModel = async (
     // - system message in separate field (not in messages array)
     // - No inferenceConfig wrapper
     // Claude 4.5 models don't support both temperature and top_p together
-    const isClaude45 = actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1
+    const isClaude45 =
+      actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1 ||
+      actualModelId === agentModelKeys.CLAUDE_4_5_SONNET_V1
 
     const body: any = {
       anthropic_version: bedrockConfig.anthropicVersion,
