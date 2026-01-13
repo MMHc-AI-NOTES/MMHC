@@ -30,7 +30,7 @@ export const noteListing = async (
       })
       .preload('webhookVersions', (versionsQuery) => {
         versionsQuery.preload('smeIssues')
-        versionsQuery.orderBy('created_at', 'desc')
+        versionsQuery.orderBy('id', 'desc')
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
@@ -130,7 +130,7 @@ export const getNoteWithChats = async (noteId: string) => {
       })
       .preload('webhookVersions', (versionsQuery) => {
         versionsQuery.preload('smeIssues')
-        versionsQuery.orderBy('created_at', 'desc')
+        versionsQuery.orderBy('id', 'desc')
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
