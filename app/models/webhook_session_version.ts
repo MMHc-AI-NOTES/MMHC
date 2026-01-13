@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeFetch, beforeFind, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, column, hasMany } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
+import SmeIssue from './sme_issue.js'
 
 export default class WebhookSessionVersion extends BaseModel {
   static table = 'webhook_session_versions'
@@ -31,6 +33,12 @@ export default class WebhookSessionVersion extends BaseModel {
 
   @column.dateTime({ serializeAs: null })
   declare deletedAt: DateTime | null
+
+  @hasMany(() => SmeIssue, {
+    foreignKey: 'versionId',
+    localKey: 'id',
+  })
+  declare smeIssues: HasMany<typeof SmeIssue>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery
