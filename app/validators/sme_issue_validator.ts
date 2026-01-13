@@ -58,7 +58,7 @@ export const createSmeIssueValidator = vine.compile(
       return value
     }),
     note_id: vine.string().trim().minLength(1),
-    version_id: vine.number().withoutDecimals().optional().nullable(),
+    version_id: vine.number().withoutDecimals().nullable(),
     status: vine.number().withoutDecimals().optional(),
   })
 )
@@ -127,7 +127,7 @@ export const updateSmeIssueValidator = vine.compile(
       })
       .optional(),
     note_id: vine.string().trim().minLength(1).optional(),
-    version_id: vine.number().withoutDecimals().optional().nullable(),
+    version_id: vine.number().withoutDecimals().nullable(),
     status: vine.number().withoutDecimals().optional(),
   })
 )
