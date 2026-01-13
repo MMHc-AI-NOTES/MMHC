@@ -3,6 +3,12 @@ import { middleware } from '#start/kernel'
 
 const ChatController = () => import('#controllers/chat_controller')
 
+router.group(() => {
+  router.post('/direct', [ChatController, 'directChat']).prefix('api/chats')
+  router.post('/directChole', [ChatController, 'directChat2']).prefix('api/chats')
+  router.get('/directTest', [ChatController, 'outputAggregator']).prefix('api/chats')
+})
+
 router
   .group(() => {
     router.post('/', [ChatController, 'create'])

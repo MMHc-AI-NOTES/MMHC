@@ -1,3 +1,4 @@
+import { targets } from '@adonisjs/core/logger'
 import Chat, { chatFilterEnum, chatSortEnum } from '#models/chat'
 import Session from '#models/session'
 import Agent from '#models/agent'
@@ -5,7 +6,7 @@ import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess } from '#services/custom_response_service'
-import { evaluateChatWithBedrock } from '#services/bedrock_service'
+import { evaluateChatWithBedrock, invokeBedrockModel } from '#services/bedrock_service'
 import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
@@ -15,6 +16,7 @@ import type {
   createChatValidatorInterface,
   updateChatValidatorInterface,
 } from '#validators/chat_validator'
+import { extractSectionText, sleep } from '#helpers/soft_delete_helper'
 
 export const createChat = async (reqData: createChatValidatorInterface, userId: number) => {
   try {
@@ -676,6 +678,128 @@ export const reevaluateChat = async (chatId: number) => {
     return sendSuccess('Chat re-evaluated successfully', chat)
   } catch (error: any) {
     console.log('Error in reevaluateChat:', error.message)
+    throw error
+  }
+}
+
+export const directChat = async (reqData: any) => {
+  try {
+    // session with current and prev
+    const currentNote = reqData.current_note || ''
+    const prevNote = reqData.prev_note || []
+
+    const outputArr = []
+
+    const keyMap: any = {
+      mental_status: 'Mental Status',
+      suicidality: 'Suicidality',
+      homicidality: 'Homicidality',
+      subjective: 'Subjective',
+      objective: 'Objective',
+      assessment_therapeutic_intervention: 'Assessment & Therapeutic Intervention',
+      reaction_to_intervention: 'Reaction to Intervention:',
+      plan_and_collaboration: 'Plan and Collaboration',
+      therapist_reflection: 'Therapist Reflection and Insight ',
+      progress: 'progress',
+    }
+
+    if (reqData.prompts.length === 0) {
+      throw new Error('prompt array not provided')
+    }
+
+    for (const prompt of Object.keys(keyMap)) {
+      console.log('prompt key', prompt)
+
+      const currentSectionText = extractSectionText(currentNote, keyMap[prompt])
+      const prevSectionText = extractSectionText(prevNote, keyMap[prompt])
+
+      const promptData = reqData.prompts.find((p: any) => p.key === prompt)
+
+      const response = await invokeBedrockModel(
+        promptData.modelId,
+        promptData.prompt, // system prompt
+        `current_note: ${currentSectionText}\n previous_note: ${prevSectionText}`, // user input
+        promptData.temperature
+      )
+
+      console.log(`Response for :`, response)
+
+      outputArr.push({
+        section: prompt,
+        response: response.output_text,
+      })
+
+      await sleep(1000)
+    }
+
+    const promptDataAggregator = reqData.prompts.find((p: any) => p.key === 'aggregator')
+
+    if (promptDataAggregator) {
+      // aggregator
+      const responseAggregator = await invokeBedrockModel(
+        promptDataAggregator.modelId,
+        promptDataAggregator.prompt, // system prompt
+        `current_note: ${currentNote}\n\n previous_note: ${prevNote}`, // user input
+        promptDataAggregator.temperature
+      )
+
+      outputArr.push({
+        section: 'aggregator',
+        response: responseAggregator.output_text,
+      })
+    }
+    return sendSuccess('Chat created and evaluated successfully', outputArr)
+  } catch (error: any) {
+    console.log('Error in createChat:', error.message)
+    throw error
+  }
+}
+
+export const directChat2 = async (reqData: any) => {
+  try {
+    // session with current and prev
+    const currentNote = reqData.current_note || ''
+    const prevNote = reqData.prev_note || []
+
+    const outputArr = []
+
+    const keyMap: any = {
+      subjective: 'Subjective',
+    }
+
+    if (reqData.prompts.length === 0) {
+      throw new Error('prompt array not provided')
+    }
+
+    for (const prompt of Object.keys(keyMap)) {
+      console.log('prompt key', prompt)
+
+      const currentSectionText = extractSectionText(currentNote, keyMap[prompt])
+      const prevSectionText = extractSectionText(prevNote, keyMap[prompt])
+
+      const promptData = reqData.prompts.find((p: any) => p.key === prompt)
+
+      const response = await invokeBedrockModel(
+        promptData.modelId,
+        promptData.prompt, // system prompt
+        `current_note: ${currentSectionText}\n previous_note: ${prevSectionText}`, // user input
+        promptData.temperature
+      )
+
+      console.log(
+        `\n\n\nSend to AI: \n\nSystem Prompt:\n${promptData.prompt} \n\ncurrent_note:\n${currentSectionText}\nprevious_note:\n${prevSectionText}\n\n`
+      )
+      console.log(`Response for :`, response)
+
+      outputArr.push({
+        section: prompt,
+        response: response.output_text,
+      })
+    }
+
+    return sendSuccess('Chat created and evaluated successfully', outputArr)
+  } catch (error: any) {
+    console.log('Error in createChat:', error.message)
     throw error
   }
 }
