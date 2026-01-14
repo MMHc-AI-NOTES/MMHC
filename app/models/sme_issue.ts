@@ -8,6 +8,7 @@ import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import {
   ErrorTypeDisplayNames,
   ErrorTypePoints,
+  IssueDescriptionDisplayNames,
   IssuesRelatedToDisplayNames,
 } from '#enums/manual_issue_enum'
 
@@ -69,8 +70,17 @@ export default class SmeIssue extends BaseModel {
   })
   declare issuesRelatedTo: number
 
-  @column()
-  declare description: string
+  @column({
+    columnName: 'description',
+    serialize: (value: number | null) => {
+      if (value === null) return null
+      return {
+        id: value,
+        name: IssueDescriptionDisplayNames[value] || null,
+      }
+    },
+  })
+  declare description: number
 
   @column({
     columnName: 'note_id',

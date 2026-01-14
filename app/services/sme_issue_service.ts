@@ -13,9 +13,7 @@ import { paginateQuery } from '#services/apply_pagination'
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
-    // Verify note exists
     const note = await Session.query().where('note_id', reqData.note_id).first()
-
     if (!note) {
       return sendError('Note not found for the provided note_id')
     }
@@ -33,20 +31,19 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
     }
 
     // Convert description enum ID to text if number is provided
-    let descriptionText: string
-    if (typeof reqData.description === 'number') {
-      descriptionText =
-        IssueDescriptionDisplayNames[reqData.description] || String(reqData.description)
-    } else {
-      descriptionText = reqData.description
-    }
+    // if (typeof reqData.description === 'number') {
+    //   descriptionText =
+    //     Number(IssueDescriptionDisplayNames[reqData.description]) || Number(reqData.description)
+    // } else {
+    //   descriptionText = reqData.description
+    // }
 
     // Create SME issue
     const smeIssue = await SmeIssue.create({
       reviewerId: reqData.reviewer_id,
       errorType: reqData.error_type,
       issuesRelatedTo: reqData.issues_related_to,
-      description: descriptionText,
+      description: Number(reqData.description),
       noteId: reqData.note_id,
       versionId: reqData.version_id ?? null,
       status: reqData.status ?? 1,

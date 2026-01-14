@@ -19,7 +19,6 @@ export const noteListing = async (
     let filterData: any
     let sortNote: any
 
-    // Build base query to get all notes (both previous and current)
     let noteListings: any = Session.query()
       .preload('practitioner')
       .preload('patient')
@@ -39,7 +38,6 @@ export const noteListing = async (
         countQuery.as('version_count')
       })
 
-    // Extract search filter if present
     let searchFilter: any = null
     let otherFilters: Array<any> = []
 
@@ -53,7 +51,6 @@ export const noteListing = async (
       })
     }
 
-    // Apply search filter (OR WHERE on note_id, practitioner_id, patient_id)
     if (searchFilter && searchFilter.value) {
       const searchValue = String(searchFilter.value).trim()
       if (searchValue) {
@@ -63,7 +60,6 @@ export const noteListing = async (
         noteListings = noteListings.where((subQuery: any) => {
           subQuery.whereILike('note_id', searchPattern)
 
-          // If search value is a number, also search in practitioner_id and patient_id
           if (!Number.isNaN(searchNumber)) {
             subQuery.orWhere('practitioner_id', searchNumber).orWhere('patient_id', searchNumber)
           }

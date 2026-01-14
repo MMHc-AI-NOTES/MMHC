@@ -27,35 +27,26 @@ export const createSmeIssueValidator = vine.compile(
         IssuesRelatedToEnum['4lbp-1'],
         IssuesRelatedToEnum.general,
       ]),
-    description: vine.any().transform((value) => {
-      // Accept string or number, validate in service
-      if (typeof value === 'string' && value.trim().length < 1) {
-        throw new Error('Description must be at least 1 character')
+    description: vine.number().transform((value) => {
+      const validIds = [
+        IssueDescriptionEnum.no_clinical_interpretation,
+        IssueDescriptionEnum.no_modality_intervention_explanation,
+        IssueDescriptionEnum.vague_non_specific_language,
+        IssueDescriptionEnum.templated_boilerplate_language,
+        IssueDescriptionEnum.repetitive_content_within_note,
+        IssueDescriptionEnum.not_specific_to_date_of_service,
+        IssueDescriptionEnum.progress_marked_not_supported,
+        IssueDescriptionEnum.transcription_style_documentation,
+        IssueDescriptionEnum.missing_required_field,
+        IssueDescriptionEnum.identical_duplicate_content_previous_note,
+        IssueDescriptionEnum.one_field_copied_previous_note,
+        IssueDescriptionEnum.repetitive_field_multiple_notes,
+        IssueDescriptionEnum.plan_generic_continuity_only,
+      ]
+      if (!validIds.includes(value)) {
+        throw new Error('Invalid description enum ID')
       }
-      if (typeof value === 'number') {
-        const validIds = [
-          IssueDescriptionEnum.no_clinical_interpretation,
-          IssueDescriptionEnum.no_modality_intervention_explanation,
-          IssueDescriptionEnum.vague_non_specific_language,
-          IssueDescriptionEnum.templated_boilerplate_language,
-          IssueDescriptionEnum.repetitive_content_within_note,
-          IssueDescriptionEnum.not_specific_to_date_of_service,
-          IssueDescriptionEnum.progress_marked_not_supported,
-          IssueDescriptionEnum.transcription_style_documentation,
-          IssueDescriptionEnum.missing_required_field,
-          IssueDescriptionEnum.identical_duplicate_content_previous_note,
-          IssueDescriptionEnum.one_field_copied_previous_note,
-          IssueDescriptionEnum.repetitive_field_multiple_notes,
-          IssueDescriptionEnum.plan_generic_continuity_only,
-        ]
-        if (!validIds.includes(value)) {
-          throw new Error('Invalid description enum ID')
-        }
-      }
-      if (typeof value !== 'string' && typeof value !== 'number') {
-        throw new Error('Description must be a string or number')
-      }
-      return value
+      return Number(value)
     }),
     note_id: vine.string().trim().minLength(1),
     version_id: vine.number().withoutDecimals().nullable(),
@@ -91,39 +82,27 @@ export const updateSmeIssueValidator = vine.compile(
       ])
       .optional(),
     description: vine
-      .any()
+      .number()
       .transform((value) => {
-        if (value === undefined || value === null) {
-          return value
+        const validIds = [
+          IssueDescriptionEnum.no_clinical_interpretation,
+          IssueDescriptionEnum.no_modality_intervention_explanation,
+          IssueDescriptionEnum.vague_non_specific_language,
+          IssueDescriptionEnum.templated_boilerplate_language,
+          IssueDescriptionEnum.repetitive_content_within_note,
+          IssueDescriptionEnum.not_specific_to_date_of_service,
+          IssueDescriptionEnum.progress_marked_not_supported,
+          IssueDescriptionEnum.transcription_style_documentation,
+          IssueDescriptionEnum.missing_required_field,
+          IssueDescriptionEnum.identical_duplicate_content_previous_note,
+          IssueDescriptionEnum.one_field_copied_previous_note,
+          IssueDescriptionEnum.repetitive_field_multiple_notes,
+          IssueDescriptionEnum.plan_generic_continuity_only,
+        ]
+        if (!validIds.includes(value)) {
+          throw new Error('Invalid description enum ID')
         }
-        // Accept string or number, validate in service
-        if (typeof value === 'string' && value.trim().length < 1) {
-          throw new Error('Description must be at least 1 character')
-        }
-        if (typeof value === 'number') {
-          const validIds = [
-            IssueDescriptionEnum.no_clinical_interpretation,
-            IssueDescriptionEnum.no_modality_intervention_explanation,
-            IssueDescriptionEnum.vague_non_specific_language,
-            IssueDescriptionEnum.templated_boilerplate_language,
-            IssueDescriptionEnum.repetitive_content_within_note,
-            IssueDescriptionEnum.not_specific_to_date_of_service,
-            IssueDescriptionEnum.progress_marked_not_supported,
-            IssueDescriptionEnum.transcription_style_documentation,
-            IssueDescriptionEnum.missing_required_field,
-            IssueDescriptionEnum.identical_duplicate_content_previous_note,
-            IssueDescriptionEnum.one_field_copied_previous_note,
-            IssueDescriptionEnum.repetitive_field_multiple_notes,
-            IssueDescriptionEnum.plan_generic_continuity_only,
-          ]
-          if (!validIds.includes(value)) {
-            throw new Error('Invalid description enum ID')
-          }
-        }
-        if (typeof value !== 'string' && typeof value !== 'number') {
-          throw new Error('Description must be a string or number')
-        }
-        return value
+        return Number(value)
       })
       .optional(),
     note_id: vine.string().trim().minLength(1).optional(),
