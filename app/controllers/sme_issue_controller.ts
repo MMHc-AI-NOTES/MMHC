@@ -1,10 +1,15 @@
-import { createSmeIssueValidator, updateSmeIssueValidator } from '#validators/sme_issue_validator'
+import {
+  createSmeIssueValidator,
+  updateSmeIssueValidator,
+  deleteSmeIssuesByNoteAndVersionValidator,
+} from '#validators/sme_issue_validator'
 import {
   createSmeIssue,
   listSmeIssues,
   getSmeIssue,
   updateSmeIssue,
   deleteSmeIssue,
+  deleteSmeIssuesByNoteAndVersion,
 } from '#services/sme_issue_service'
 import { paginationValidator } from '#validators/pagination_validator'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -73,6 +78,18 @@ export default class SmeIssueController {
       return response
     } catch (error) {
       console.log('SME issue deleting error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async deleteByNoteAndVersion(ctx: HttpContext) {
+    try {
+      const { note_id: noteId, version_id: versionId } =
+        await deleteSmeIssuesByNoteAndVersionValidator.validate(ctx.params)
+      const response = await deleteSmeIssuesByNoteAndVersion(noteId, versionId)
+      return response
+    } catch (error) {
+      console.log('SME Issues deleting by note and version error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

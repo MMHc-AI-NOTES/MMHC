@@ -11,6 +11,7 @@ router
     router.post('/', [SmeIssueController, 'create'])
     router.patch('/:id', [SmeIssueController, 'update'])
     router.delete('/:id', [SmeIssueController, 'destroy'])
+    router.delete('/:note_id/:version_id', [SmeIssueController, 'deleteByNoteAndVersion'])
   })
   .prefix('api/sme-issues')
   .use(middleware.auth())

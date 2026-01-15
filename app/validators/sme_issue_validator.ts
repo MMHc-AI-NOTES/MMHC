@@ -25,5 +25,12 @@ export const updateSmeIssueValidator = vine.compile(
   })
 )
 
+export const deleteSmeIssuesByNoteAndVersionValidator = vine.compile(
+  vine.object({
+    note_id: vine.string().trim().minLength(1),
+    version_id: vine.number().withoutDecimals(),
+  })
+)
+
 export type createSmeIssueValidatorInterface = Infer<typeof createSmeIssueValidator>
 export type updateSmeIssueValidatorInterface = Infer<typeof updateSmeIssueValidator>

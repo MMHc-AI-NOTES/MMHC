@@ -309,3 +309,41 @@ export const deleteSmeIssue = async (id: number) => {
     return sendError(error.message)
   }
 }
+
+export const deleteSmeIssuesByNoteAndVersion = async (noteId: string, versionId: number) => {
+  try {
+    const note = await Session.query().where('note_id', noteId).first()
+    if (!note) {
+      return sendError('Note not found for the provided note_id')
+    }
+
+    const version = await WebhookSessionVersion.query()
+      .where('id', versionId)
+      .where('note_id', noteId)
+      .first()
+
+    if (!version) {
+      return sendError('Version not found for the provided version_id and note_id')
+    }
+
+    const issuesToDelete = await SmeIssue.query()
+      .where('note_id', noteId)
+      .where('version_id', versionId)
+    const count = issuesToDelete.length
+
+    if (count === 0) {
+      return sendSuccess('No SME issues found to delete', { deleted_count: 0 })
+    }
+
+    await SmeIssue.query().where('note_id', noteId).where('version_id', versionId).delete()
+
+    return sendSuccess('SME issues deleted successfully', {
+      deleted_count: count,
+      note_id: noteId,
+      version_id: versionId,
+    })
+  } catch (error: any) {
+    console.log('Error in deleteSmeIssuesByNoteAndVersion:', error.message)
+    return sendError(error.message)
+  }
+}
