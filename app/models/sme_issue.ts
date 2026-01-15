@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeFetch, beforeFind, belongsTo, column, hasOne } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, belongsTo, column } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import Session from '#models/session'
@@ -7,7 +7,7 @@ import WebhookSessionVersion from '#models/webhook_session_version'
 import ErrorType from '#models/error_type'
 import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
-import type { BelongsTo, HasOne } from '@adonisjs/lucid/types/relations'
+import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 
 export const smeIssueFilterEnum = [
   'id',
@@ -77,20 +77,20 @@ export default class SmeIssue extends BaseModel {
   @column.dateTime({ serializeAs: null })
   declare deletedAt: DateTime | null
 
-  @hasOne(() => ErrorType, {
-    foreignKey: 'error_type_id',
+  @belongsTo(() => ErrorType, {
+    foreignKey: 'errorTypeId',
   })
-  declare errorTypes: HasOne<typeof ErrorType>
+  declare errorType: BelongsTo<typeof ErrorType>
 
-  @hasOne(() => IssuesRelatedTo, {
-    foreignKey: 'issues_related_to_id',
-  })
-  declare issuesRelatedTo: HasOne<typeof IssuesRelatedTo>
-
-  @hasOne(() => IssueDescription, {
+  @belongsTo(() => IssuesRelatedTo, {
     foreignKey: 'issuesRelatedToId',
   })
-  declare issueDescription: HasOne<typeof IssueDescription>
+  declare issuesRelatedTo: BelongsTo<typeof IssuesRelatedTo>
+
+  @belongsTo(() => IssueDescription, {
+    foreignKey: 'issueDescriptionId',
+  })
+  declare issueDescription: BelongsTo<typeof IssueDescription>
 
   @belongsTo(() => User, {
     foreignKey: 'reviewerId',

@@ -1,8 +1,6 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeFetch, beforeFind, belongsTo, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, column } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
-import SmeIssue from '#models/sme_issue'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 
 export const errorTypeFilterEnum = ['id', 'name', 'display_name', 'points', 'created_at']
 export const errorTypeSortEnum = [
@@ -39,9 +37,6 @@ export default class ErrorType extends BaseModel {
 
   @column.dateTime({ serializeAs: null })
   declare deletedAt: DateTime | null
-
-  @belongsTo(() => SmeIssue)
-  declare smeIssue: BelongsTo<typeof SmeIssue>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery

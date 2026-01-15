@@ -64,7 +64,7 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
     // Reload with relationships
     await smeIssue.load('reviewer')
     await smeIssue.load('note')
-    await smeIssue.load('errorTypes')
+    await smeIssue.load('errorType')
     await smeIssue.load('issuesRelatedTo')
     if (smeIssue.issueDescriptionId) {
       await smeIssue.load('issueDescription')
@@ -110,7 +110,7 @@ export const listSmeIssues = async (
       .preload('reviewer')
       .preload('note')
       .preload('version')
-      .preload('errorTypes')
+      .preload('errorType')
       .preload('issuesRelatedTo')
       .preload('issueDescription')
 
@@ -180,7 +180,7 @@ export const getSmeIssue = async (id: number) => {
       .preload('reviewer')
       .preload('note')
       .preload('version')
-      .preload('errorTypes')
+      .preload('errorType')
       .preload('issuesRelatedTo')
       .preload('issueDescription')
       .first()
@@ -280,7 +280,7 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
     // Reload with relationships
     await issue.load('reviewer')
     await issue.load('note')
-    await issue.load('errorTypes')
+    await issue.load('errorType')
     await issue.load('issuesRelatedTo')
     if (issue.issueDescriptionId) {
       await issue.load('issueDescription')
