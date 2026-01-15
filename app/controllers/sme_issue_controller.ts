@@ -84,9 +84,12 @@ export default class SmeIssueController {
 
   public async deleteByNoteAndVersion(ctx: HttpContext) {
     try {
-      const { note_id: noteId, version_id: versionId } =
-        await deleteSmeIssuesByNoteAndVersionValidator.validate(ctx.params)
-      const response = await deleteSmeIssuesByNoteAndVersion(noteId, versionId)
+      const {
+        note_id: noteId,
+        version_id: versionId,
+        reviewer_id: reviewerId,
+      } = await deleteSmeIssuesByNoteAndVersionValidator.validate(ctx.params)
+      const response = await deleteSmeIssuesByNoteAndVersion(noteId, versionId, reviewerId)
       return response
     } catch (error) {
       console.log('SME Issues deleting by note and version error', error)

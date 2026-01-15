@@ -29,6 +29,7 @@ export const deleteSmeIssuesByNoteAndVersionValidator = vine.compile(
   vine.object({
     note_id: vine.string().trim().minLength(1),
     version_id: vine.number().withoutDecimals(),
+    reviewer_id: vine.number().withoutDecimals(),
   })
 )
 

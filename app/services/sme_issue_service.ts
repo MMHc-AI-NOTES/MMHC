@@ -4,6 +4,7 @@ import WebhookSessionVersion from '#models/webhook_session_version'
 import ErrorType from '#models/error_type'
 import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
+import User from '#models/user'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type {
   createSmeIssueValidatorInterface,
@@ -310,7 +311,11 @@ export const deleteSmeIssue = async (id: number) => {
   }
 }
 
-export const deleteSmeIssuesByNoteAndVersion = async (noteId: string, versionId: number) => {
+export const deleteSmeIssuesByNoteAndVersion = async (
+  noteId: string,
+  versionId: number,
+  reviewerId: number
+) => {
   try {
     const note = await Session.query().where('note_id', noteId).first()
     if (!note) {
@@ -326,21 +331,32 @@ export const deleteSmeIssuesByNoteAndVersion = async (noteId: string, versionId:
       return sendError('Version not found for the provided version_id and note_id')
     }
 
+    const reviewer = await User.find(reviewerId)
+    if (!reviewer) {
+      return sendError('Reviewer not found for the provided reviewer_id')
+    }
+
     const issuesToDelete = await SmeIssue.query()
       .where('note_id', noteId)
-      .where('version_id', versionId)
+      .andWhere('version_id', versionId)
+      .andWhere('reviewer_id', reviewerId)
     const count = issuesToDelete.length
 
     if (count === 0) {
       return sendSuccess('No SME issues found to delete', { deleted_count: 0 })
     }
 
-    await SmeIssue.query().where('note_id', noteId).where('version_id', versionId).delete()
+    await SmeIssue.query()
+      .where('note_id', noteId)
+      .where('version_id', versionId)
+      .where('reviewer_id', reviewerId)
+      .delete()
 
     return sendSuccess('SME issues deleted successfully', {
       deleted_count: count,
       note_id: noteId,
       version_id: versionId,
+      reviewer_id: reviewerId,
     })
   } catch (error: any) {
     console.log('Error in deleteSmeIssuesByNoteAndVersion:', error.message)
