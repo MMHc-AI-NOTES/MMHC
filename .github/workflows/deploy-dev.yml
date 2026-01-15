@@ -136,6 +136,9 @@ jobs:
           node ace db:seed -f "./database/seeders/2_patient_seeder"
           node ace db:seed -f "./database/seeders/3_cpt_code_seeder"
           node ace db:seed -f "./database/seeders/4_note_seeder"
+          node ace db:seed -f "./database/seeders/5_error_type_seeder.ts"
+          node ace db:seed -f "./database/seeders/6_issue_description_seeder.ts"
+          node ace db:seed -f "./database/seeders/7_issues_related_to_seeder.ts"
 
           # restart PM2
           pm2 stop $_pm2_server_ref --silent
