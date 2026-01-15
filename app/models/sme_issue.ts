@@ -1,22 +1,20 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeFetch, beforeFind, belongsTo, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, belongsTo, column, hasOne } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import Session from '#models/session'
 import WebhookSessionVersion from '#models/webhook_session_version'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
-import {
-  ErrorTypeDisplayNames,
-  ErrorTypePoints,
-  IssueDescriptionDisplayNames,
-  IssuesRelatedToDisplayNames,
-} from '#enums/manual_issue_enum'
+import ErrorType from '#models/error_type'
+import IssuesRelatedTo from '#models/issues_related_to'
+import IssueDescription from '#models/issue_description'
+import type { BelongsTo, HasOne } from '@adonisjs/lucid/types/relations'
 
 export const smeIssueFilterEnum = [
   'id',
   'reviewer_id',
-  'error_type',
-  'issues_related_to',
+  'error_type_id',
+  'issues_related_to_id',
+  'issue_description_id',
   'note_id',
   'version_id',
   'status',
@@ -25,8 +23,9 @@ export const smeIssueFilterEnum = [
 export const smeIssueSortEnum = [
   'id',
   'reviewer_id',
-  'error_type',
-  'issues_related_to',
+  'error_type_id',
+  'issues_related_to_id',
+  'issue_description_id',
   'note_id',
   'version_id',
   'status',
@@ -40,56 +39,22 @@ export default class SmeIssue extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
-  @column({
-    columnName: 'reviewer_id',
-  })
+  @column()
   declare reviewerId: number
 
-  @column({
-    columnName: 'error_type',
-    serialize: (value: number | null) => {
-      if (value === null) return null
-      return {
-        id: value,
-        name: ErrorTypeDisplayNames[value] || null,
-        points: ErrorTypePoints[value] || 0,
-      }
-    },
-  })
-  declare errorType: number
+  @column()
+  declare errorTypeId: number
 
-  @column({
-    columnName: 'issues_related_to',
-    serialize: (value: number | null) => {
-      if (value === null) return null
-      return {
-        id: value,
-        name: IssuesRelatedToDisplayNames[value] || null,
-      }
-    },
-  })
-  declare issuesRelatedTo: number
+  @column()
+  declare issuesRelatedToId: number
 
-  @column({
-    columnName: 'description',
-    serialize: (value: number | null) => {
-      if (value === null) return null
-      return {
-        id: value,
-        name: IssueDescriptionDisplayNames[value] || null,
-      }
-    },
-  })
-  declare description: number
+  @column()
+  declare issueDescriptionId: number | null
 
-  @column({
-    columnName: 'note_id',
-  })
+  @column()
   declare noteId: string
 
-  @column({
-    columnName: 'version_id',
-  })
+  @column()
   declare versionId: number | null
 
   @column({
@@ -111,6 +76,21 @@ export default class SmeIssue extends BaseModel {
 
   @column.dateTime({ serializeAs: null })
   declare deletedAt: DateTime | null
+
+  @hasOne(() => ErrorType, {
+    foreignKey: 'error_type_id',
+  })
+  declare errorTypes: HasOne<typeof ErrorType>
+
+  @hasOne(() => IssuesRelatedTo, {
+    foreignKey: 'issues_related_to_id',
+  })
+  declare issuesRelatedTo: HasOne<typeof IssuesRelatedTo>
+
+  @hasOne(() => IssueDescription, {
+    foreignKey: 'issuesRelatedToId',
+  })
+  declare issueDescription: HasOne<typeof IssueDescription>
 
   @belongsTo(() => User, {
     foreignKey: 'reviewerId',

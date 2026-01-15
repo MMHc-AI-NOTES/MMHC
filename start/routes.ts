@@ -21,6 +21,9 @@ import '#start/routes/manager_review_routes'
 import '#start/routes/cpt_code_routes'
 import '#start/routes/webhook_routes'
 import '#start/routes/sme_issue_routes'
+import '#start/routes/error_type_routes'
+import '#start/routes/issues_related_to_routes'
+import '#start/routes/issue_description_routes'
 
 import { sendSuccess } from '#services/custom_response_service'
 
