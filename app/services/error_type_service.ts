@@ -44,7 +44,7 @@ export const listErrorTypes = async (
     let sortQuery = sortErrorType?.query ?? query
     let errorTypeListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
-    return {
+    return sendSuccess('Error types listed successfully', {
       count: errorTypeListingPaginated['rows'].length,
       total_count: errorTypeListingPaginated.total,
       total_page_count: errorTypeListingPaginated.lastPage,
@@ -53,7 +53,7 @@ export const listErrorTypes = async (
       data: errorTypeListingPaginated['rows'].map((errorType: any) => ({
         ...errorType.serialize(),
       })),
-    }
+    })
   } catch (error: any) {
     console.log('Error in listErrorTypes:', error.message)
     throw new Error('Failed to retrieve error types. Please try again later.')

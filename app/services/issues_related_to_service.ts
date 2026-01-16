@@ -47,7 +47,7 @@ export const listIssuesRelatedTo = async (
     let sortQuery = sortIssuesRelatedTo?.query ?? query
     let issuesRelatedToListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
-    return {
+    return sendSuccess('Issues related to listed successfully', {
       count: issuesRelatedToListingPaginated['rows'].length,
       total_count: issuesRelatedToListingPaginated.total,
       total_page_count: issuesRelatedToListingPaginated.lastPage,
@@ -56,7 +56,7 @@ export const listIssuesRelatedTo = async (
       data: issuesRelatedToListingPaginated['rows'].map((issueRelatedTo: any) => ({
         ...issueRelatedTo.serialize(),
       })),
-    }
+    })
   } catch (error: any) {
     console.log('Error in listIssuesRelatedTo:', error.message)
     throw new Error('Failed to retrieve issues related to. Please try again later.')

@@ -47,7 +47,7 @@ export const listIssueDescriptions = async (
     let sortQuery = sortIssueDescription?.query ?? query
     let issueDescriptionListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
-    return {
+    return sendSuccess('Issue descriptions listed successfully', {
       count: issueDescriptionListingPaginated['rows'].length,
       total_count: issueDescriptionListingPaginated.total,
       total_page_count: issueDescriptionListingPaginated.lastPage,
@@ -56,7 +56,7 @@ export const listIssueDescriptions = async (
       data: issueDescriptionListingPaginated['rows'].map((issueDescription: any) => ({
         ...issueDescription.serialize(),
       })),
-    }
+    })
   } catch (error: any) {
     console.log('Error in listIssueDescriptions:', error.message)
     throw new Error('Failed to retrieve issue descriptions. Please try again later.')
