@@ -1,4 +1,5 @@
 import ErrorType, { errorTypeFilterEnum, errorTypeSortEnum } from '#models/error_type'
+import SmeIssue from '#models/sme_issue'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
@@ -136,6 +137,14 @@ export const deleteErrorType = async (id: number) => {
     const errorType = await ErrorType.find(id)
     if (!errorType) {
       return sendError('Error type not found')
+    }
+
+    // Check if error type is being used in any SME issue
+    const smeIssueUsingErrorType = await SmeIssue.query().where('error_type_id', id).first()
+    if (smeIssueUsingErrorType) {
+      return sendError(
+        'Cannot delete error type. It is already being used in SME issues and cannot be deleted.'
+      )
     }
 
     await errorType.delete()

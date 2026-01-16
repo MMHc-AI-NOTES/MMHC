@@ -2,6 +2,7 @@ import IssuesRelatedTo, {
   issuesRelatedToFilterEnum,
   issuesRelatedToSortEnum,
 } from '#models/issues_related_to'
+import SmeIssue from '#models/sme_issue'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
@@ -138,6 +139,16 @@ export const deleteIssuesRelatedTo = async (id: number) => {
     const issuesRelatedTo = await IssuesRelatedTo.find(id)
     if (!issuesRelatedTo) {
       return sendError('Issues related to not found')
+    }
+
+    // Check if issues related to is being used in any SME issue
+    const smeIssueUsingIssuesRelatedTo = await SmeIssue.query()
+      .where('issues_related_to_id', id)
+      .first()
+    if (smeIssueUsingIssuesRelatedTo) {
+      return sendError(
+        'Cannot delete issues related to. It is already being used in SME issues and cannot be deleted.'
+      )
     }
 
     await issuesRelatedTo.delete()

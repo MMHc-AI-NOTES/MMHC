@@ -2,6 +2,7 @@ import IssueDescription, {
   issueDescriptionFilterEnum,
   issueDescriptionSortEnum,
 } from '#models/issue_description'
+import SmeIssue from '#models/sme_issue'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
@@ -138,6 +139,16 @@ export const deleteIssueDescription = async (id: number) => {
     const issueDescription = await IssueDescription.find(id)
     if (!issueDescription) {
       return sendError('Issue description not found')
+    }
+
+    // Check if issue description is being used in any SME issue
+    const smeIssueUsingIssueDescription = await SmeIssue.query()
+      .where('issue_description_id', id)
+      .first()
+    if (smeIssueUsingIssueDescription) {
+      return sendError(
+        'Cannot delete issue description. It is already being used in SME issues and cannot be deleted.'
+      )
     }
 
     await issueDescription.delete()
