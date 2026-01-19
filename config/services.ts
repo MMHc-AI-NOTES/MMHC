@@ -13,3 +13,22 @@ export const bedrockConfig = {
   secretAccessKey: env.get('AWS_SECRET_ACCESS_KEY', ''),
   anthropicVersion: env.get('BEDROCK_ANTHROPIC_VERSION', 'bedrock-2023-05-31'),
 }
+
+export const smtpConfig = {
+  host: env.get('SMTP_HOST', ''),
+  port: env.get('SMTP_PORT', '587'),
+  username: env.get('SMTP_USERNAME', ''),
+  password: env.get('SMTP_PASSWORD', ''),
+  from: env.get('SMTP_FROM', 'noreply@example.com'),
+}
+
+export const practiceQConfig = {
+  apiKey: env.get('PRACTICEQ_API_KEY', ''),
+  baseUrl: env.get('PRACTICEQ_BASE_URL', 'https://intakeq.com/api/v1'),
+}
+
+export const redisConfig = {
+  host: env.get('REDIS_HOST', '127.0.0.1'),
+  port: Number(env.get('REDIS_PORT', '6379')),
+  password: env.get('REDIS_PASSWORD', '') || undefined,
+}
