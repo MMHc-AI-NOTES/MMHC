@@ -1,7 +1,7 @@
 import env from '#start/env'
 
 export const frontendRoutesConfig = {
-  userOnboardingLink: `FRONTEND_BASE_URL/onboarding?token=TOKEN`,
+  userOnboardingLink: `FRONTEND_BASE_URL/create-invited-user?token=TOKEN`,
   // userEmailVerificationLink: `FRONTEND_BASE_URL/verify/TOKEN`,
   // passwordResetLink: `FRONTEND_BASE_URL/reset-password?token=TOKEN`,
 }
