@@ -19,7 +19,6 @@ export const noteListing = async (
     let filterData: any
     let sortNote: any
 
-    // Build base query to get all notes (both previous and current)
     let noteListings: any = Session.query()
       .preload('practitioner')
       .preload('patient')
@@ -29,7 +28,8 @@ export const noteListing = async (
         })
       })
       .preload('webhookVersions', (versionsQuery) => {
-        versionsQuery.orderBy('created_at', 'desc')
+        versionsQuery.preload('smeIssues')
+        versionsQuery.orderBy('id', 'desc')
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
@@ -38,7 +38,6 @@ export const noteListing = async (
         countQuery.as('version_count')
       })
 
-    // Extract search filter if present
     let searchFilter: any = null
     let otherFilters: Array<any> = []
 
@@ -52,7 +51,6 @@ export const noteListing = async (
       })
     }
 
-    // Apply search filter (OR WHERE on note_id, practitioner_id, patient_id)
     if (searchFilter && searchFilter.value) {
       const searchValue = String(searchFilter.value).trim()
       if (searchValue) {
@@ -62,7 +60,6 @@ export const noteListing = async (
         noteListings = noteListings.where((subQuery: any) => {
           subQuery.whereILike('note_id', searchPattern)
 
-          // If search value is a number, also search in practitioner_id and patient_id
           if (!Number.isNaN(searchNumber)) {
             subQuery.orWhere('practitioner_id', searchNumber).orWhere('patient_id', searchNumber)
           }
@@ -128,7 +125,8 @@ export const getNoteWithChats = async (noteId: string) => {
           })
       })
       .preload('webhookVersions', (versionsQuery) => {
-        versionsQuery.orderBy('created_at', 'desc')
+        versionsQuery.preload('smeIssues')
+        versionsQuery.orderBy('id', 'desc')
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
@@ -143,27 +141,11 @@ export const getNoteWithChats = async (noteId: string) => {
       throw new Error('Note not found for the provided note ID')
     }
 
-    // Parse session_json for each version
-    const versionsData = note.webhookVersions.map((version) => ({
-      id: version.id,
-      session_json: version.sessionJson,
-      session_data: (() => {
-        try {
-          return JSON.parse(version.sessionJson)
-        } catch {
-          return null
-        }
-      })(),
-      created_at: version.createdAt,
-      updated_at: version.updatedAt,
-    }))
-
     const serialized = note.serialize()
     const noteWithCount = {
       ...serialized,
       chat_count: note.$extras.chat_count || 0,
       version_count: note.$extras.version_count || 0,
-      versions: versionsData,
     }
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)

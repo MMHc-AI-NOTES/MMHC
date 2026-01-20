@@ -9,7 +9,6 @@ import WebhookSessionVersion from '#models/webhook_session_version'
  */
 export const compareJsonObjects = (json1: string | object, json2: string | object): boolean => {
   try {
-    // Parse both JSONs to objects if they are strings
     let obj1: any
     let obj2: any
 
@@ -25,11 +24,8 @@ export const compareJsonObjects = (json1: string | object, json2: string | objec
       obj2 = json2
     }
 
-    // Use lodash.isequal for deep comparison
-    // Returns true if different (not equal)
     return !isEqual(obj1, obj2)
   } catch (error) {
-    // If parsing fails, consider them different
     console.log('Error comparing JSON objects:', error)
     return true
   }

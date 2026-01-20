@@ -20,6 +20,7 @@ import '#start/routes/human_review_routes'
 import '#start/routes/manager_review_routes'
 import '#start/routes/cpt_code_routes'
 import '#start/routes/webhook_routes'
+import '#start/routes/sme_issue_routes'
 
 import { sendSuccess } from '#services/custom_response_service'
 
