@@ -105,20 +105,9 @@ export const deleteUser = async (user_id: number) => {
   }
 }
 
-export const updateUser = async (
-  payload: updateUserValidatorInterface,
-  userId: number,
-  currentUserId?: number,
-  currentUserType?: number
-) => {
+export const updateUser = async (payload: updateUserValidatorInterface, userId: number) => {
   try {
     const user = await getUserById(userId)
-
-    // SuperAdmin cannot update their own profile
-    if (currentUserType === UserTypeEnum.superAdmin && currentUserId === userId) {
-      throw new Error('SuperAdmin cannot update their own profile')
-    }
-
     return await user.merge(payload).save()
   } catch (error: any) {
     console.log('Error in updateUser:', error.message)

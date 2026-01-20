@@ -44,10 +44,13 @@ export default class UsersController {
       const { userId } = await userIdValidator.validate(ctx.params)
       const currentUser = ctx.auth.getUserOrFail()
 
+      if (currentUser.id === userId) {
+        throw new Error('You cannot update your own profile')
+      }
       const payload = await updateUserValidator.validate(ctx.request.body(), {
         meta: { userId: ctx.request.param('userId') },
       })
-      const userResponse = await updateUser(payload, userId, currentUser.id, currentUser.type)
+      const userResponse = await updateUser(payload, userId)
       return sendSuccess('User updated successfully', userResponse)
     } catch (error) {
       console.error('Error while updating user:', error)
