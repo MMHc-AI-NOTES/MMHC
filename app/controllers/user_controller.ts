@@ -19,7 +19,8 @@ export default class UsersController {
   public async create(ctx: HttpContext) {
     try {
       const payload = await createUserValidator.validate(ctx.request.body())
-      const userResponse = await createUser(payload)
+      const currentUser = ctx.auth.getUserOrFail()
+      const userResponse = await createUser(payload, currentUser.type)
       return sendSuccess('User created successfully', userResponse)
     } catch (error) {
       console.log('User creating error', error)
@@ -41,11 +42,12 @@ export default class UsersController {
   public async update(ctx: HttpContext) {
     try {
       const { userId } = await userIdValidator.validate(ctx.params)
+      const currentUser = ctx.auth.getUserOrFail()
 
       const payload = await updateUserValidator.validate(ctx.request.body(), {
         meta: { userId: ctx.request.param('userId') },
       })
-      const userResponse = await updateUser(payload, userId)
+      const userResponse = await updateUser(payload, userId, currentUser.id, currentUser.type)
       return sendSuccess('User updated successfully', userResponse)
     } catch (error) {
       console.error('Error while updating user:', error)

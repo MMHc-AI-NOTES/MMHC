@@ -6,6 +6,31 @@ import {
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
+import { UserTypeEnum } from '#enums/user_type_enum'
+
+export const createUser = async (
+  payload: createUserValidatorInterface,
+  currentUserType?: number
+) => {
+  try {
+    const userData: any = {
+      fullName: payload.full_name || null,
+      email: payload.email,
+      isActive: payload.is_active !== undefined ? payload.is_active : true,
+      type: payload.type || UserTypeEnum.user,
+      password: null,
+    }
+
+    // Only set password if provided and current user is not superAdmin
+    if (payload.password && currentUserType !== UserTypeEnum.superAdmin) {
+      userData.password = payload.password
+    }
+    return await User.create(userData)
+  } catch (error: any) {
+    console.log('Error in createUser:', error.message)
+    throw new Error('Failed to create user. Please try again later.')
+  }
+}
 
 export const userListing = async (
   page?: number,
@@ -61,42 +86,42 @@ export const getUserById = async (userId: number) => {
     const userResponse = await User.query().where('id', userId).first()
 
     if (!userResponse) {
-      console.log('Error in getUserById: User not found with id:', userId)
-      throw new Error('User not found')
+      throw new Error(`User with id ${userId} does not exist`)
     }
     return userResponse
   } catch (error: any) {
     console.log('Error in getUserById:', error.message)
-    throw new Error('Failed to get users by id. Please try again later.')
+    throw error
   }
 }
 
 export const deleteUser = async (user_id: number) => {
   try {
     const user = await getUserById(user_id)
-
     return await user.softDelete()
   } catch (error: any) {
     console.log('Error in deleteUser:', error.message)
-    throw new Error('Failed to delete user. Please try again later.')
+    throw error
   }
 }
 
-export const updateUser = async (payload: updateUserValidatorInterface, userId: number) => {
+export const updateUser = async (
+  payload: updateUserValidatorInterface,
+  userId: number,
+  currentUserId?: number,
+  currentUserType?: number
+) => {
   try {
     const user = await getUserById(userId)
+
+    // SuperAdmin cannot update their own profile
+    if (currentUserType === UserTypeEnum.superAdmin && currentUserId === userId) {
+      throw new Error('SuperAdmin cannot update their own profile')
+    }
+
     return await user.merge(payload).save()
   } catch (error: any) {
     console.log('Error in updateUser:', error.message)
-    throw new Error('Failed to udpate user. Please try again later.')
-  }
-}
-
-export const createUser = async (payload: createUserValidatorInterface) => {
-  try {
-    return await User.create(payload)
-  } catch (error: any) {
-    console.log('Error in createUser:', error.message)
-    throw new Error('Failed to create user. Please try again later.')
+    throw error
   }
 }
