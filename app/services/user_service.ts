@@ -2,11 +2,14 @@ import User, { userFilterEnum, userSortEnum } from '#models/user'
 import {
   createUserValidatorInterface,
   updateUserValidatorInterface,
+  completeOnboardingValidatorInterface,
 } from '#validators/user_validator'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { UserTypeEnum } from '#enums/user_type_enum'
+import { sendUserOnboardingEmail } from '#services/email_service'
+import { Secret } from '@adonisjs/core/helpers'
 
 export const createUser = async (
   payload: createUserValidatorInterface,
@@ -25,7 +28,16 @@ export const createUser = async (
     if (payload.password && currentUserType !== UserTypeEnum.superAdmin) {
       userData.password = payload.password
     }
-    return await User.create(userData)
+
+    const user = await User.create(userData)
+
+    // If superAdmin created the user, generate access token and send onboarding email
+    if (currentUserType === UserTypeEnum.superAdmin) {
+      const token = await User.accessTokens.create(user, ['*'])
+      await sendUserOnboardingEmail(user.email, token.value!.release())
+    }
+
+    return user
   } catch (error: any) {
     console.log('Error in createUser:', error.message)
     throw new Error('Failed to create user. Please try again later.')
@@ -42,18 +54,51 @@ export const userListing = async (
     let query: any
     let filterData: any
     let sortUser: any
-    let userListings: any = User.query()
+
+    // Separate search and user filters
+    let searchFilter: any = null
+    let userFilters: Array<any> = []
 
     if (filters?.length) {
-      filterData = applyFilters(userListings, filters, userFilterEnum)
+      filters.forEach((filter) => {
+        if (filter.columnName === 'search') {
+          searchFilter = filter
+        } else {
+          userFilters.push(filter)
+        }
+      })
     }
-    if (filterData?.status === false) {
-      return {
-        status: filterData.status,
-        message: filterData.message,
+
+    // Start with base query
+    let userListings: any = User.query()
+
+    // Apply search filter (email and full_name)
+    if (searchFilter && searchFilter.value) {
+      const searchValue = String(searchFilter.value).trim()
+      if (searchValue) {
+        const searchPattern = `%${searchValue}%`
+
+        userListings = userListings.where((subQuery: any) => {
+          subQuery
+            .whereILike('users.email', searchPattern)
+            .orWhereILike('users.full_name', searchPattern)
+        })
       }
     }
-    query = filterData?.query ?? userListings
+
+    // Apply user filters
+    if (userFilters?.length) {
+      filterData = applyFilters(userListings, userFilters, userFilterEnum)
+      if (filterData?.status === false) {
+        return {
+          status: filterData.status,
+          message: filterData.message,
+        }
+      }
+      userListings = filterData?.query ?? userListings
+    }
+
+    query = userListings
     if (!sorts?.length) {
       query = query.orderBy('id', 'desc')
     }
@@ -91,7 +136,7 @@ export const getUserById = async (userId: number) => {
     return userResponse
   } catch (error: any) {
     console.log('Error in getUserById:', error.message)
-    throw error
+    throw new Error('Failed to get user. Please try again later.')
   }
 }
 
@@ -101,7 +146,7 @@ export const deleteUser = async (user_id: number) => {
     return await user.softDelete()
   } catch (error: any) {
     console.log('Error in deleteUser:', error.message)
-    throw error
+    throw new Error('Failed to delete user. Please try again later.')
   }
 }
 
@@ -111,6 +156,79 @@ export const updateUser = async (payload: updateUserValidatorInterface, userId: 
     return await user.merge(payload).save()
   } catch (error: any) {
     console.log('Error in updateUser:', error.message)
-    throw error
+    throw new Error('Failed to update user. Please try again later.')
+  }
+}
+
+export const completeUserOnboarding = async (payload: completeOnboardingValidatorInterface) => {
+  try {
+    const { token, ...updateData } = payload
+
+    // Verify token using User access token provider
+    const accessToken = await User.accessTokens.verify(new Secret(token))
+
+    if (!accessToken) {
+      throw new Error('Invalid or expired onboarding token')
+    }
+
+    const user = await User.find(accessToken.tokenableId)
+
+    if (!user) {
+      throw new Error('User not found for this token')
+    }
+
+    if (user.hasCompletedOnboarding) {
+      throw new Error('Onboarding already completed')
+    }
+
+    // Store original email before update
+    const originalEmail = user.email
+
+    // If email is being changed during onboarding and does not match invited email, throw error
+    if (updateData.email && updateData.email !== originalEmail) {
+      throw new Error('Email does not match the invited email')
+    }
+
+    // Update user info and mark onboarding as complete
+    user.merge({
+      ...updateData,
+      hasCompletedOnboarding: true,
+    })
+    await user.save()
+
+    // Delete the access token after successful onboarding
+    await User.accessTokens.delete(user, accessToken.identifier)
+
+    return user
+  } catch (error: any) {
+    console.log('Error in completeUserOnboarding:', error.message)
+    throw new Error('Failed to complete onboarding. Please try again later.')
+  }
+}
+
+export const resendUserOnboardingEmail = async (userId: number) => {
+  try {
+    const user = await getUserById(userId)
+
+    if (!user.email) {
+      throw new Error('User email is missing')
+    }
+
+    // Generate new access token
+    const token = await User.accessTokens.create(user, ['*'])
+
+    // Reset onboarding flag
+    user.merge({
+      hasCompletedOnboarding: false,
+    })
+
+    await user.save()
+
+    await sendUserOnboardingEmail(user.email, token.value!.release())
+
+    return true
+  } catch (error: any) {
+    console.log('Error in resendUserOnboardingEmail:', error.message)
+    throw new Error('Failed to resend onboarding email. Please try again later.')
   }
 }

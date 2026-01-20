@@ -66,3 +66,23 @@ export const userIdValidator = vine.compile(
   })
 )
 export type userIdValidatorInterface = Infer<typeof userIdValidator>
+
+export const completeOnboardingValidator = vine.compile(
+  vine.object({
+    token: vine.string().trim().minLength(1),
+    email: vine.string().email().trim(),
+    full_name: vine.string().minLength(3).maxLength(64).trim(),
+    password: vine.string().trim(),
+    is_active: vine.boolean(),
+    type: vine
+      .number()
+      .withoutDecimals()
+      .in([
+        UserTypeEnum.superAdmin,
+        UserTypeEnum.user,
+        UserTypeEnum.practitioner,
+        UserTypeEnum.sme_reviewer,
+      ]),
+  })
+)
+export type completeOnboardingValidatorInterface = Infer<typeof completeOnboardingValidator>

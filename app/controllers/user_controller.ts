@@ -5,6 +5,8 @@ import {
   deleteUser,
   getUserById,
   updateUser,
+  completeUserOnboarding,
+  resendUserOnboardingEmail,
   userListing,
 } from '#services/user_service'
 import { paginationValidator } from '#validators/pagination_validator'
@@ -12,6 +14,7 @@ import {
   createUserValidator,
   updateUserValidator,
   userIdValidator,
+  completeOnboardingValidator,
 } from '#validators/user_validator'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -78,6 +81,28 @@ export default class UsersController {
       return sendSuccess('Users listed successfully', userResponse)
     } catch (error) {
       console.log('User listing error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async completeOnboarding(ctx: HttpContext) {
+    try {
+      const payload = await completeOnboardingValidator.validate(ctx.request.body())
+      const user = await completeUserOnboarding(payload)
+      return sendSuccess('Onboarding completed successfully', user)
+    } catch (error) {
+      console.log('Error in completeOnboarding:', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async resendOnboardingEmail(ctx: HttpContext) {
+    try {
+      const { userId } = await userIdValidator.validate(ctx.params)
+      await resendUserOnboardingEmail(userId)
+      return sendSuccess('Onboarding email resent successfully')
+    } catch (error) {
+      console.log('Error in resendOnboardingEmail:', error)
       return ErrorService.handleError(ctx, error)
     }
   }

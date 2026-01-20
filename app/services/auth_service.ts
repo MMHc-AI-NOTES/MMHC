@@ -11,7 +11,6 @@ export const loginUser = async (email: string, password: string) => {
   if (!user.isActive) {
     throw new Error('Your account is inactive. Please contact administrator.')
   }
-
   const token = await User.accessTokens.create(user, ['*'])
   return { token, user }
 }
