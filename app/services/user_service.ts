@@ -222,6 +222,11 @@ export const resendUserOnboardingEmail = async (userId: number) => {
       throw new Error('User email is missing')
     }
 
+    // If user has already completed onboarding, do not resend invite email
+    if (user.hasCompletedOnboarding) {
+      throw new Error('Onboarding already completed. Invitation email cannot be resent.')
+    }
+
     // Generate new access token
     const token = await User.accessTokens.create(user, ['*'])
 
