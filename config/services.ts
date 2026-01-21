@@ -1,6 +1,7 @@
 import env from '#start/env'
 
-export const emailCompanyLogo = 'https://mmh-dev.theexpertscloud.com/assets/logo-with-text-CKWOTRJC.svg'
+export const emailCompanyLogo =
+  'https://mmh-dev.theexpertscloud.com/assets/logo-with-text-CKWOTRJC.svg'
 
 export const emailConfig = {
   from: env.get('SMTP_FROM', 'noreply@example.com'),
