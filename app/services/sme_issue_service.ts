@@ -5,6 +5,7 @@ import ErrorType from '#models/error_type'
 import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
 import User from '#models/user'
+import HumanReview from '#models/human_review'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type {
   createSmeIssueValidatorInterface,
@@ -13,6 +14,7 @@ import type {
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
+import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
@@ -61,6 +63,40 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
       versionId: reqData.version_id ?? null,
       status: reqData.status ?? 1,
     })
+
+    // Check if human review entry exists for this note_id, version_id, and reviewer_id
+    let humanReviewQuery = HumanReview.query()
+      .where('note_id', reqData.note_id)
+      .where('practitioner_id', reqData.reviewer_id)
+
+    if (reqData.version_id) {
+      humanReviewQuery = humanReviewQuery.where('version_id', reqData.version_id)
+    } else {
+      humanReviewQuery = humanReviewQuery.whereNull('version_id')
+    }
+
+    const existingHumanReview = await humanReviewQuery.first()
+
+    // Get ai_status and priority from note (session)
+    const aiStatus = note.aiStatus ?? null
+    const priority = note.priority ?? null
+
+    const humanReviewData = {
+      noteId: reqData.note_id,
+      practitionerId: reqData.reviewer_id,
+      versionId: reqData.version_id ?? null,
+      decision: HumanReviewDecisionEnum.accept_ai_evaluation, // Default decision
+      aiStatus: aiStatus, // From note (session)
+      priority: priority, // From note (session)
+    }
+
+    if (existingHumanReview) {
+      // Update existing human review
+      await existingHumanReview.merge(humanReviewData).save()
+    } else {
+      // Create new human review
+      await HumanReview.create(humanReviewData)
+    }
 
     // Reload with relationships
     await smeIssue.load('reviewer')
