@@ -43,7 +43,7 @@ export const createUser = async (
     return user
   } catch (error: any) {
     console.log('Error in createUser:', error.message)
-    throw new Error('Failed to create user. Please try again later.')
+    throw new Error(error.message)
   }
 }
 
@@ -125,7 +125,7 @@ export const userListing = async (
     }
   } catch (error: any) {
     console.log('Error in userListing:', error.message)
-    throw new Error('Failed to retrieve users. Please try again later.')
+    throw new Error(error.message)
   }
 }
 
@@ -139,7 +139,7 @@ export const getUserById = async (userId: number) => {
     return userResponse
   } catch (error: any) {
     console.log('Error in getUserById:', error.message)
-    throw new Error('Failed to get user. Please try again later.')
+    throw new Error(error.message)
   }
 }
 
@@ -149,7 +149,7 @@ export const deleteUser = async (user_id: number) => {
     return await user.softDelete()
   } catch (error: any) {
     console.log('Error in deleteUser:', error.message)
-    throw new Error('Failed to delete user. Please try again later.')
+    throw new Error(error.message)
   }
 }
 
@@ -159,7 +159,7 @@ export const updateUser = async (payload: updateUserValidatorInterface, userId: 
     return await user.merge(payload).save()
   } catch (error: any) {
     console.log('Error in updateUser:', error.message)
-    throw new Error('Failed to update user. Please try again later.')
+    throw new Error(error.message)
   }
 }
 
@@ -202,10 +202,15 @@ export const completeUserOnboarding = async (payload: completeOnboardingValidato
     // Delete the access token after successful onboarding
     await User.accessTokens.delete(user, accessToken.identifier)
 
-    return user
+    const newToken = await User.accessTokens.create(user, ['*'])
+    let userDetails = {
+      ...user.serialize(),
+      token: newToken,
+    }
+    return userDetails
   } catch (error: any) {
     console.log('Error in completeUserOnboarding:', error.message)
-    throw new Error('Failed to complete onboarding. Please try again later.')
+    throw new Error(error.message)
   }
 }
 
@@ -234,6 +239,6 @@ export const resendUserOnboardingEmail = async (userId: number) => {
     return true
   } catch (error: any) {
     console.log('Error in resendUserOnboardingEmail:', error.message)
-    throw new Error('Failed to resend onboarding email. Please try again later.')
+    throw new Error(error.message)
   }
 }
