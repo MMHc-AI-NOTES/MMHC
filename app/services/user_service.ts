@@ -8,8 +8,9 @@ import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { UserTypeEnum } from '#enums/user_type_enum'
-import { sendUserOnboardingEmail } from '#services/email_service'
+import { sendUserInviteEmail } from '#services/email_service'
 import { Secret } from '@adonisjs/core/helpers'
+import { frontendRoutesConfig, getFrontendLink } from '#services/frontend_routes_service'
 
 export const createUser = async (
   payload: createUserValidatorInterface,
@@ -34,7 +35,9 @@ export const createUser = async (
     // If superAdmin created the user, generate access token and send onboarding email
     if (currentUserType === UserTypeEnum.superAdmin) {
       const token = await User.accessTokens.create(user, ['*'])
-      await sendUserOnboardingEmail(user.email, token.value!.release())
+      const tokenValue = token.value!.release()
+      const invitationLink = getFrontendLink(frontendRoutesConfig.userOnboardingLink, tokenValue)
+      await sendUserInviteEmail(user.email, invitationLink)
     }
 
     return user
@@ -224,7 +227,9 @@ export const resendUserOnboardingEmail = async (userId: number) => {
 
     await user.save()
 
-    await sendUserOnboardingEmail(user.email, token.value!.release())
+    const tokenValue = token.value!.release()
+    const invitationLink = getFrontendLink(frontendRoutesConfig.userOnboardingLink, tokenValue)
+    await sendUserInviteEmail(user.email, invitationLink)
 
     return true
   } catch (error: any) {
