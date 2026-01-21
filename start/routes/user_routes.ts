@@ -9,7 +9,7 @@ router
     router.patch('/:userId', [UsersController, 'update'])
     router.delete('/:userId', [UsersController, 'delete']).use(middleware.superAdmin())
     router
-      .post('/resend-onboarding/:userId', [UsersController, 'resendOnboardingEmail'])
+      .get('/resend-onboarding/:userId', [UsersController, 'resendOnboardingEmail'])
       .use(middleware.superAdmin())
 
     router.get('/:userId', [UsersController, 'show'])
