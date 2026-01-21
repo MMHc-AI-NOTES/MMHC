@@ -71,9 +71,9 @@ export const completeOnboardingValidator = vine.compile(
   vine.object({
     token: vine.string().trim().minLength(1),
     email: vine.string().email().trim(),
-    full_name: vine.string().minLength(3).maxLength(64).trim(),
-    password: vine.string().trim(),
-    is_active: vine.boolean(),
+    full_name: vine.string().minLength(3).maxLength(64).trim().optional(),
+    password: vine.string().trim().confirmed(),
+    is_active: vine.boolean().optional(),
     type: vine
       .number()
       .withoutDecimals()
@@ -82,7 +82,8 @@ export const completeOnboardingValidator = vine.compile(
         UserTypeEnum.user,
         UserTypeEnum.practitioner,
         UserTypeEnum.sme_reviewer,
-      ]),
+      ])
+      .optional(),
   })
 )
 export type completeOnboardingValidatorInterface = Infer<typeof completeOnboardingValidator>
