@@ -7,6 +7,7 @@ import {
   updateUser,
   completeUserOnboarding,
   resendUserOnboardingEmail,
+  updateUserPassword,
   userListing,
 } from '#services/user_service'
 import { paginationValidator } from '#validators/pagination_validator'
@@ -15,6 +16,7 @@ import {
   updateUserValidator,
   userIdValidator,
   completeOnboardingValidator,
+  updateUserPasswordValidator,
 } from '#validators/user_validator'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -103,6 +105,17 @@ export default class UsersController {
       return sendSuccess('Onboarding email resent successfully')
     } catch (error) {
       console.log('Error in resendOnboardingEmail:', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async updatePassword(ctx: HttpContext) {
+    try {
+      const payload = await updateUserPasswordValidator.validate(ctx.request.body())
+      const user = await updateUserPassword(payload)
+      return sendSuccess('Password updated successfully', user)
+    } catch (error) {
+      console.log('Error in updatePassword:', error)
       return ErrorService.handleError(ctx, error)
     }
   }

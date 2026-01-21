@@ -3,6 +3,7 @@ import {
   createUserValidatorInterface,
   updateUserValidatorInterface,
   completeOnboardingValidatorInterface,
+  updateUserPasswordValidatorInterface,
 } from '#validators/user_validator'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
@@ -244,6 +245,23 @@ export const resendUserOnboardingEmail = async (userId: number) => {
     return true
   } catch (error: any) {
     console.log('Error in resendUserOnboardingEmail:', error.message)
+    throw new Error(error.message)
+  }
+}
+
+export const updateUserPassword = async (payload: updateUserPasswordValidatorInterface) => {
+  try {
+    const user = await getUserById(payload.user_id)
+
+    user.merge({
+      password: payload.password,
+    })
+
+    await user.save()
+
+    return user
+  } catch (error: any) {
+    console.log('Error in updateUserPassword:', error.message)
     throw new Error(error.message)
   }
 }

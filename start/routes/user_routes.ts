@@ -11,6 +11,9 @@ router
     router
       .get('/resend-onboarding/:userId', [UsersController, 'resendOnboardingEmail'])
       .use(middleware.superAdmin())
+    router
+      .post('/update-password', [UsersController, 'updatePassword'])
+      .use(middleware.superAdmin())
 
     router.get('/:userId', [UsersController, 'show'])
     router.post('/listing', [UsersController, 'listing'])

@@ -87,3 +87,11 @@ export const completeOnboardingValidator = vine.compile(
   })
 )
 export type completeOnboardingValidatorInterface = Infer<typeof completeOnboardingValidator>
+
+export const updateUserPasswordValidator = vine.compile(
+  vine.object({
+    user_id: vine.number().positive(),
+    password: vine.string().minLength(8).maxLength(64).trim().confirmed(),
+  })
+)
+export type updateUserPasswordValidatorInterface = Infer<typeof updateUserPasswordValidator>
