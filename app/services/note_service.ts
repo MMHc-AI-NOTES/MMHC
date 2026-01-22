@@ -28,7 +28,11 @@ export const noteListing = async (
         })
       })
       .preload('webhookVersions', (versionsQuery) => {
-        versionsQuery.preload('smeIssues')
+        versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
+          smeIssuesQuery.preload('errorType')
+          smeIssuesQuery.preload('issuesRelatedTo')
+          smeIssuesQuery.preload('issueDescription')
+        })
         versionsQuery.orderBy('id', 'desc')
       })
       .withCount('chats', (countQuery) => {
@@ -125,7 +129,11 @@ export const getNoteWithChats = async (noteId: string) => {
           })
       })
       .preload('webhookVersions', (versionsQuery) => {
-        versionsQuery.preload('smeIssues')
+        versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
+          smeIssuesQuery.preload('errorType')
+          smeIssuesQuery.preload('issuesRelatedTo')
+          smeIssuesQuery.preload('issueDescription')
+        })
         versionsQuery.orderBy('id', 'desc')
       })
       .withCount('chats', (countQuery) => {

@@ -1,18 +1,39 @@
 import SmeIssue, { smeIssueFilterEnum, smeIssueSortEnum } from '#models/sme_issue'
 import Session from '#models/session'
 import WebhookSessionVersion from '#models/webhook_session_version'
+import ErrorType from '#models/error_type'
+import IssuesRelatedTo from '#models/issues_related_to'
+import IssueDescription from '#models/issue_description'
+import User from '#models/user'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type {
   createSmeIssueValidatorInterface,
   updateSmeIssueValidatorInterface,
 } from '#validators/sme_issue_validator'
-import { IssueDescriptionDisplayNames } from '#enums/manual_issue_enum'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
+    const errorType = await ErrorType.find(reqData.error_type_id)
+    if (!errorType) {
+      return sendError('Error type not found for the provided error_type_id')
+    }
+
+    const issuesRelatedTo = await IssuesRelatedTo.find(reqData.issues_related_to_id)
+    if (!issuesRelatedTo) {
+      return sendError('Issues related to not found for the provided issues_related_to_id')
+    }
+
+    if (reqData.issue_description_id) {
+      const issueDescription = await IssueDescription.find(reqData.issue_description_id)
+      if (!issueDescription) {
+        return sendError('Issue description not found for the provided issue_description_id')
+      }
+    }
+
+    // Verify note exists
     const note = await Session.query().where('note_id', reqData.note_id).first()
     if (!note) {
       return sendError('Note not found for the provided note_id')
@@ -30,20 +51,12 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
       }
     }
 
-    // Convert description enum ID to text if number is provided
-    // if (typeof reqData.description === 'number') {
-    //   descriptionText =
-    //     Number(IssueDescriptionDisplayNames[reqData.description]) || Number(reqData.description)
-    // } else {
-    //   descriptionText = reqData.description
-    // }
-
     // Create SME issue
     const smeIssue = await SmeIssue.create({
       reviewerId: reqData.reviewer_id,
-      errorType: reqData.error_type,
-      issuesRelatedTo: reqData.issues_related_to,
-      description: Number(reqData.description),
+      errorTypeId: reqData.error_type_id,
+      issuesRelatedToId: reqData.issues_related_to_id,
+      issueDescriptionId: reqData.issue_description_id,
       noteId: reqData.note_id,
       versionId: reqData.version_id ?? null,
       status: reqData.status ?? 1,
@@ -52,6 +65,11 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
     // Reload with relationships
     await smeIssue.load('reviewer')
     await smeIssue.load('note')
+    await smeIssue.load('errorType')
+    await smeIssue.load('issuesRelatedTo')
+    if (smeIssue.issueDescriptionId) {
+      await smeIssue.load('issueDescription')
+    }
     if (smeIssue.versionId) {
       await smeIssue.load('version')
     }
@@ -93,6 +111,9 @@ export const listSmeIssues = async (
       .preload('reviewer')
       .preload('note')
       .preload('version')
+      .preload('errorType')
+      .preload('issuesRelatedTo')
+      .preload('issueDescription')
 
     // Apply SME issue filters
     if (smeIssueFilters?.length) {
@@ -160,6 +181,9 @@ export const getSmeIssue = async (id: number) => {
       .preload('reviewer')
       .preload('note')
       .preload('version')
+      .preload('errorType')
+      .preload('issuesRelatedTo')
+      .preload('issueDescription')
       .first()
 
     if (!issue) {
@@ -179,6 +203,31 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
     if (!issue) {
       return sendError('SME issue not found')
     }
+
+    // Verify error_type_id exists if being updated
+    if (reqData.error_type_id) {
+      const errorType = await ErrorType.find(reqData.error_type_id)
+      if (!errorType) {
+        return sendError('Error type not found for the provided error_type_id')
+      }
+    }
+
+    // Verify issues_related_to_id exists if being updated
+    if (reqData.issues_related_to_id) {
+      const issuesRelatedTo = await IssuesRelatedTo.find(reqData.issues_related_to_id)
+      if (!issuesRelatedTo) {
+        return sendError('Issues related to not found for the provided issues_related_to_id')
+      }
+    }
+
+    // Verify issue_description_id exists if being updated
+    if (reqData.issue_description_id) {
+      const issueDescription = await IssueDescription.find(reqData.issue_description_id)
+      if (!issueDescription) {
+        return sendError('Issue description not found for the provided issue_description_id')
+      }
+    }
+
     // Verify note exists if note_id is being updated
     if (reqData.note_id) {
       const note = await Session.query().where('note_id', reqData.note_id).first()
@@ -199,13 +248,31 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
       }
     }
 
-    // Convert description enum ID to text if number is provided
     const updateData: any = { ...reqData }
-    if (reqData.description !== undefined) {
-      if (typeof reqData.description === 'number') {
-        updateData.description =
-          IssueDescriptionDisplayNames[reqData.description] || String(reqData.description)
-      }
+
+    if (reqData.error_type_id !== undefined) {
+      updateData.errorTypeId = reqData.error_type_id
+      delete updateData.error_type_id
+    }
+    if (reqData.issues_related_to_id !== undefined) {
+      updateData.issuesRelatedToId = reqData.issues_related_to_id
+      delete updateData.issues_related_to_id
+    }
+    if (reqData.issue_description_id !== undefined) {
+      updateData.issueDescriptionId = reqData.issue_description_id
+      delete updateData.issue_description_id
+    }
+    if (reqData.note_id !== undefined) {
+      updateData.noteId = reqData.note_id
+      delete updateData.note_id
+    }
+    if (reqData.version_id !== undefined) {
+      updateData.versionId = reqData.version_id
+      delete updateData.version_id
+    }
+    if (reqData.reviewer_id !== undefined) {
+      updateData.reviewerId = reqData.reviewer_id
+      delete updateData.reviewer_id
     }
 
     // Update the issue
@@ -214,6 +281,11 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
     // Reload with relationships
     await issue.load('reviewer')
     await issue.load('note')
+    await issue.load('errorType')
+    await issue.load('issuesRelatedTo')
+    if (issue.issueDescriptionId) {
+      await issue.load('issueDescription')
+    }
     if (issue.versionId) {
       await issue.load('version')
     }
@@ -235,6 +307,59 @@ export const deleteSmeIssue = async (id: number) => {
     return sendSuccess('SME issue deleted successfully')
   } catch (error: any) {
     console.log('Error in deleteSmeIssue:', error.message)
+    return sendError(error.message)
+  }
+}
+
+export const deleteSmeIssuesByNoteAndVersion = async (
+  noteId: string,
+  versionId: number,
+  reviewerId: number
+) => {
+  try {
+    const note = await Session.query().where('note_id', noteId).first()
+    if (!note) {
+      return sendError('Note not found for the provided note_id')
+    }
+
+    const version = await WebhookSessionVersion.query()
+      .where('id', versionId)
+      .where('note_id', noteId)
+      .first()
+
+    if (!version) {
+      return sendError('Version not found for the provided version_id and note_id')
+    }
+
+    const reviewer = await User.find(reviewerId)
+    if (!reviewer) {
+      return sendError('Reviewer not found for the provided reviewer_id')
+    }
+
+    const issuesToDelete = await SmeIssue.query()
+      .where('note_id', noteId)
+      .andWhere('version_id', versionId)
+      .andWhere('reviewer_id', reviewerId)
+    const count = issuesToDelete.length
+
+    if (count === 0) {
+      return sendSuccess('No SME issues found to delete', { deleted_count: 0 })
+    }
+
+    await SmeIssue.query()
+      .where('note_id', noteId)
+      .where('version_id', versionId)
+      .where('reviewer_id', reviewerId)
+      .delete()
+
+    return sendSuccess('SME issues deleted successfully', {
+      deleted_count: count,
+      note_id: noteId,
+      version_id: versionId,
+      reviewer_id: reviewerId,
+    })
+  } catch (error: any) {
+    console.log('Error in deleteSmeIssuesByNoteAndVersion:', error.message)
     return sendError(error.message)
   }
 }
