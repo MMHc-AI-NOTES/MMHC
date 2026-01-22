@@ -86,7 +86,7 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
       // Check if human review entry exists for this note_id and practitioner_id
       const existingHumanReview = await HumanReview.query()
         .where('note_id', reqData.note_id)
-        .where('practitioner_id', practitionerId)
+        .where('reviewer_id', reqData.reviewer_id)
         .first()
 
       if (existingHumanReview) {
