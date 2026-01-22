@@ -113,6 +113,7 @@ export const listHumanReviews = async (
     // Start with base query and add preloads
     let humanReviewListings: any = HumanReview.query()
       .preload('practitioner')
+      .preload('reviewer')
       .preload('note')
       .preload('chat')
 
@@ -189,6 +190,7 @@ export const getHumanReview = async (
     let query = HumanReview.query()
       .where('id', id)
       .preload('practitioner')
+      .preload('reviewer')
       .preload('note')
       .preload('chat')
 

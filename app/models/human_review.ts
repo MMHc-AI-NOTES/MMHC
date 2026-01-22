@@ -15,6 +15,7 @@ export const humanReviewFilterEnum = [
   'version_id',
   'chat_id',
   'practitioner_id',
+  'reviewer_id',
   'decision',
   'manual_score',
   'ai_status',
@@ -30,6 +31,7 @@ export const humanReviewSortEnum = [
   'version_id',
   'chat_id',
   'practitioner_id',
+  'reviewer_id',
   'decision',
   'manual_score',
   'created_at',
@@ -88,6 +90,9 @@ export default class HumanReview extends BaseModel {
   declare practitionerId: number
 
   @column()
+  declare reviewerId: number | null
+
+  @column()
   declare manualScore: number | null
 
   @column()
@@ -117,6 +122,11 @@ export default class HumanReview extends BaseModel {
     foreignKey: 'practitionerId',
   })
   declare practitioner: BelongsTo<typeof User>
+
+  @belongsTo(() => User, {
+    foreignKey: 'reviewerId',
+  })
+  declare reviewer: BelongsTo<typeof User>
 
   @belongsTo(() => Session, {
     foreignKey: 'noteId',

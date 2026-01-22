@@ -74,6 +74,7 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
     const humanReviewData = {
       noteId: reqData.note_id,
       practitionerId: practitionerId,
+      reviewerId: reqData.reviewer_id,
       versionId: reqData.version_id ?? null,
       decision: HumanReviewDecisionEnum.accept_ai_evaluation, // Default decision
       aiStatus: aiStatus, // From note (session)
@@ -82,18 +83,11 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
 
     // If is_current_version is true, update existing human review entry
     if (reqData.is_current_version === true) {
-      // Check if human review entry exists for this note_id, version_id, and practitioner_id
-      let humanReviewQuery = HumanReview.query()
+      // Check if human review entry exists for this note_id and practitioner_id
+      const existingHumanReview = await HumanReview.query()
         .where('note_id', reqData.note_id)
         .where('practitioner_id', practitionerId)
-
-      if (reqData.version_id) {
-        humanReviewQuery = humanReviewQuery.where('version_id', reqData.version_id)
-      } else {
-        humanReviewQuery = humanReviewQuery.whereNull('version_id')
-      }
-
-      const existingHumanReview = await humanReviewQuery.first()
+        .first()
 
       if (existingHumanReview) {
         // Update existing human review
@@ -345,25 +339,18 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
         const humanReviewData = {
           noteId: reqData.note_id || issue.noteId,
           practitionerId: practitionerId,
+          reviewerId: reqData.reviewer_id ?? issue.reviewerId,
           versionId: reqData.version_id !== undefined ? reqData.version_id : issue.versionId,
           decision: HumanReviewDecisionEnum.accept_ai_evaluation, // Default decision
           aiStatus: aiStatus, // From note (session)
           priority: priority, // From note (session)
         }
 
-        // Check if human review entry exists for this note_id, version_id, and practitioner_id
-        let humanReviewQuery = HumanReview.query()
+        // Check if human review entry exists for this note_id and practitioner_id
+        const existingHumanReview = await HumanReview.query()
           .where('note_id', humanReviewData.noteId)
           .where('practitioner_id', practitionerId)
-
-        const versionId = humanReviewData.versionId
-        if (versionId) {
-          humanReviewQuery = humanReviewQuery.where('version_id', versionId)
-        } else {
-          humanReviewQuery = humanReviewQuery.whereNull('version_id')
-        }
-
-        const existingHumanReview = await humanReviewQuery.first()
+          .first()
 
         if (existingHumanReview) {
           // Update existing human review
