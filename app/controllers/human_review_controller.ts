@@ -21,7 +21,15 @@ export default class HumanReviewController {
       const { page, pageSize, filters, sorts } = await paginationValidator.validate(
         ctx.request.body()
       )
-      const humanReviewResponse = await listHumanReviews(page, pageSize, filters, sorts)
+      const currentUser = ctx.auth.getUserOrFail()
+      const humanReviewResponse = await listHumanReviews(
+        page,
+        pageSize,
+        filters,
+        sorts,
+        currentUser.id,
+        currentUser.type
+      )
       return sendSuccess('Human reviews listed successfully', humanReviewResponse)
     } catch (error) {
       console.log('Human review listing error', error)
@@ -32,7 +40,8 @@ export default class HumanReviewController {
   public async show(ctx: HttpContext) {
     try {
       const { id } = await humanReviewIdValidator.validate(ctx.params)
-      const response = await getHumanReview(id)
+      const currentUser = ctx.auth.getUserOrFail()
+      const response = await getHumanReview(id, currentUser.id, currentUser.type)
       return response
     } catch (error) {
       console.log('Human review getting error', error)

@@ -53,6 +53,9 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
       }
     }
 
+    // Use practitioner_id if provided, otherwise use reviewer_id
+    const practitionerId = reqData.practitioner_id ?? reqData.reviewer_id
+
     // Create SME issue
     const smeIssue = await SmeIssue.create({
       reviewerId: reqData.reviewer_id,
@@ -64,37 +67,43 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
       status: reqData.status ?? 1,
     })
 
-    // Check if human review entry exists for this note_id, version_id, and reviewer_id
-    let humanReviewQuery = HumanReview.query()
-      .where('note_id', reqData.note_id)
-      .where('practitioner_id', reqData.reviewer_id)
-
-    if (reqData.version_id) {
-      humanReviewQuery = humanReviewQuery.where('version_id', reqData.version_id)
-    } else {
-      humanReviewQuery = humanReviewQuery.whereNull('version_id')
-    }
-
-    const existingHumanReview = await humanReviewQuery.first()
-
     // Get ai_status and priority from note (session)
     const aiStatus = note.aiStatus ?? null
     const priority = note.priority ?? null
 
     const humanReviewData = {
       noteId: reqData.note_id,
-      practitionerId: reqData.reviewer_id,
+      practitionerId: practitionerId,
       versionId: reqData.version_id ?? null,
       decision: HumanReviewDecisionEnum.accept_ai_evaluation, // Default decision
       aiStatus: aiStatus, // From note (session)
       priority: priority, // From note (session)
     }
 
-    if (existingHumanReview) {
-      // Update existing human review
-      await existingHumanReview.merge(humanReviewData).save()
+    // If is_current_version is true, update existing human review entry
+    if (reqData.is_current_version === true) {
+      // Check if human review entry exists for this note_id, version_id, and practitioner_id
+      let humanReviewQuery = HumanReview.query()
+        .where('note_id', reqData.note_id)
+        .where('practitioner_id', practitionerId)
+
+      if (reqData.version_id) {
+        humanReviewQuery = humanReviewQuery.where('version_id', reqData.version_id)
+      } else {
+        humanReviewQuery = humanReviewQuery.whereNull('version_id')
+      }
+
+      const existingHumanReview = await humanReviewQuery.first()
+
+      if (existingHumanReview) {
+        // Update existing human review
+        await existingHumanReview.merge(humanReviewData).save()
+      } else {
+        // Create new human review if not exists
+        await HumanReview.create(humanReviewData)
+      }
     } else {
-      // Create new human review
+      // If is_current_version is false or not provided, always create new human review entry
       await HumanReview.create(humanReviewData)
     }
 
@@ -311,8 +320,60 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
       delete updateData.reviewer_id
     }
 
+    // Remove is_current_version from updateData as it's not a field in SmeIssue model
+    delete updateData.is_current_version
+    delete updateData.practitioner_id
+
     // Update the issue
     await issue.merge(updateData).save()
+
+    // Handle human review update if is_current_version is true
+    if (reqData.is_current_version === true) {
+      // Get the note (session) to get ai_status and priority
+      const note = await Session.query()
+        .where('note_id', reqData.note_id || issue.noteId)
+        .first()
+
+      if (note) {
+        // Use practitioner_id if provided, otherwise use reviewer_id from request or existing issue
+        const practitionerId = reqData.practitioner_id ?? reqData.reviewer_id ?? issue.reviewerId
+
+        // Get ai_status and priority from note (session)
+        const aiStatus = note.aiStatus ?? null
+        const priority = note.priority ?? null
+
+        const humanReviewData = {
+          noteId: reqData.note_id || issue.noteId,
+          practitionerId: practitionerId,
+          versionId: reqData.version_id !== undefined ? reqData.version_id : issue.versionId,
+          decision: HumanReviewDecisionEnum.accept_ai_evaluation, // Default decision
+          aiStatus: aiStatus, // From note (session)
+          priority: priority, // From note (session)
+        }
+
+        // Check if human review entry exists for this note_id, version_id, and practitioner_id
+        let humanReviewQuery = HumanReview.query()
+          .where('note_id', humanReviewData.noteId)
+          .where('practitioner_id', practitionerId)
+
+        const versionId = humanReviewData.versionId
+        if (versionId) {
+          humanReviewQuery = humanReviewQuery.where('version_id', versionId)
+        } else {
+          humanReviewQuery = humanReviewQuery.whereNull('version_id')
+        }
+
+        const existingHumanReview = await humanReviewQuery.first()
+
+        if (existingHumanReview) {
+          // Update existing human review
+          await existingHumanReview.merge(humanReviewData).save()
+        } else {
+          // Create new human review if not exists
+          await HumanReview.create(humanReviewData)
+        }
+      }
+    }
 
     // Reload with relationships
     await issue.load('reviewer')
