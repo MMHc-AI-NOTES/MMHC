@@ -96,9 +96,6 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
         // Create new human review if not exists
         await HumanReview.create(humanReviewData)
       }
-    } else {
-      // If is_current_version is false or not provided, always create new human review entry
-      await HumanReview.create(humanReviewData)
     }
 
     // Reload with relationships
