@@ -37,7 +37,14 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare isActive: boolean
 
   @column({ serializeAs: null })
-  declare password: string
+  declare password: string | null
+
+  @column({
+    serialize: (value) => {
+      return Boolean(value)
+    },
+  })
+  declare hasCompletedOnboarding: boolean
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

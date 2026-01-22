@@ -1,15 +1,27 @@
 import User from '#models/user'
 import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
+import { UserTypeEnum } from '#enums/user_type_enum'
 
 export const createUserValidator = vine.compile(
   vine.object({
-    fullName: vine.string().minLength(3).maxLength(64).trim(),
+    full_name: vine.string().minLength(3).maxLength(64).trim(),
     email: vine.string().email().trim().unique({
       table: User.table,
       column: 'email',
     }),
-    password: vine.string().trim(),
+    is_active: vine.boolean().optional(),
+    type: vine
+      .number()
+      .withoutDecimals()
+      .in([
+        UserTypeEnum.superAdmin,
+        UserTypeEnum.user,
+        UserTypeEnum.practitioner,
+        UserTypeEnum.sme_reviewer,
+      ])
+      .optional(),
+    password: vine.string().trim().optional(),
   })
 )
 
@@ -30,9 +42,20 @@ export const updateUserValidator = vine.compile(
 
         // we check if the incoming email is not already exists with other ids, if not exists then we allow to change the email
         return !user
-      }),
-    fullName: vine.string().minLength(3).maxLength(64).trim(),
-    isActive: vine.boolean().optional(),
+      })
+      .optional(),
+    full_name: vine.string().minLength(3).maxLength(64).trim().optional(),
+    is_active: vine.boolean().optional(),
+    type: vine
+      .number()
+      .withoutDecimals()
+      .in([
+        UserTypeEnum.superAdmin,
+        UserTypeEnum.user,
+        UserTypeEnum.practitioner,
+        UserTypeEnum.sme_reviewer,
+      ])
+      .optional(),
   })
 )
 export type updateUserValidatorInterface = Infer<typeof updateUserValidator>
@@ -43,3 +66,32 @@ export const userIdValidator = vine.compile(
   })
 )
 export type userIdValidatorInterface = Infer<typeof userIdValidator>
+
+export const completeOnboardingValidator = vine.compile(
+  vine.object({
+    token: vine.string().trim().minLength(1),
+    email: vine.string().email().trim(),
+    full_name: vine.string().minLength(3).maxLength(64).trim().optional(),
+    password: vine.string().trim().confirmed(),
+    is_active: vine.boolean().optional(),
+    type: vine
+      .number()
+      .withoutDecimals()
+      .in([
+        UserTypeEnum.superAdmin,
+        UserTypeEnum.user,
+        UserTypeEnum.practitioner,
+        UserTypeEnum.sme_reviewer,
+      ])
+      .optional(),
+  })
+)
+export type completeOnboardingValidatorInterface = Infer<typeof completeOnboardingValidator>
+
+export const updateUserPasswordValidator = vine.compile(
+  vine.object({
+    user_id: vine.number().positive(),
+    password: vine.string().minLength(8).maxLength(64).trim().confirmed(),
+  })
+)
+export type updateUserPasswordValidatorInterface = Infer<typeof updateUserPasswordValidator>
