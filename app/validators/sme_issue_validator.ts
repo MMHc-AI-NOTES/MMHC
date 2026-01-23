@@ -4,24 +4,28 @@ import { Infer } from '@vinejs/vine/types'
 export const createSmeIssueValidator = vine.compile(
   vine.object({
     reviewer_id: vine.number().withoutDecimals(),
+    practitioner_id: vine.number().withoutDecimals(),
     error_type_id: vine.number().withoutDecimals(),
     issues_related_to_id: vine.number().withoutDecimals(),
     issue_description_id: vine.number().withoutDecimals().optional().nullable(),
     note_id: vine.string().trim().minLength(1),
     version_id: vine.number().withoutDecimals().optional().nullable(),
     status: vine.number().withoutDecimals().optional(),
+    is_current_version: vine.boolean(),
   })
 )
 
 export const updateSmeIssueValidator = vine.compile(
   vine.object({
     reviewer_id: vine.number().withoutDecimals().optional(),
+    practitioner_id: vine.number().withoutDecimals().optional(),
     error_type_id: vine.number().withoutDecimals().optional(),
     issues_related_to_id: vine.number().withoutDecimals().optional(),
     issue_description_id: vine.number().withoutDecimals().optional().nullable(),
     note_id: vine.string().trim().minLength(1).optional(),
     version_id: vine.number().withoutDecimals().optional().nullable(),
     status: vine.number().withoutDecimals().optional(),
+    is_current_version: vine.boolean().optional(),
   })
 )
 
