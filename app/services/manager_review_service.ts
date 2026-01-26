@@ -6,6 +6,7 @@ import Session from '#models/session'
 import HumanReview from '#models/human_review'
 import User from '#models/user'
 import Chat from '#models/chat'
+import SmeIssue from '#models/sme_issue'
 import { sendError, sendSuccess } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
@@ -25,11 +26,13 @@ export const listManagerReviews = async (
     let sortManagerReview: any
 
     let managerReviewListings: any = ManagerReview.query()
+      .select('manager_reviews.*')
       .preload('manager')
       .preload('review')
       .preload('session')
-      .preload('chat')
       .preload('practitioner')
+      .preload('reviewer')
+      .preload('version')
 
     // Separate search and manager review filters
     let searchFilter: any = null
@@ -93,6 +96,32 @@ export const listManagerReviews = async (
     let sortQuery = sortManagerReview?.query ?? query
     let managerReviewListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
+    // Load SME issues for each manager review based on reviewer_id, note_id, and version_id
+    const managerReviews = managerReviewListingPaginated['rows']
+    for (const review of managerReviews) {
+      if (review.reviewerId !== null && review.reviewerId !== undefined && review.noteId) {
+        const smeIssuesQuery = SmeIssue.query()
+          .where('reviewer_id', review.reviewerId)
+          .where('note_id', review.noteId)
+
+        if (review.versionId !== null && review.versionId !== undefined) {
+          smeIssuesQuery.where('version_id', review.versionId)
+        } else {
+          smeIssuesQuery.whereNull('version_id')
+        }
+
+        const smeIssues = await smeIssuesQuery
+          .preload('errorType')
+          .preload('issuesRelatedTo')
+          .preload('issueDescription')
+          .preload('reviewer')
+
+        review.$setRelated('smeIssues', smeIssues)
+      } else {
+        review.$setRelated('smeIssues', [])
+      }
+    }
+
     return {
       count: managerReviewListingPaginated['rows'].length,
       total_count: managerReviewListingPaginated.total,
@@ -113,12 +142,39 @@ export const getManagerReview = async (id: number) => {
   try {
     const review = await ManagerReview.query()
       .where('id', id)
+      .select('manager_reviews.*')
       .preload('manager')
       .preload('review')
       .preload('session')
-      .preload('chat')
       .preload('practitioner')
+      .preload('reviewer')
+      .preload('version')
       .first()
+
+    if (review) {
+      // Load SME issues matching reviewer_id, note_id, and version_id
+      if (review.reviewerId !== null && review.reviewerId !== undefined && review.noteId) {
+        const smeIssuesQuery = SmeIssue.query()
+          .where('reviewer_id', review.reviewerId)
+          .where('note_id', review.noteId)
+
+        if (review.versionId !== null && review.versionId !== undefined) {
+          smeIssuesQuery.where('version_id', review.versionId)
+        } else {
+          smeIssuesQuery.whereNull('version_id')
+        }
+
+        const smeIssues = await smeIssuesQuery
+          .preload('errorType')
+          .preload('issuesRelatedTo')
+          .preload('issueDescription')
+          .preload('reviewer')
+
+        review.$setRelated('smeIssues', smeIssues)
+      } else {
+        review.$setRelated('smeIssues', [])
+      }
+    }
 
     if (!review) {
       return sendError('Manager review not found')

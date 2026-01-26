@@ -43,9 +43,9 @@ export const deleteSmeIssuesByNoteAndVersionValidator = vine.compile(
 export const assignSmeIssueToManagerValidator = vine.compile(
   vine.object({
     note_id: vine.string().trim().minLength(1),
-    version_id: vine.number().withoutDecimals().optional().nullable(),
+    version_id: vine.number().withoutDecimals().nullable(),
     practitioner_id: vine.number().withoutDecimals(),
-    ai_score: vine.number().optional().nullable(),
+    ai_score: vine.number().nullable(),
     reviewer_id: vine.number().withoutDecimals(),
     human_decision: vine
       .number()

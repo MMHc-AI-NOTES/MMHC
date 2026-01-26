@@ -535,6 +535,8 @@ export const assignSmeIssueToManager = async (
         .merge({
           noteId: reqData.note_id,
           practitionerId: reqData.practitioner_id,
+          reviewerId: reqData.reviewer_id,
+          versionId: reqData.version_id ?? null,
           aiScore: reqData.ai_score ?? note.aiScore ?? null,
           humanDecision: reqData.human_decision,
           disagreement: reqData.disagreement,
@@ -549,6 +551,8 @@ export const assignSmeIssueToManager = async (
         reviewId: humanReview.id,
         noteId: reqData.note_id,
         practitionerId: reqData.practitioner_id,
+        reviewerId: reqData.reviewer_id,
+        versionId: reqData.version_id ?? null,
         aiScore: reqData.ai_score ?? note.aiScore ?? null,
         humanDecision: reqData.human_decision,
         disagreement: reqData.disagreement,
@@ -564,6 +568,8 @@ export const assignSmeIssueToManager = async (
     await managerReview.load('review')
     await managerReview.load('session')
     await managerReview.load('practitioner')
+    await managerReview.load('reviewer')
+    await managerReview.load('version')
 
     return sendSuccess('SME issue assigned to manager successfully', managerReview)
   } catch (error: any) {
