@@ -5,6 +5,7 @@ import User from '#models/user'
 import HumanReview from '#models/human_review'
 import Session from '#models/session'
 import Chat from '#models/chat'
+import WebhookSessionVersion from '#models/webhook_session_version'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { HumanReviewResultEnum, HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { ManagerReviewDecisionEnum } from '#enums/manager_review_enum'
@@ -16,8 +17,10 @@ export const managerReviewFilterEnum = [
   'manager_id',
   'review_id',
   'note_id',
+  'version_id',
   'chat_id',
   'practitioner_id',
+  'reviewer_id',
   'decision',
   'manual_score',
   'ai_score',
@@ -35,8 +38,10 @@ export const managerReviewSortEnum = [
   'manager_id',
   'review_id',
   'note_id',
+  'version_id',
   'chat_id',
   'practitioner_id',
+  'reviewer_id',
   'decision',
   'manual_score',
   'ai_score',
@@ -62,6 +67,9 @@ export default class ManagerReview extends BaseModel {
   declare noteId: string
 
   @column()
+  declare versionId: number | null
+
+  @column()
   declare chatId: number | null
 
   @column({
@@ -77,6 +85,9 @@ export default class ManagerReview extends BaseModel {
 
   @column()
   declare practitionerId: number
+
+  @column()
+  declare reviewerId: number | null
 
   @column()
   declare manualScore: number | null
@@ -167,6 +178,11 @@ export default class ManagerReview extends BaseModel {
   })
   declare session: BelongsTo<typeof Session>
 
+  @belongsTo(() => WebhookSessionVersion, {
+    foreignKey: 'versionId',
+  })
+  declare version: BelongsTo<typeof WebhookSessionVersion>
+
   @belongsTo(() => Chat, {
     foreignKey: 'chatId',
   })
@@ -176,6 +192,11 @@ export default class ManagerReview extends BaseModel {
     foreignKey: 'practitionerId',
   })
   declare practitioner: BelongsTo<typeof User>
+
+  @belongsTo(() => User, {
+    foreignKey: 'reviewerId',
+  })
+  declare reviewer: BelongsTo<typeof User>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery
