@@ -112,7 +112,8 @@ export default class UsersController {
   public async updatePassword(ctx: HttpContext) {
     try {
       const payload = await updateUserPasswordValidator.validate(ctx.request.body())
-      const user = await updateUserPassword(payload)
+      const currentUser = ctx.auth.getUserOrFail()
+      const user = await updateUserPassword(payload, currentUser.id, currentUser.type)
       return sendSuccess('Password updated successfully', user)
     } catch (error) {
       console.log('Error in updatePassword:', error)
