@@ -19,16 +19,38 @@ import { storeWebhookSessionVersionIfDifferent } from '#services/json_comparison
 export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
   try {
     // Only process webhook if Status is "locked", otherwise silently ignore
-    if (payload.Status !== 'locked') {
+    if (payload.Status === 'locked') {
       // Get CPT code 90791 (default for sessions)
       const cptCode = await CptCode.findBy('code', '90791')
       if (!cptCode) {
         throw new Error('CPT code 90791 not found. Please ensure CPT code seeder has been run.')
       }
 
-      // Find practitioner by PractitionerId (ID-based only)
+      // Find or create practitioner by PractitionerEmail or PractitionerId
       let practitionerId: number | null = null
-      if (payload.PractitionerId) {
+
+      // First, try to find by PractitionerEmail if provided
+      if (payload.PractitionerEmail) {
+        const practitionerByEmail = await User.query()
+          .where('email', payload.PractitionerEmail)
+          .where('type', UserTypeEnum.practitioner)
+          .first()
+
+        if (practitionerByEmail) {
+          practitionerId = practitionerByEmail.id
+        } else {
+          // Create new practitioner if not found
+          const newPractitioner = await User.create({
+            email: payload.PractitionerEmail,
+            fullName: payload.PractitionerName || null,
+            type: UserTypeEnum.practitioner,
+            isActive: true,
+            password: null,
+          })
+          practitionerId = newPractitioner.id
+        }
+      } else if (payload.PractitionerId) {
+        // Fallback to PractitionerId if email not provided
         const practitioner = await User.query()
           .where('type', UserTypeEnum.practitioner)
           .where('id', payload.PractitionerId)
@@ -40,15 +62,25 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       }
 
       if (!practitionerId) {
-        throw new Error(`Practitioner not found for id: ${payload.PractitionerId || 'N/A'}`)
+        throw new Error(
+          `Practitioner not found. Please provide PractitionerEmail or valid PractitionerId.`
+        )
       }
 
-      // Find patient by ClientId
+      // Find or create patient by ClientId
       let patientId: number | null = null
       if (payload.ClientId) {
-        const patient = await Patient.query().where('client_id', payload.ClientId).first()
+        const clientIdString = String(payload.ClientId)
+        const patient = await Patient.query().where('client_id', clientIdString).first()
+
         if (patient) {
           patientId = patient.id
+        } else {
+          // Create new patient if not found
+          const newPatient = await Patient.create({
+            clientId: clientIdString,
+          })
+          patientId = newPatient.id
         }
       }
 
@@ -72,11 +104,16 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         }
 
         const fieldName = fieldMapping[question.id] || question.text
+        // Skip questions with missing text if not in fieldMapping
+        if (!fieldName) {
+          return
+        }
+
         if (fieldName && question.answer) {
           sessionObject[fieldName] = question.answer
         } else if (
           fieldName &&
-          (question.id.includes('optional') || question.text.includes('optional'))
+          (question.id.includes('optional') || (question.text?.includes('optional') ?? false))
         ) {
           // Include optional fields even if empty
           sessionObject[fieldName] = ''
@@ -140,6 +177,9 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         versionMessage: versionResult.message,
       })
     }
+
+    // If Status is not "locked", silently ignore and return success
+    return sendSuccess('Webhook received but not processed (Status is not locked)', {})
   } catch (error: any) {
     console.log('Error in createSessionFromWebhook:', error.message)
     throw error
