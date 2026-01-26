@@ -87,7 +87,9 @@ export const listHumanReviews = async (
   page?: number,
   pageSize?: number,
   filters?: Array<any>,
-  sorts?: Array<any>
+  sorts?: Array<any>,
+  currentUserId?: number,
+  currentUserType?: number
 ) => {
   try {
     let query: any
@@ -111,8 +113,14 @@ export const listHumanReviews = async (
     // Start with base query and add preloads
     let humanReviewListings: any = HumanReview.query()
       .preload('practitioner')
+      .preload('reviewer')
       .preload('note')
       .preload('chat')
+
+    // If current user is not super admin, filter by reviewer_id matching current user's ID
+    if (currentUserType !== UserTypeEnum.superAdmin && currentUserId) {
+      humanReviewListings = humanReviewListings.where('reviewer_id', currentUserId)
+    }
 
     // Apply human review filters
     if (humanReviewFilters?.length) {
@@ -173,14 +181,25 @@ export const listHumanReviews = async (
   }
 }
 
-export const getHumanReview = async (id: number) => {
+export const getHumanReview = async (
+  id: number,
+  currentUserId?: number,
+  currentUserType?: number
+) => {
   try {
-    const review = await HumanReview.query()
+    let query = HumanReview.query()
       .where('id', id)
       .preload('practitioner')
+      .preload('reviewer')
       .preload('note')
       .preload('chat')
-      .first()
+
+    // If current user is not super admin, filter by reviewer_id matching current user's ID
+    if (currentUserType !== UserTypeEnum.superAdmin && currentUserId) {
+      query = query.where('reviewer_id', currentUserId)
+    }
+
+    const review = await query.first()
 
     if (!review) {
       return sendError('Human review not found')

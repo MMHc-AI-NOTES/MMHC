@@ -4,6 +4,7 @@ import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import Session from '#models/session'
 import Chat from '#models/chat'
+import WebhookSessionVersion from '#models/webhook_session_version'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { HumanReviewDecisionEnum, HumanReviewResultEnum } from '#enums/human_review_enum'
 import { AiStatusEnum, PriorityEnum } from '#enums/session_enum'
@@ -11,8 +12,10 @@ import { AiStatusEnum, PriorityEnum } from '#enums/session_enum'
 export const humanReviewFilterEnum = [
   'id',
   'note_id',
+  'version_id',
   'chat_id',
   'practitioner_id',
+  'reviewer_id',
   'decision',
   'manual_score',
   'ai_status',
@@ -25,8 +28,10 @@ export const humanReviewFilterEnum = [
 export const humanReviewSortEnum = [
   'id',
   'note_id',
+  'version_id',
   'chat_id',
   'practitioner_id',
+  'reviewer_id',
   'decision',
   'manual_score',
   'created_at',
@@ -52,6 +57,9 @@ export default class HumanReview extends BaseModel {
 
   @column()
   declare noteId: string
+
+  @column()
+  declare versionId: number | null
 
   @column()
   declare chatId: number | null
@@ -80,6 +88,9 @@ export default class HumanReview extends BaseModel {
 
   @column()
   declare practitionerId: number
+
+  @column()
+  declare reviewerId: number | null
 
   @column()
   declare manualScore: number | null
@@ -112,6 +123,11 @@ export default class HumanReview extends BaseModel {
   })
   declare practitioner: BelongsTo<typeof User>
 
+  @belongsTo(() => User, {
+    foreignKey: 'reviewerId',
+  })
+  declare reviewer: BelongsTo<typeof User>
+
   @belongsTo(() => Session, {
     foreignKey: 'noteId',
     localKey: 'noteId',
@@ -122,6 +138,11 @@ export default class HumanReview extends BaseModel {
     foreignKey: 'chatId',
   })
   declare chat: BelongsTo<typeof Chat>
+
+  @belongsTo(() => WebhookSessionVersion, {
+    foreignKey: 'versionId',
+  })
+  declare version: BelongsTo<typeof WebhookSessionVersion>
 
   @beforeFind()
   public static softDeletesFind = softDeleteQuery
