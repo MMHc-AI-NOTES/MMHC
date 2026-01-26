@@ -170,6 +170,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         priority: PriorityEnum.low,
         reviewCycle: ReviewCycleEnum.cycle_1_of_3,
       })
+      console.log('🚀 ~ createSessionFromWebhook ~ session:', session)
 
       return sendSuccess('Session created successfully from webhook', {
         session: session,

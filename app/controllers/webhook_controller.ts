@@ -7,6 +7,7 @@ export default class WebhookController {
   public async session(ctx: HttpContext) {
     try {
       const payload = await webhookSessionValidator.validate(ctx.request.body())
+      console.log('🚀 ~ WebhookController ~ session ~ payload:', payload)
       const response = await createSessionFromWebhook(payload)
       return response
     } catch (error) {
