@@ -43,12 +43,6 @@ jobs:
           echo "${{ vars.ENV_DEV }}" > .env
           cat .env > ./build/.env  # Copy .env to the build directory
 
-      - name: Cache build artifacts
-        uses: actions/cache@v4
-        with:
-          path: build/
-          key: build-${{ github.sha }}
-
       - name: Configure AWS Credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v5
         with:
