@@ -4,6 +4,7 @@ import WebhookSessionVersion from '#models/webhook_session_version'
 import ErrorType from '#models/error_type'
 import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
+import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import User from '#models/user'
 import HumanReview from '#models/human_review'
 import ManagerReview from '#models/manager_review'
@@ -20,18 +21,42 @@ import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
-    const errorType = await ErrorType.find(reqData.error_type_id)
+    // Resolve error_type_id, issues_related_to_id and issue_description_id
+    // Either from template_id (preferred) or directly from payload
+    let errorTypeId = reqData.error_type_id
+    let issuesRelatedToId = reqData.issues_related_to_id
+    let issueDescriptionId = reqData.issue_description_id ?? null
+
+    if (reqData.template_id) {
+      const template = await SmeIssuesTamplate.find(reqData.template_id)
+      if (!template) {
+        return sendError('Template not found for the provided template_id')
+      }
+
+      errorTypeId = template.errorTypeId
+      issuesRelatedToId = template.issuesRelatedToId
+      issueDescriptionId = template.issueDescriptionId
+    }
+
+    // Ensure we have required IDs either from template or payload
+    if (!errorTypeId || !issuesRelatedToId) {
+      return sendError(
+        'Either template_id or both error_type_id and issues_related_to_id must be provided'
+      )
+    }
+
+    const errorType = await ErrorType.find(errorTypeId)
     if (!errorType) {
       return sendError('Error type not found for the provided error_type_id')
     }
 
-    const issuesRelatedTo = await IssuesRelatedTo.find(reqData.issues_related_to_id)
+    const issuesRelatedTo = await IssuesRelatedTo.find(issuesRelatedToId)
     if (!issuesRelatedTo) {
       return sendError('Issues related to not found for the provided issues_related_to_id')
     }
 
-    if (reqData.issue_description_id) {
-      const issueDescription = await IssueDescription.find(reqData.issue_description_id)
+    if (issueDescriptionId) {
+      const issueDescription = await IssueDescription.find(issueDescriptionId)
       if (!issueDescription) {
         return sendError('Issue description not found for the provided issue_description_id')
       }
@@ -61,9 +86,9 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
     // Create SME issue
     const smeIssue = await SmeIssue.create({
       reviewerId: reqData.reviewer_id,
-      errorTypeId: reqData.error_type_id,
-      issuesRelatedToId: reqData.issues_related_to_id,
-      issueDescriptionId: reqData.issue_description_id,
+      errorTypeId: errorTypeId,
+      issuesRelatedToId: issuesRelatedToId,
+      issueDescriptionId: issueDescriptionId,
       noteId: reqData.note_id,
       versionId: reqData.version_id ?? null,
       status: reqData.status ?? 1,
@@ -242,6 +267,18 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
       return sendError('SME issue not found')
     }
 
+    // If template_id is provided, resolve IDs from template
+    if (reqData.template_id) {
+      const template = await SmeIssuesTamplate.find(reqData.template_id)
+      if (!template) {
+        return sendError('Template not found for the provided template_id')
+      }
+
+      reqData.error_type_id = template.errorTypeId
+      reqData.issues_related_to_id = template.issuesRelatedToId
+      reqData.issue_description_id = template.issueDescriptionId ?? undefined
+    }
+
     // Verify error_type_id exists if being updated
     if (reqData.error_type_id) {
       const errorType = await ErrorType.find(reqData.error_type_id)
@@ -313,6 +350,8 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
       delete updateData.reviewer_id
     }
 
+    // Remove fields that don't exist on SmeIssue model
+    delete updateData.template_id
     // Remove is_current_version from updateData as it's not a field in SmeIssue model
     delete updateData.is_current_version
     delete updateData.practitioner_id
