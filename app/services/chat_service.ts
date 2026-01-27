@@ -16,10 +16,18 @@ import type {
   updateChatValidatorInterface,
 } from '#validators/chat_validator'
 
-export const createChat = async (reqData: createChatValidatorInterface, userId: number) => {
+export const createChat = async (
+  reqData: createChatValidatorInterface,
+  userId: number,
+  sessionInstance?: Session
+) => {
   try {
-    // Get session from note_id
-    const session = await Session.query().where('note_id', reqData.note_id).first()
+    // Use provided session instance or query for it
+    let session: Session | null = sessionInstance || null
+
+    if (!session) {
+      session = await Session.query().where('note_id', reqData.note_id).first()
+    }
 
     if (!session) {
       console.log('Error in createChat: Session not found for note_id:', reqData.note_id)

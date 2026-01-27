@@ -6,9 +6,7 @@ import ErrorService from '#services/error_service'
 export default class WebhookController {
   public async session(ctx: HttpContext) {
     try {
-      console.log('🚀 ~ WebhookController ~ session ~ ctx.request.body():', ctx.request.body())
       const payload = await webhookSessionValidator.validate(ctx.request.body())
-      console.log('🚀 ~ WebhookController ~ session ~ payload:', payload)
       const response = await createSessionFromWebhook(payload)
       return response
     } catch (error) {

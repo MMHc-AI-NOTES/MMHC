@@ -2,6 +2,8 @@ import Session from '#models/session'
 import CptCode from '#models/cpt_code'
 import User from '#models/user'
 import Patient from '#models/patient'
+import Agent from '#models/agent'
+import Chat from '#models/chat'
 import {
   SessionTypeEnum,
   AiStatusEnum,
@@ -15,6 +17,7 @@ import { sendSuccess } from '#services/custom_response_service'
 import type { webhookSessionValidatorInterface } from '#validators/webhook_validator'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { storeWebhookSessionVersionIfDifferent } from '#services/json_comparison_service'
+import { createChat } from '#services/chat_service'
 
 export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
   try {
@@ -138,6 +141,8 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         .orWhere('session_id', sessionId)
         .first()
 
+      let session: Session
+
       // Update/create session with new JSON data
       // If version was stored (JSON changed), session will be updated with new data
       // If version was not stored (JSON same), session will still be updated to latest JSON
@@ -145,38 +150,71 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         // Update existing session with new session data
         existingSession.session = sessionString
         await existingSession.save()
-
-        return sendSuccess('Session updated successfully from webhook', {
-          session: existingSession,
-          versionStored: versionResult.stored,
-          versionMessage: versionResult.message,
+        session = existingSession
+      } else {
+        // Create new session
+        session = await Session.create({
+          noteId: payload.NoteId,
+          sessionId: sessionId,
+          session: sessionString,
+          practitionerId: practitionerId,
+          patientId: patientId,
+          type: SessionTypeEnum.intake,
+          cptCodeId: cptCode.id,
+          aiScore: null,
+          aiStatus: AiStatusEnum.not_reviewed,
+          humanReview: HumanReviewEnum.pending,
+          manager: ManagerEnum.pending,
+          workflow: WorkflowEnum.in_queue,
+          priority: PriorityEnum.low,
+          reviewCycle: ReviewCycleEnum.cycle_1_of_3,
         })
       }
 
-      // Create new session
-      const session = await Session.create({
-        noteId: payload.NoteId,
-        sessionId: sessionId,
-        session: sessionString,
-        practitionerId: practitionerId,
-        patientId: patientId,
-        type: SessionTypeEnum.intake,
-        cptCodeId: cptCode.id,
-        aiScore: null,
-        aiStatus: AiStatusEnum.not_reviewed,
-        humanReview: HumanReviewEnum.pending,
-        manager: ManagerEnum.pending,
-        workflow: WorkflowEnum.in_queue,
-        priority: PriorityEnum.low,
-        reviewCycle: ReviewCycleEnum.cycle_1_of_3,
-      })
-      console.log('🚀 ~ createSessionFromWebhook ~ session:', session)
+      // Automatically create chat with default prompt for AI evaluation
+      // Create chat if: 1) Chat doesn't exist, OR 2) New version was stored (details changed)
+      try {
+        // Check if chat already exists for this note
+        const existingChat = await Chat.query().where('note_id', payload.NoteId).first()
 
-      return sendSuccess('Session created successfully from webhook', {
-        session: session,
-        versionStored: versionResult.stored,
-        versionMessage: versionResult.message,
-      })
+        // Create chat if: no chat exists OR new version was stored
+        const shouldCreateChat = !existingChat || versionResult.stored
+
+        if (shouldCreateChat) {
+          // Find default active agent
+          const defaultAgent = await Agent.query()
+            .where('is_default', true)
+            .where('is_active', true)
+            .first()
+
+          if (defaultAgent && defaultAgent.prompt && defaultAgent.model) {
+            // Create chat with default agent for automatic evaluation
+            // Pass the session instance we already have to avoid querying again
+            await createChat(
+              {
+                note_id: payload.NoteId,
+                prompt_id: defaultAgent.id,
+              },
+              practitionerId,
+              session // Pass the session instance we already have
+            )
+          }
+        }
+      } catch (chatError: any) {
+        // Log error but don't fail webhook processing
+        console.log(`Error creating automatic chat for note ${payload.NoteId}:`, chatError.message)
+      }
+
+      return sendSuccess(
+        existingSession
+          ? 'Session updated successfully from webhook'
+          : 'Session created successfully from webhook',
+        {
+          session: session,
+          versionStored: versionResult.stored,
+          versionMessage: versionResult.message,
+        }
+      )
     }
 
     // If Status is not "locked", silently ignore and return success
