@@ -127,7 +127,7 @@ jobs:
 
           nvm use v22.21
 
-          npm i
+          npm ci --omit=dev
 
           node ace migration:run --force
 
