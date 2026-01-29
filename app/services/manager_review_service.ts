@@ -6,12 +6,18 @@ import Session from '#models/session'
 import HumanReview from '#models/human_review'
 import User from '#models/user'
 import Chat from '#models/chat'
+import SmeIssue from '#models/sme_issue'
+import WebhookSessionVersion from '#models/webhook_session_version'
 import { sendError, sendSuccess } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
-import type { updateManagerReviewValidatorInterface } from '#validators/manager_review_validator'
+import type {
+  updateManagerReviewValidatorInterface,
+  notifyPractitionerValidatorInterface,
+} from '#validators/manager_review_validator'
 import { ManagerEnum } from '#enums/session_enum'
+import { sendPractitionerSmeIssuesEmail } from '#services/email_service'
 
 export const listManagerReviews = async (
   page?: number,
@@ -25,11 +31,13 @@ export const listManagerReviews = async (
     let sortManagerReview: any
 
     let managerReviewListings: any = ManagerReview.query()
+      .select('manager_reviews.*')
       .preload('manager')
       .preload('review')
       .preload('session')
-      .preload('chat')
       .preload('practitioner')
+      .preload('reviewer')
+      .preload('version')
 
     // Separate search and manager review filters
     let searchFilter: any = null
@@ -93,6 +101,32 @@ export const listManagerReviews = async (
     let sortQuery = sortManagerReview?.query ?? query
     let managerReviewListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
+    // Load SME issues for each manager review based on reviewer_id, note_id, and version_id
+    const managerReviews = managerReviewListingPaginated['rows']
+    for (const review of managerReviews) {
+      if (review.reviewerId !== null && review.reviewerId !== undefined && review.noteId) {
+        const smeIssuesQuery = SmeIssue.query()
+          .where('reviewer_id', review.reviewerId)
+          .where('note_id', review.noteId)
+
+        if (review.versionId !== null && review.versionId !== undefined) {
+          smeIssuesQuery.where('version_id', review.versionId)
+        } else {
+          smeIssuesQuery.whereNull('version_id')
+        }
+
+        const smeIssues = await smeIssuesQuery
+          .preload('errorType')
+          .preload('issuesRelatedTo')
+          .preload('issueDescription')
+          .preload('reviewer')
+
+        review.$setRelated('smeIssues', smeIssues)
+      } else {
+        review.$setRelated('smeIssues', [])
+      }
+    }
+
     return {
       count: managerReviewListingPaginated['rows'].length,
       total_count: managerReviewListingPaginated.total,
@@ -113,12 +147,39 @@ export const getManagerReview = async (id: number) => {
   try {
     const review = await ManagerReview.query()
       .where('id', id)
+      .select('manager_reviews.*')
       .preload('manager')
       .preload('review')
       .preload('session')
-      .preload('chat')
       .preload('practitioner')
+      .preload('reviewer')
+      .preload('version')
       .first()
+
+    if (review) {
+      // Load SME issues matching reviewer_id, note_id, and version_id
+      if (review.reviewerId !== null && review.reviewerId !== undefined && review.noteId) {
+        const smeIssuesQuery = SmeIssue.query()
+          .where('reviewer_id', review.reviewerId)
+          .where('note_id', review.noteId)
+
+        if (review.versionId !== null && review.versionId !== undefined) {
+          smeIssuesQuery.where('version_id', review.versionId)
+        } else {
+          smeIssuesQuery.whereNull('version_id')
+        }
+
+        const smeIssues = await smeIssuesQuery
+          .preload('errorType')
+          .preload('issuesRelatedTo')
+          .preload('issueDescription')
+          .preload('reviewer')
+
+        review.$setRelated('smeIssues', smeIssues)
+      } else {
+        review.$setRelated('smeIssues', [])
+      }
+    }
 
     if (!review) {
       return sendError('Manager review not found')
@@ -265,6 +326,80 @@ export const deleteManagerReview = async (id: number) => {
 
     return sendSuccess('Manager review deleted successfully', { id })
   } catch (error: any) {
+    return sendError(error.message)
+  }
+}
+
+export const notifyPractitioner = async (reqData: notifyPractitionerValidatorInterface) => {
+  try {
+    // Verify practitioner exists
+    const practitioner = await User.find(reqData.practitioner_id)
+    if (!practitioner) {
+      return sendError('Practitioner not found for the provided practitioner_id')
+    }
+
+    // Verify reviewer exists
+    const reviewer = await User.find(reqData.reviewer_id)
+    if (!reviewer) {
+      return sendError('Reviewer not found for the provided reviewer_id')
+    }
+
+    // Verify note exists
+    const note = await Session.query().where('note_id', reqData.note_id).first()
+    if (!note) {
+      return sendError('Note not found for the provided note_id')
+    }
+
+    // Verify version exists
+    const version = await WebhookSessionVersion.query()
+      .where('id', reqData.version_id)
+      .where('note_id', reqData.note_id)
+      .first()
+
+    if (!version) {
+      return sendError('Version not found for the provided version_id and note_id')
+    }
+
+    // Fetch SME issues based on note_id, reviewer_id, and version_id
+    const smeIssuesQuery = SmeIssue.query()
+      .where('note_id', reqData.note_id)
+      .where('reviewer_id', reqData.reviewer_id)
+      .where('version_id', reqData.version_id)
+
+    const smeIssues = await smeIssuesQuery
+      .preload('errorType')
+      .preload('issuesRelatedTo')
+      .preload('issueDescription')
+      .preload('reviewer')
+      .preload('version')
+
+    if (smeIssues.length === 0) {
+      return sendError('No SME issues found for the provided criteria')
+    }
+
+    // Send email to practitioner
+    if (!practitioner.email) {
+      return sendError('Practitioner email not found')
+    }
+
+    await sendPractitionerSmeIssuesEmail(
+      practitioner.email,
+      practitioner.fullName || 'Practitioner',
+      reviewer.fullName || 'Reviewer',
+      reqData.note_id,
+      reqData.version_id,
+      smeIssues
+    )
+
+    return sendSuccess('Email sent to practitioner successfully', {
+      practitioner_id: reqData.practitioner_id,
+      note_id: reqData.note_id,
+      reviewer_id: reqData.reviewer_id,
+      version_id: reqData.version_id,
+      issues_count: smeIssues.length,
+    })
+  } catch (error: any) {
+    console.log('Error in notifyPractitioner:', error.message)
     return sendError(error.message)
   }
 }

@@ -49,12 +49,16 @@ export default class UsersController {
       const { userId } = await userIdValidator.validate(ctx.params)
       const currentUser = ctx.auth.getUserOrFail()
 
-      if (currentUser.id === userId) {
-        throw new Error('You cannot update your own profile')
-      }
       const payload = await updateUserValidator.validate(ctx.request.body(), {
         meta: { userId: ctx.request.param('userId') },
       })
+
+      // If user is updating their own profile, remove type and email from payload
+      if (currentUser.id === userId) {
+        delete payload.type
+        delete payload.email
+      }
+
       const userResponse = await updateUser(payload, userId)
       return sendSuccess('User updated successfully', userResponse)
     } catch (error) {
@@ -112,7 +116,8 @@ export default class UsersController {
   public async updatePassword(ctx: HttpContext) {
     try {
       const payload = await updateUserPasswordValidator.validate(ctx.request.body())
-      const user = await updateUserPassword(payload)
+      const currentUser = ctx.auth.getUserOrFail()
+      const user = await updateUserPassword(payload, currentUser.id, currentUser.type)
       return sendSuccess('Password updated successfully', user)
     } catch (error) {
       console.log('Error in updatePassword:', error)

@@ -15,6 +15,7 @@ router
       SmeIssueController,
       'deleteByNoteAndVersion',
     ])
+    router.post('/assign-to-manager', [SmeIssueController, 'assignToManager'])
   })
   .prefix('api/sme-issues')
   .use(middleware.auth())

@@ -20,7 +20,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 2 },
       {
         id: 2,
-        email: 'practitioner1@experts.com',
+        email: 'themustafadeveloper+1@experts.com',
         password: 'Abc@1234',
         fullName: 'Raquel Castello',
         type: UserTypeEnum.practitioner,
@@ -32,7 +32,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 3 },
       {
         id: 3,
-        email: 'practitioner2@experts.com',
+        email: 'themustafadeveloper+2@experts.com',
         password: 'Abc@1234',
         fullName: 'Alexandra Tesnakis',
         type: UserTypeEnum.practitioner,
@@ -44,7 +44,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 4 },
       {
         id: 4,
-        email: 'practitioner3@experts.com',
+        email: 'themustafadeveloper+3@experts.com',
         password: 'Abc@1234',
         fullName: 'Carol Black',
         type: UserTypeEnum.practitioner,
@@ -56,7 +56,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 5 },
       {
         id: 5,
-        email: 'practitioner4@experts.com',
+        email: 'themustafadeveloper+4@experts.com',
         password: 'Abc@1234',
         fullName: 'Alexis Weddle',
         type: UserTypeEnum.practitioner,
@@ -68,7 +68,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 6 },
       {
         id: 6,
-        email: 'practitioner5@experts.com',
+        email: 'themustafadeveloper+5@experts.com',
         password: 'Abc@1234',
         fullName: 'Alyssa Jenkins',
         type: UserTypeEnum.practitioner,
@@ -80,7 +80,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 7 },
       {
         id: 7,
-        email: 'practitioner6@experts.com',
+        email: 'themustafadeveloper+6@experts.com',
         password: 'Abc@1234',
         fullName: 'Andrea Singh',
         type: UserTypeEnum.practitioner,
@@ -92,7 +92,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 8 },
       {
         id: 8,
-        email: 'practitioner7@experts.com',
+        email: 'themustafadeveloper+7@experts.com',
         password: 'Abc@1234',
         fullName: 'Alexis Lyons',
         type: UserTypeEnum.practitioner,
@@ -104,7 +104,7 @@ export default class UserSeeder extends BaseSeeder {
       { id: 9 },
       {
         id: 9,
-        email: 'practitioner8@experts.com',
+        email: 'themustafadeveloper+8@experts.com',
         password: 'Abc@1234',
         fullName: 'Chantal Amoussou',
         type: UserTypeEnum.practitioner,
