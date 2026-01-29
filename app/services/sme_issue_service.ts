@@ -92,6 +92,7 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
       noteId: reqData.note_id,
       versionId: reqData.version_id ?? null,
       status: reqData.status ?? 1,
+      comment: reqData.comment ?? null,
     })
 
     // Get ai_status and priority from note (session)
@@ -348,6 +349,9 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
     if (reqData.reviewer_id !== undefined) {
       updateData.reviewerId = reqData.reviewer_id
       delete updateData.reviewer_id
+    }
+    if (reqData.comment !== undefined) {
+      updateData.comment = reqData.comment
     }
 
     // Remove fields that don't exist on SmeIssue model

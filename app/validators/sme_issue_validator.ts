@@ -17,6 +17,7 @@ export const createSmeIssueValidator = vine.compile(
     version_id: vine.number().withoutDecimals().optional().nullable(),
     status: vine.number().withoutDecimals().optional(),
     is_current_version: vine.boolean(),
+    comment: vine.string().trim().optional().nullable(),
   })
 )
 
@@ -32,6 +33,7 @@ export const updateSmeIssueValidator = vine.compile(
     version_id: vine.number().withoutDecimals().optional().nullable(),
     status: vine.number().withoutDecimals().optional(),
     is_current_version: vine.boolean().optional(),
+    comment: vine.string().trim().optional().nullable(),
   })
 )
 
