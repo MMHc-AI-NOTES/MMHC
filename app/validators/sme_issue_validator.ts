@@ -8,13 +8,16 @@ export const createSmeIssueValidator = vine.compile(
   vine.object({
     reviewer_id: vine.number().withoutDecimals(),
     practitioner_id: vine.number().withoutDecimals(),
-    error_type_id: vine.number().withoutDecimals(),
-    issues_related_to_id: vine.number().withoutDecimals(),
+    // New combined template id (optional, but if provided we will use it to resolve the 3 fields below)
+    template_id: vine.number().withoutDecimals().optional(),
+    error_type_id: vine.number().withoutDecimals().optional(),
+    issues_related_to_id: vine.number().withoutDecimals().optional(),
     issue_description_id: vine.number().withoutDecimals().optional().nullable(),
     note_id: vine.string().trim().minLength(1),
     version_id: vine.number().withoutDecimals().optional().nullable(),
     status: vine.number().withoutDecimals().optional(),
     is_current_version: vine.boolean(),
+    comment: vine.string().trim().optional().nullable(),
   })
 )
 
@@ -22,6 +25,7 @@ export const updateSmeIssueValidator = vine.compile(
   vine.object({
     reviewer_id: vine.number().withoutDecimals().optional(),
     practitioner_id: vine.number().withoutDecimals().optional(),
+    template_id: vine.number().withoutDecimals().optional(),
     error_type_id: vine.number().withoutDecimals().optional(),
     issues_related_to_id: vine.number().withoutDecimals().optional(),
     issue_description_id: vine.number().withoutDecimals().optional().nullable(),
@@ -29,6 +33,7 @@ export const updateSmeIssueValidator = vine.compile(
     version_id: vine.number().withoutDecimals().optional().nullable(),
     status: vine.number().withoutDecimals().optional(),
     is_current_version: vine.boolean().optional(),
+    comment: vine.string().trim().optional().nullable(),
   })
 )
 

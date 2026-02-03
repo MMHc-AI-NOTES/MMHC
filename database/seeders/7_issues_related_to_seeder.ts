@@ -25,7 +25,7 @@ export default class extends BaseSeeder {
         { id: 10, field_id: 'kxgx-7', display_name: 'Suicidality' },
         { id: 11, field_id: 'kxgx-8', display_name: 'Homicidality' },
         { id: 12, field_id: '4lbp-1', display_name: 'Therapist Initials' },
-        { id: 13, field_id: 'general', display_name: 'General' },
+        { id: 13, field_id: 'overall', display_name: 'Overall' },
       ]
 
       await IssuesRelatedTo.updateOrCreateMany('id', issuesRelatedToData)

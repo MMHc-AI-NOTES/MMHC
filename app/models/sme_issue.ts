@@ -18,6 +18,7 @@ export const smeIssueFilterEnum = [
   'note_id',
   'version_id',
   'status',
+  'comment',
   'created_at',
 ]
 export const smeIssueSortEnum = [
@@ -29,6 +30,7 @@ export const smeIssueSortEnum = [
   'note_id',
   'version_id',
   'status',
+  'comment',
   'created_at',
   'updated_at',
 ]
@@ -67,6 +69,9 @@ export default class SmeIssue extends BaseModel {
     },
   })
   declare status: number
+
+  @column()
+  declare comment: string | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
