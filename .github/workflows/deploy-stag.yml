@@ -139,6 +139,8 @@ jobs:
           pm2 delete $_pm2_server_ref --silent
           pm2 start bin/server.js --name $_pm2_server_ref --time
 
+          pm2 save
+
           echo "Deployment Ended Local system name: $HOSTNAME"
           echo "Deployment Ended Local date and time: $(date)"
           echo "Bye"
