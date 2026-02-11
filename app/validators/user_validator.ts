@@ -92,6 +92,7 @@ export const updateUserPasswordValidator = vine.compile(
   vine.object({
     user_id: vine.number().positive(),
     password: vine.string().minLength(8).maxLength(64).trim().confirmed(),
+    current_password: vine.string().trim().optional(),
   })
 )
 export type updateUserPasswordValidatorInterface = Infer<typeof updateUserPasswordValidator>

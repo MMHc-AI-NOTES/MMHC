@@ -9,7 +9,9 @@ import {
   getManagerReview,
   updateManagerReview,
   deleteManagerReview,
+  notifyPractitioner,
 } from '#services/manager_review_service'
+import { notifyPractitionerValidator } from '#validators/manager_review_validator'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
 
@@ -57,6 +59,17 @@ export default class ManagerReviewController {
       return response
     } catch (error) {
       console.log('Manager review deleting error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async notifyPractitioner(ctx: HttpContext) {
+    try {
+      const payload = await notifyPractitionerValidator.validate(ctx.request.body())
+      const response = await notifyPractitioner(payload)
+      return response
+    } catch (error) {
+      console.log('Notify practitioner error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

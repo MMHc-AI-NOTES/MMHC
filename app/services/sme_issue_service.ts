@@ -4,12 +4,15 @@ import WebhookSessionVersion from '#models/webhook_session_version'
 import ErrorType from '#models/error_type'
 import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
+import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import User from '#models/user'
 import HumanReview from '#models/human_review'
+import ManagerReview from '#models/manager_review'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type {
   createSmeIssueValidatorInterface,
   updateSmeIssueValidatorInterface,
+  assignSmeIssueToManagerValidatorInterface,
 } from '#validators/sme_issue_validator'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
@@ -18,18 +21,42 @@ import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
-    const errorType = await ErrorType.find(reqData.error_type_id)
+    // Resolve error_type_id, issues_related_to_id and issue_description_id
+    // Either from template_id (preferred) or directly from payload
+    let errorTypeId = reqData.error_type_id
+    let issuesRelatedToId = reqData.issues_related_to_id
+    let issueDescriptionId = reqData.issue_description_id ?? null
+
+    if (reqData.template_id) {
+      const template = await SmeIssuesTamplate.find(reqData.template_id)
+      if (!template) {
+        return sendError('Template not found for the provided template_id')
+      }
+
+      errorTypeId = template.errorTypeId
+      issuesRelatedToId = template.issuesRelatedToId
+      issueDescriptionId = template.issueDescriptionId
+    }
+
+    // Ensure we have required IDs either from template or payload
+    if (!errorTypeId || !issuesRelatedToId) {
+      return sendError(
+        'Either template_id or both error_type_id and issues_related_to_id must be provided'
+      )
+    }
+
+    const errorType = await ErrorType.find(errorTypeId)
     if (!errorType) {
       return sendError('Error type not found for the provided error_type_id')
     }
 
-    const issuesRelatedTo = await IssuesRelatedTo.find(reqData.issues_related_to_id)
+    const issuesRelatedTo = await IssuesRelatedTo.find(issuesRelatedToId)
     if (!issuesRelatedTo) {
       return sendError('Issues related to not found for the provided issues_related_to_id')
     }
 
-    if (reqData.issue_description_id) {
-      const issueDescription = await IssueDescription.find(reqData.issue_description_id)
+    if (issueDescriptionId) {
+      const issueDescription = await IssueDescription.find(issueDescriptionId)
       if (!issueDescription) {
         return sendError('Issue description not found for the provided issue_description_id')
       }
@@ -59,12 +86,13 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
     // Create SME issue
     const smeIssue = await SmeIssue.create({
       reviewerId: reqData.reviewer_id,
-      errorTypeId: reqData.error_type_id,
-      issuesRelatedToId: reqData.issues_related_to_id,
-      issueDescriptionId: reqData.issue_description_id,
+      errorTypeId: errorTypeId,
+      issuesRelatedToId: issuesRelatedToId,
+      issueDescriptionId: issueDescriptionId,
       noteId: reqData.note_id,
       versionId: reqData.version_id ?? null,
       status: reqData.status ?? 1,
+      comment: reqData.comment ?? null,
     })
 
     // Get ai_status and priority from note (session)
@@ -240,6 +268,18 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
       return sendError('SME issue not found')
     }
 
+    // If template_id is provided, resolve IDs from template
+    if (reqData.template_id) {
+      const template = await SmeIssuesTamplate.find(reqData.template_id)
+      if (!template) {
+        return sendError('Template not found for the provided template_id')
+      }
+
+      reqData.error_type_id = template.errorTypeId
+      reqData.issues_related_to_id = template.issuesRelatedToId
+      reqData.issue_description_id = template.issueDescriptionId ?? undefined
+    }
+
     // Verify error_type_id exists if being updated
     if (reqData.error_type_id) {
       const errorType = await ErrorType.find(reqData.error_type_id)
@@ -310,7 +350,12 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
       updateData.reviewerId = reqData.reviewer_id
       delete updateData.reviewer_id
     }
+    if (reqData.comment !== undefined) {
+      updateData.comment = reqData.comment
+    }
 
+    // Remove fields that don't exist on SmeIssue model
+    delete updateData.template_id
     // Remove is_current_version from updateData as it's not a field in SmeIssue model
     delete updateData.is_current_version
     delete updateData.practitioner_id
@@ -441,6 +486,137 @@ export const deleteSmeIssuesByNoteAndVersion = async (
     })
   } catch (error: any) {
     console.log('Error in deleteSmeIssuesByNoteAndVersion:', error.message)
+    return sendError(error.message)
+  }
+}
+
+export const assignSmeIssueToManager = async (
+  reqData: assignSmeIssueToManagerValidatorInterface,
+  managerId: number
+) => {
+  try {
+    // Verify note exists
+    const note = await Session.query().where('note_id', reqData.note_id).first()
+    if (!note) {
+      return sendError('Note not found for the provided note_id')
+    }
+
+    // Verify practitioner exists
+    const practitioner = await User.find(reqData.practitioner_id)
+    if (!practitioner) {
+      return sendError('Practitioner not found for the provided practitioner_id')
+    }
+
+    // Verify reviewer exists
+    const reviewer = await User.find(reqData.reviewer_id)
+    if (!reviewer) {
+      return sendError('Reviewer not found for the provided reviewer_id')
+    }
+
+    // Verify manager exists
+    const manager = await User.find(managerId)
+    if (!manager) {
+      return sendError('Manager not found')
+    }
+
+    // Verify version exists if version_id is provided
+    if (reqData.version_id) {
+      const version = await WebhookSessionVersion.query()
+        .where('id', reqData.version_id)
+        .where('note_id', reqData.note_id)
+        .first()
+
+      if (!version) {
+        return sendError('Version not found for the provided version_id and note_id')
+      }
+    }
+
+    // Find or create human review entry
+    let humanReview = await HumanReview.query()
+      .where('note_id', reqData.note_id)
+      .where('practitioner_id', reqData.practitioner_id)
+      .where('reviewer_id', reqData.reviewer_id)
+      .first()
+
+    if (!humanReview) {
+      // Create new human review if not exists
+      humanReview = await HumanReview.create({
+        noteId: reqData.note_id,
+        practitionerId: reqData.practitioner_id,
+        reviewerId: reqData.reviewer_id,
+        versionId: reqData.version_id ?? null,
+        decision:
+          reqData.human_decision !== null && reqData.human_decision !== undefined
+            ? reqData.human_decision
+            : HumanReviewDecisionEnum.accept_ai_evaluation,
+        aiStatus: note.aiStatus ?? null,
+        priority: reqData.priority ?? note.priority ?? null,
+      })
+    } else {
+      // Update existing human review
+      await humanReview
+        .merge({
+          decision:
+            reqData.human_decision !== null && reqData.human_decision !== undefined
+              ? reqData.human_decision
+              : humanReview.decision,
+          priority: reqData.priority ?? humanReview.priority,
+          versionId: reqData.version_id ?? humanReview.versionId,
+        })
+        .save()
+    }
+
+    // Check if manager review already exists
+    let managerReview = await ManagerReview.query()
+      .where('review_id', humanReview.id)
+      .where('manager_id', managerId)
+      .first()
+
+    if (managerReview) {
+      // Update existing manager review
+      await managerReview
+        .merge({
+          noteId: reqData.note_id,
+          practitionerId: reqData.practitioner_id,
+          reviewerId: reqData.reviewer_id,
+          versionId: reqData.version_id ?? null,
+          aiScore: reqData.ai_score ?? note.aiScore ?? null,
+          humanDecision: reqData.human_decision,
+          disagreement: reqData.disagreement,
+          priority: reqData.priority ?? note.priority ?? null,
+          aiStatus: note.aiStatus ?? null,
+        })
+        .save()
+    } else {
+      // Create new manager review
+      managerReview = await ManagerReview.create({
+        managerId: managerId,
+        reviewId: humanReview.id,
+        noteId: reqData.note_id,
+        practitionerId: reqData.practitioner_id,
+        reviewerId: reqData.reviewer_id,
+        versionId: reqData.version_id ?? null,
+        aiScore: reqData.ai_score ?? note.aiScore ?? null,
+        humanDecision: reqData.human_decision,
+        disagreement: reqData.disagreement,
+        priority: reqData.priority ?? note.priority ?? null,
+        aiStatus: note.aiStatus ?? null,
+        decision: HumanReviewDecisionEnum.accept_ai_evaluation, // Default decision
+        chatId: null,
+      })
+    }
+
+    // Reload with relationships
+    await managerReview.load('manager')
+    await managerReview.load('review')
+    await managerReview.load('session')
+    await managerReview.load('practitioner')
+    await managerReview.load('reviewer')
+    await managerReview.load('version')
+
+    return sendSuccess('SME issue assigned to manager successfully', managerReview)
+  } catch (error: any) {
+    console.log('Error in assignSmeIssueToManager:', error.message)
     return sendError(error.message)
   }
 }

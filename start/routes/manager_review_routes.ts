@@ -6,6 +6,7 @@ const ManagerReviewController = () => import('#controllers/manager_review_contro
 router
   .group(() => {
     router.post('/listing', [ManagerReviewController, 'listing'])
+    router.post('/notify-practitioner', [ManagerReviewController, 'notifyPractitioner'])
     router.get('/:id', [ManagerReviewController, 'show'])
     router.patch('/:id', [ManagerReviewController, 'update'])
     router.delete('/:id', [ManagerReviewController, 'destroy'])

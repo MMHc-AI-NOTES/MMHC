@@ -12,6 +12,7 @@ import { UserTypeEnum } from '#enums/user_type_enum'
 import { sendUserInviteEmail } from '#services/email_service'
 import { Secret } from '@adonisjs/core/helpers'
 import { frontendRoutesConfig, getFrontendLink } from '#services/frontend_routes_service'
+import hash from '@adonisjs/core/services/hash'
 
 export const createUser = async (
   payload: createUserValidatorInterface,
@@ -249,9 +250,38 @@ export const resendUserOnboardingEmail = async (userId: number) => {
   }
 }
 
-export const updateUserPassword = async (payload: updateUserPasswordValidatorInterface) => {
+export const updateUserPassword = async (
+  payload: updateUserPasswordValidatorInterface,
+  currentUserId: number,
+  currentUserType: number
+) => {
   try {
     const user = await getUserById(payload.user_id)
+
+    // If current user is not super admin, they can only update their own password
+    if (currentUserType !== UserTypeEnum.superAdmin) {
+      if (currentUserId !== payload.user_id) {
+        throw new Error('You can only update your own password')
+      }
+
+      if (!payload.current_password) {
+        throw {
+          message: 'Current password is required',
+          rule: 'current_password',
+          field: 'current_password',
+        }
+      }
+
+      // Verify current password
+      if (!user.password) {
+        throw new Error('User does not have a password set')
+      }
+
+      const isPasswordValid = await hash.verify(user.password, payload.current_password)
+      if (!isPasswordValid) {
+        throw new Error('Current password is incorrect')
+      }
+    }
 
     user.merge({
       password: payload.password,

@@ -6,9 +6,7 @@ const UsersController = () => import('#controllers/user_controller')
 router
   .group(() => {
     router.post('/', [UsersController, 'create']).use(middleware.superAdmin())
-    router
-      .patch('/update-password', [UsersController, 'updatePassword'])
-      .use(middleware.superAdmin())
+    router.patch('/update-password', [UsersController, 'updatePassword'])
     router.patch('/:userId', [UsersController, 'update'])
     router.delete('/:userId', [UsersController, 'delete']).use(middleware.superAdmin())
     router

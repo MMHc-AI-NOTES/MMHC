@@ -1,0 +1,87 @@
+@layout.emailMaster({title: "SME Issues Notification"})
+
+    @slot('content')
+        <mj-section
+            background-color="#FFFFFF"
+            padding-bottom="56px"
+            padding-left="48px"
+            padding-right="48px"
+            padding-top="56px"
+            padding="48px"
+        >
+            <mj-column padding="0">
+                <mj-text
+                    font-size="0px"
+                    line-height="0px"
+                    padding="0px"
+                    color="#ffffff"
+                    css-class="hidden-timestamp"
+                    style="display: none; visibility: hidden;"
+                >
+                    {{ new Date().getTime() }}
+                </mj-text>
+                <mj-text font-size="28px" line-height="1.4" padding="0px" color="#1a5f3f" font-weight="600">
+                    <strong>SME Issues Added by Reviewer</strong>
+                </mj-text>
+                <mj-spacer height="20px">
+                </mj-spacer>
+                <mj-text
+                    font-size="0px"
+                    line-height="0px"
+                    padding="0px"
+                    color="#ffffff"
+                    css-class="hidden-timestamp"
+                    style="display: none; visibility: hidden;"
+                >
+                    {{ new Date().getTime() }}
+                </mj-text>
+                <mj-text font-size="16px" line-height="1.6" padding="0px" color="#4A4A4A">
+                    Dear {{ practitionerName }},
+                </mj-text>
+                <mj-spacer height="16px">
+                </mj-spacer>
+                <mj-text font-size="16px" line-height="1.6" padding="0px" color="#4A4A4A">
+                    The reviewer <strong>{{ reviewerName }} </strong>has added the following SME issues for Note ID: <strong>{{ noteId }}</strong>
+                    @if(versionId)
+                        (Version ID: <strong>{{ versionId }}</strong>)
+                    @endif
+                </mj-text>
+                <mj-spacer height="24px">
+                </mj-spacer>
+
+                @if(smeIssues && smeIssues.length > 0)
+                    @each(issue in smeIssues)
+                        <mj-section background-color="#F5F5F5" border-radius="6px" padding="20px" margin-bottom="16px">
+                            <mj-column>
+                                <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
+                                    <strong>Issue #{{ issue.id }}</strong>
+                                </mj-text>
+                                <mj-spacer height="8px">
+                                </mj-spacer>
+                                <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
+                                    <strong>Error Type: </strong>{{ issue.errorType }}
+                                </mj-text>
+                                <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
+                                    <strong>Issues Related To: </strong>{{ issue.issuesRelatedTo }}
+                                </mj-text>
+                                <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
+                                    <strong>Issues Description: </strong>{{ issue.issueDescription }}
+                                </mj-text>
+                                <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
+                                    <strong>Status: </strong>{{ issue.status }}
+                                </mj-text>
+                            </mj-column>
+                        </mj-section>
+                    @endeach
+                @endif
+                
+                <mj-spacer height="24px">
+                </mj-spacer>
+                <mj-text font-size="14px" line-height="1.6" padding="0px" color="#6B6B6B">
+                    Please review these issues and take appropriate action.
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    @endslot
+    
+@end

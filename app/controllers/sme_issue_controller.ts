@@ -2,6 +2,7 @@ import {
   createSmeIssueValidator,
   updateSmeIssueValidator,
   deleteSmeIssuesByNoteAndVersionValidator,
+  assignSmeIssueToManagerValidator,
 } from '#validators/sme_issue_validator'
 import {
   createSmeIssue,
@@ -10,6 +11,7 @@ import {
   updateSmeIssue,
   deleteSmeIssue,
   deleteSmeIssuesByNoteAndVersion,
+  assignSmeIssueToManager,
 } from '#services/sme_issue_service'
 import { paginationValidator } from '#validators/pagination_validator'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -93,6 +95,18 @@ export default class SmeIssueController {
       return response
     } catch (error) {
       console.log('SME Issues deleting by note and version error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async assignToManager(ctx: HttpContext) {
+    try {
+      const payload = await assignSmeIssueToManagerValidator.validate(ctx.request.body())
+      const currentUser = ctx.auth.getUserOrFail()
+      const response = await assignSmeIssueToManager(payload, currentUser.id)
+      return response
+    } catch (error) {
+      console.log('SME issue assigning to manager error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

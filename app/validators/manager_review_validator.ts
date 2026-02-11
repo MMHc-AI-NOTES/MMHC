@@ -58,3 +58,14 @@ export const updateManagerReviewValidator = vine.compile(
 )
 
 export type updateManagerReviewValidatorInterface = Infer<typeof updateManagerReviewValidator>
+
+export const notifyPractitionerValidator = vine.compile(
+  vine.object({
+    practitioner_id: vine.number().withoutDecimals(),
+    note_id: vine.string().trim().minLength(1),
+    reviewer_id: vine.number().withoutDecimals(),
+    version_id: vine.number().withoutDecimals(),
+  })
+)
+
+export type notifyPractitionerValidatorInterface = Infer<typeof notifyPractitionerValidator>
