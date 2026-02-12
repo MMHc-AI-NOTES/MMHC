@@ -1,7 +1,21 @@
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  InvokeModelCommand,
+} from '@aws-sdk/client-bedrock-runtime'
 import { bedrockConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import { agentModelKeys } from '#enums/agent_enum'
+
+/** Use Converse API for custom model deployments; InvokeModel is not supported for custom models. */
+function isCustomModelDeployment(modelId: string): boolean {
+  return (
+    !!modelId &&
+    (modelId.includes('custom-model') ||
+      modelId.includes('model-deployment') ||
+      modelId.includes('provisioned-throughput'))
+  )
+}
 
 const client = new BedrockRuntimeClient({
   region: bedrockConfig.region,
@@ -37,15 +51,47 @@ export const invokeBedrockModel = async (
   topK?: number | null
 ): Promise<BedrockEvaluationResponse> => {
   try {
-    // Use modelId as-is (no conversion)
     const actualModelId = modelId
 
-    // Claude 3 API format requires:
-    // - anthropic_version field
-    // - max_tokens (not maxTokens)
-    // - system message in separate field (not in messages array)
-    // - No inferenceConfig wrapper
-    // Claude 4.5 models don't support both temperature and top_p together
+    // Custom model deployments require Converse API; InvokeModel is not supported.
+    if (isCustomModelDeployment(actualModelId)) {
+      const converseCommand = new ConverseCommand({
+        modelId: actualModelId,
+        messages: [
+          {
+            role: 'user',
+            content: [{ text: userPrompt }],
+          },
+        ],
+        system: systemPrompt ? [{ text: systemPrompt }] : undefined,
+        inferenceConfig: {
+          maxTokens: bedrockConfig.maxTokens,
+          temperature,
+          ...(typeof topP === 'number' && { topP }),
+          ...(typeof topK === 'number' && { topK }),
+        },
+      })
+      console.log(
+        'Invoking Bedrock Converse (custom deployment):',
+        actualModelId,
+        'in region:',
+        bedrockConfig.region
+      )
+      const converseRes = await client.send(converseCommand)
+      const content = converseRes.output?.message?.content ?? []
+      const textContent = content
+        .map((block: { text?: string }) => (block && 'text' in block ? block.text : ''))
+        .join('')
+      return {
+        output_text: textContent,
+        content: content.map((block: { text?: string }) => ({
+          type: 'text',
+          text: block?.text ?? '',
+        })),
+      }
+    }
+
+    // Foundation models: use InvokeModel (Claude API format)
     const isClaude45 =
       actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1 ||
       actualModelId === agentModelKeys.CLAUDE_4_5_SONNET_V1
@@ -62,11 +108,9 @@ export const invokeBedrockModel = async (
       ],
     }
 
-    // For Claude 4.5, only use temperature (not top_p)
     if (isClaude45) {
       body.temperature = temperature
     } else {
-      // For other models, use temperature and optionally top_p/top_k
       body.temperature = temperature
       if (typeof topP === 'number') {
         body.top_p = topP
@@ -87,7 +131,6 @@ export const invokeBedrockModel = async (
     const res = await client.send(command)
     const output = JSON.parse(new TextDecoder().decode(res.body))
 
-    // Claude 3 models return content array with text blocks
     if (output.content && Array.isArray(output.content)) {
       const textContent = output.content
         .map((item: any) => (typeof item === 'string' ? item : item.text || ''))
@@ -104,6 +147,15 @@ export const invokeBedrockModel = async (
     }
   } catch (error: any) {
     console.log('Bedrock API Error:', error.message)
+    const msg = error?.message ?? ''
+    if (
+      msg.includes('Custom model inference is no longer supported directly') ||
+      msg.includes('provisioned throughput or custom model deployment')
+    ) {
+      throw new Error(
+        'Custom model cannot be used by ARN directly. Create an on-demand deployment in Bedrock Console (Custom models → your model → Deploy), then set BEDROCK_CUSTOM_MODEL_ARN to the deployment identifier (not the model ARN).'
+      )
+    }
     throw new Error('Failed to communicate with AI service. Please try again later.')
   }
 }

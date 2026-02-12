@@ -1,3 +1,5 @@
+import { bedrockConfig } from '#config/services'
+
 // Claude models available in Bedrock
 // Models are automatically enabled in Bedrock (no manual activation needed)
 // Note: Claude 3.5+ models require inference profile format (with region prefix)
@@ -14,4 +16,6 @@ export const agentModelKeys = {
   CLAUDE_3_5_HAIKU_V1: 'us.anthropic.claude-3-5-haiku-20241022-v1:0', // Inference profile format
   CLAUDE_4_5_HAIKU_V1: 'us.anthropic.claude-haiku-4-5-20251001-v1:0', // Inference profile format
   CLAUDE_4_5_SONNET_V1: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0', // Claude Sonnet 4.5 (inference profile format)
-} as const
+  // Fine-tuned custom model (set BEDROCK_CUSTOM_MODEL_ARN after model customization job completes)
+  CUSTOM_EXPERTSCLOUD: bedrockConfig.customModelArn || '',
+}

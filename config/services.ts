@@ -15,4 +15,6 @@ export const bedrockConfig = {
   accessKeyId: env.get('AWS_ACCESS_KEY_ID', ''),
   secretAccessKey: env.get('AWS_SECRET_ACCESS_KEY', ''),
   anthropicVersion: env.get('BEDROCK_ANTHROPIC_VERSION', 'bedrock-2023-05-31'),
+  /** ARN of fine-tuned custom model (or its deployment). Set after Bedrock model customization job completes. */
+  customModelArn: env.get('BEDROCK_CUSTOM_MODEL_ARN', ''),
 }
