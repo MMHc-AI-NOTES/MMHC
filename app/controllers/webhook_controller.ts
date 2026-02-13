@@ -1,11 +1,12 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { createSessionFromWebhook } from '#services/webhook_service'
-import { webhookSessionValidator, webhookValidator } from '#validators/webhook_validator'
+import { webhookSessionValidator } from '#validators/webhook_validator'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
 import { addWebhookJob } from '#jobs/queues/webhook_queue'
 
 export default class WebhookController {
+  // Legacy synchronous endpoint (main-branch behaviour)
   public async session(ctx: HttpContext) {
     try {
       const payload = await webhookSessionValidator.validate(ctx.request.body())
@@ -17,14 +18,13 @@ export default class WebhookController {
     }
   }
 
+  // Queue-based endpoint: same payload as main, processed asynchronously via BullMQ
   public async handle(ctx: HttpContext) {
     try {
-      const payload = await webhookValidator.validate(ctx.request.body())
+      const payload = await webhookSessionValidator.validate(ctx.request.body())
 
       await addWebhookJob({
-        NoteId: payload.NoteId,
-        Type: payload.Type || 'Unknown',
-        ClientId: payload.ClientId ?? null,
+        payload,
         receivedAt: new Date().toISOString(),
       })
 

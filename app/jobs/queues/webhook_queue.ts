@@ -1,9 +1,15 @@
 import { Queue } from 'bullmq'
 import { redisConfig } from '#config/services'
+import type { webhookSessionValidatorInterface } from '#validators/webhook_validator'
 
 export const WEBHOOK_QUEUE_NAME = 'webhook-processing'
 
-export const webhookQueue = new Queue(WEBHOOK_QUEUE_NAME, {
+export interface WebhookJobData {
+  payload: webhookSessionValidatorInterface
+  receivedAt: string
+}
+
+export const webhookQueue = new Queue<WebhookJobData>(WEBHOOK_QUEUE_NAME, {
   connection: redisConfig,
   defaultJobOptions: {
     attempts: 3,
@@ -16,16 +22,9 @@ export const webhookQueue = new Queue(WEBHOOK_QUEUE_NAME, {
   },
 })
 
-export interface WebhookJobData {
-  NoteId: string
-  Type: string
-  ClientId: number | null
-  receivedAt: string
-}
-
 export const addWebhookJob = async (data: WebhookJobData) => {
   const job = await webhookQueue.add('process-webhook', data, {
-    jobId: `webhook-${data.NoteId}-${Date.now()}`,
+    jobId: `webhook-${data.payload.NoteId}-${Date.now()}`,
   })
   return job
 }
