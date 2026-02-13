@@ -34,4 +34,6 @@ export const redisConfig = {
   host: env.get('REDIS_HOST', '127.0.0.1'),
   port: Number(env.get('REDIS_PORT', '6379')),
   password: env.get('REDIS_PASSWORD', '') || undefined,
+  db: Number(env.get('REDIS_DB', '0')),
+  keyPrefix: env.get('REDIS_KEY_PREFIX', 'mmh-'),
 }
