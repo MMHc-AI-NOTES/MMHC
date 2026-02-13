@@ -243,19 +243,22 @@ export interface PracticeQNote {
  */
 const validateWebhookKeys = (jobData: WebhookJobData): { isValid: boolean; errors: string[] } => {
   const errors: string[] = []
+  const payload = jobData.payload
 
-  if (!jobData.NoteId || typeof jobData.NoteId !== 'string' || jobData.NoteId.trim().length === 0) {
+  if (!payload.NoteId || typeof payload.NoteId !== 'string' || payload.NoteId.trim().length === 0) {
     errors.push('NoteId is required and must be a non-empty string')
   }
 
-  if (jobData.Type !== undefined && jobData.Type !== null) {
-    if (typeof jobData.Type !== 'string' || jobData.Type.trim().length === 0) {
+  // Type is not in webhookSessionValidatorInterface, so we check it safely
+  const typeValue = (payload as any).Type
+  if (typeValue !== undefined && typeValue !== null) {
+    if (typeof typeValue !== 'string' || typeValue.trim().length === 0) {
       errors.push('Type must be a non-empty string if provided')
     }
   }
 
-  if (jobData.ClientId !== undefined && jobData.ClientId !== null) {
-    if (typeof jobData.ClientId !== 'number' || !Number.isInteger(jobData.ClientId)) {
+  if (payload.ClientId !== undefined && payload.ClientId !== null) {
+    if (typeof payload.ClientId !== 'number' || !Number.isInteger(payload.ClientId)) {
       errors.push('ClientId must be a valid integer if provided')
     }
   }
@@ -380,7 +383,10 @@ const fetchPracticeQNoteWithRetry = async (
  * Sets workflow to "in_queue" if validation passes, "failed" if validation fails
  */
 export const processWebhookJob = async (jobData: WebhookJobData) => {
-  const { NoteId: noteId, Type: type, ClientId: clientId } = jobData
+  const payload = jobData.payload
+  const noteId = payload.NoteId
+  const type = (payload as any).Type
+  const clientId = payload.ClientId
 
   const webhookValidation = validateWebhookKeys(jobData)
   let workflowStatus = WorkflowEnum.in_queue

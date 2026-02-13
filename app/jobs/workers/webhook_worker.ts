@@ -15,11 +15,16 @@ export const startWebhookWorker = () => {
     WEBHOOK_QUEUE_NAME,
     async (job: Job<WebhookJobData>) => {
       try {
-        // Reuse main-branch logic to create/update session in exact same format
+        console.log(`Processing webhook job ${job.id} for note: ${job.data.payload.NoteId}`)
+        // Reuse existing session creation logic
         const result = await createSessionFromWebhook(job.data.payload)
+        console.log(
+          `Webhook job ${job.id} completed successfully for note: ${job.data.payload.NoteId}`
+        )
         return result
       } catch (error: any) {
         console.error(`Webhook job ${job.id} failed:`, error.message)
+        console.error('Full error:', error)
         throw error
       }
     },
