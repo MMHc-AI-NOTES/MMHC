@@ -113,6 +113,7 @@ jobs:
           echo "remote_directory_name : $1"
           _remote_directory_name=$1
           _pm2_server_ref=$1
+          _pm2_webhook_webhook_worker_ref="${_pm2_server_ref}-webhook-queue-worker"
           NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
 
 
@@ -139,9 +140,16 @@ jobs:
           pm2 delete $_pm2_server_ref --silent
           pm2 start bin/server.js --name $_pm2_server_ref --time
 
+          ## Webhook Queue Worker Job
+          pm2 stop $_pm2_webhook_webhook_worker_ref --silent
+          pm2 delete $_pm2_webhook_webhook_worker_ref --silent
+          pm2 start --name $_pm2_webhook_webhook_worker_ref --time $NODE_INTERPRETER -- ace webhook:worker
+
           echo "Deployment Ended Local system name: $HOSTNAME"
           echo "Deployment Ended Local date and time: $(date)"
           echo "Bye"
+
+          pm2 save
 
           EOL
 
