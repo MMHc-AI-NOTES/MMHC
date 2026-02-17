@@ -5,27 +5,6 @@ import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 import { agentModelKeys } from '#enums/agent_enum'
 
-/** Plain-text format: strip markdown symbols, fix newlines. No HTML. */
-function formatResponseForDisplay(text: string): string {
-  if (!text) return ''
-  // Literal "\n" (backslash+n) from API → real newline
-  let out = text.replace(/\\n/g, '\n')
-  const lines = out.split('\n')
-  const formattedLines = lines.map((line) => {
-    const trimmed = line.trim()
-    if (/^### /.test(trimmed)) return trimmed.replace(/^### (.+)$/, '$1')
-    if (/^## /.test(trimmed)) return trimmed.replace(/^## (.+)$/, '$1')
-    if (/^# /.test(trimmed)) return trimmed.replace(/^# (.+)$/, '$1')
-    if (/^- (.+)$/.test(trimmed)) return trimmed.replace(/^- (.+)$/, '$1')
-    return line
-  })
-  return formattedLines
-    .join('\n')
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .trim()
-}
-
 export default class TestController {
   /**
    * Test endpoint: send a prompt at runtime and get model response.
@@ -47,6 +26,15 @@ export default class TestController {
         (modelId === agentModelKeys.CUSTOM_EXPERTSCLOUD ||
           modelId.includes('custom-model-deployment') ||
           modelId.includes('model-deployment'))
+
+      // For custom deployments, require system_prompt to be explicitly provided
+      if (isCustomDeployment && !payload.system_prompt) {
+        return ctx.response.status(400).json({
+          status: false,
+          message: 'system_prompt is required for custom model deployments',
+        })
+      }
+
       const systemPrompt =
         payload.system_prompt ??
         (isCustomDeployment
@@ -58,6 +46,16 @@ export default class TestController {
         temperature = 0.3
       }
 
+      // Debug logging
+      console.log('Test chat request:', {
+        modelId,
+        hasSystemPrompt: !!payload.system_prompt,
+        systemPromptLength: systemPrompt?.length,
+        systemPromptPreview: systemPrompt?.substring(0, 100),
+        userPromptLength: userPrompt?.length,
+        temperature,
+      })
+
       const bedrockResponse = await invokeBedrockModel(
         modelId,
         systemPrompt,
@@ -68,13 +66,31 @@ export default class TestController {
       const contentParts = (bedrockResponse.content ?? []).map(
         (c: { text?: string }) => c?.text ?? ''
       )
-      const responseText = bedrockResponse.output_text?.trim() ?? contentParts.join('').trim()
-      const responseFormatted = formatResponseForDisplay(responseText)
+      let responseText = bedrockResponse.output_text?.trim() ?? contentParts.join('').trim()
+
+      // Extract JSON from code blocks if present (```json ... ``` or ``` ... ```)
+      const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (codeBlockMatch) {
+        responseText = codeBlockMatch[1].trim()
+      } else {
+        // Remove any remaining code block markers
+        responseText = responseText
+          .replace(/```(?:json)?/g, '')
+          .replace(/```/g, '')
+          .trim()
+      }
+
+      // Try to parse response as JSON
+      let parsedResponse = null
+      try {
+        parsedResponse = JSON.parse(responseText)
+      } catch (e) {
+        // If parsing fails, parsedResponse remains null
+      }
 
       return sendSuccess('Model response', {
         model_id: modelId,
-        response: responseText,
-        response_formatted: responseFormatted,
+        response_json: parsedResponse, // Parsed JSON object (null if not valid JSON)
       })
     } catch (error) {
       console.log('Test chat error:', error)

@@ -1,0 +1,149 @@
+{
+  "input": {
+    "instructions": "You are a licensed clinical documentation reviewer. Evaluate this note using clinical documentation rules, comparing with the previous note if provided. Return a score (0-100), pass/fail, summary, detailed evaluation, issues array, and section-wise feedback in strict JSON.",
+    "current_note": "CURRENT_SESSION:\nSession Duration: 11:00 am - 11:54 am  \n\nMental Status (optional):     \n\nSuicidality: Not Present  \n\nHomicidality: Not Present  \n\nSubjective: Client reported having a social two weeks with multiple social experiences and attended concert alone in local park, experienced multiple interactions with strangers. Ming described that after this experience she noticed exhaustion from negative thought patterns and self-criticism. Client discussed her relationship expectations with partner regarding emotional support and communication styles. She shared disappointment in her partner's difficulty with planning activities and follow-through on commitments.  \n\nObjective: Client presented with euthymic mood and engaged in detailed self-reflection about social experiences.  \n\nAssessment & Therapeutic Intervention: Client demonstrates heightened social anxiety with negative thought patterns affecting daily functioning and shows good self-awareness regarding impact of assumptions and catastrophic thinking. Therapist encouraged continued focus on recognizing and challenging negative automatic thoughts. Therapist began exploring with client how her relationship concerns center on communication styles and unmet emotional needs.  \n\nReaction to Intervention: Client was receptive and demonstrated willingness to examine thought patterns and relationship dynamics.  \n\nPlan and Collaboration: Therapist and client will meet next week to continue exploring relationship unmet needs. Client to continue working on identifying and challenging negative thought patterns.  \n\nTherapist Reflection and Insight (optional):     \n\nProgress: Progress  \n\nTherapist Initials: AT",
+    "previous_note": "PREVIOUS_SESSIONS:\nSession Duration: 11:02 am - 11:58 am  \n\nMental Status (optional):   \n\nSuicidality: Not Present  \n\nHomicidality: Not Present  \n\nSubjective: Ming reported experiencing significant frustration with Adderall prescription access for three weeks and needing to reach out to another pharmacy. In this session Ming focused on her disconnect between short-term and long-term memory and described difficulty recalling information despite knowing it exists. She explored struggles with \"now and not now\" thinking pattern affecting task completion. Ming reported a tendency to suppress preferences while expecting others to consider needs and described a pattern of resentment after accommodating others that she would like to work on.  \n\nObjective: Ming presented with euthymic mood and congruent affect. She was engaged throughout session and demonstrated insight into behavioral patterns.  \n\nAssessment & Therapeutic Intervention: This writer provided psychoeducation on memory and attention difficulties related to ADHD symptoms. Session then focused on addressing friendship dynamics and patterns of accommodation followed by resentment. This writer explored with client her tendency toward people-pleasing behaviors and subsequent negative feelings and encouraged mindfulness regarding decision-making in social situations.  \n\nReaction to Intervention: Client was receptive to psychoeducation and showed interest in exploring underlying purpose of resentment patterns.  \n\nPlan and Collaboration: Therapist and client to meet next week. Client to practice mindfulness regarding emotions without judgment, acknowledging responsibility for choices in social situations and journaling to process insights and reduce rumination.  \n\nTherapist Reflection and Insight (optional):   \n\nProgress: Progress  \n\nTherapist Initials: AT"
+  },
+  "output": {
+    "noteId": "bdc62ad7-5ba4-4be1-bc9a-e41162d2604c",
+    "evaluationScore": 15,
+    "pass": false,
+    "sentiment": "neutral",
+    "6tx9-1_subjective": "Subjective section documents client's self-reported experiences including social activities, concert attendance, and relationship concerns. However, contains grammatical error ('had a social two weeks') and lacks specificity regarding the nature of social experiences and their outcomes. Description of 'exhaustion from negative thought patterns' is somewhat vague. Does not clearly distinguish this session's focus from previous session's documented concerns. Adequate but requires greater specificity and clarity.",
+    "rb2f-1_objective": "Objective section is minimal and generic. Documents 'euthymic mood' and 'engaged in detailed self-reflection' but provides no other observable behavioral data. Lacks description of affect congruence, eye contact, body language, or other presentation details relevant to documented social anxiety. Nearly identical to previous session's objective documentation. Insufficient specificity for clinical documentation.",
+    "zad8-1_asment_&_therapeutic_intervention": "Assessment section uses definitive language ('Client demonstrates heightened social anxiety') without attribution to diagnostic criteria or assessment tool. No specific therapeutic modality documented despite clinical language suggesting CBT framework. Interventions described generically as 'encouraged' and 'began exploring' without specificity regarding techniques, duration, or clinical rationale. Lacks clarity on how current interventions differ from or build upon previous session's focus on people-pleasing and resentment patterns. Moderate clinical quality with significant gaps in specificity and modality attribution.",
+    "ugq6-1_reaction_to_intervention": "Reaction to Intervention uses generic descriptor 'receptive' without behavioral specificity. Does not describe what client actually said, did, or demonstrated in response to interventions. Identical phrasing to previous session. Does not document client's specific reactions to exploration of relationship concerns or thought pattern work. Insufficient documentation of client response.",
+    "hnfi-1_plan_and_collaboration": "Plan lacks specificity and measurable goals. 'Continue working on identifying and challenging negative thought patterns' is vague and not specific to this date of service. No frequency, duration, or success criteria documented. Does not address whether previous session's goals (mindfulness practice, journaling, responsibility for social choices) are continuing or have been modified. Follow-up timeframe ('next week') is vague. Collaboration appears limited to therapist-directed tasks without documented client input or agreement.",
+    "9z5t-1_therapist_reflection": "Therapist Reflection section is empty/not completed. No optional reflection provided.",
+    "gm4p-1_progress": "Progress marked as 'Progress' but narrative does not demonstrate clear advancement from previous session. Both sessions document similar themes (negative thought patterns, relationship/social concerns, anxiety) without documented resolution, skill acquisition, or measurable change. Current session appears to document ongoing exploration rather than demonstrable progress. Contradiction between progress designation and actual session content suggests either incomplete documentation or misalignment of progress criteria.",
+    "kxgx-7_&_kxgx-8_suicidality/homicidality": "Suicidality and Homicidality both clearly documented as 'Not Present.' Appropriate safety documentation for this session. No safety planning required based on current assessment.",
+    "issues": [
+      {
+        "severity": "Moderate",
+        "points_deducted": 15,
+        "section_id": "6tx9-1",
+        "section": "Subjective",
+        "justification": "Grammatical error ('had a social two weeks') and vague description of social experiences. Lacks specificity regarding what 'multiple social experiences' entailed and how they relate to presenting concerns. Does not clearly distinguish from previous session's focus."
+      },
+      {
+        "severity": "Moderate",
+        "points_deducted": 15,
+        "section_id": "zad8-1",
+        "section": "Assessment & Therapeutic Intervention",
+        "justification": "No specific therapeutic modality documented despite clinical language suggesting CBT (e.g., 'negative automatic thoughts'). Assessment uses definitive language ('Client demonstrates heightened social anxiety') without attribution to diagnostic criteria or assessment tool. Lacks specificity on interventions beyond 'encouraged' and 'began exploring.'"
+      },
+      {
+        "severity": "Moderate",
+        "points_deducted": 15,
+        "section_id": "ugq6-1",
+        "section": "Reaction to Intervention",
+        "justification": "Generic descriptor 'receptive' without behavioral specificity. Does not describe what client actually said or did in response to interventions. Identical phrasing to previous session ('Client was receptive')."
+      },
+      {
+        "severity": "Moderate",
+        "points_deducted": 15,
+        "section_id": "gm4p-1",
+        "section": "Progress",
+        "justification": "Marked as 'Progress' but narrative does not demonstrate clear advancement. Both current and previous sessions address similar themes (negative thought patterns, relationship concerns, social anxiety) without documented resolution, skill acquisition, or measurable change. Appears to document ongoing exploration rather than progress."
+      },
+      {
+        "severity": "Moderate",
+        "points_deducted": 15,
+        "section_id": "",
+        "section": "Overall Documentation Consistency",
+        "justification": "Significant inconsistency between sessions: Previous session focused on ADHD-related memory issues and people-pleasing/resentment patterns; current session shifts to social anxiety and relationship expectations without explaining clinical rationale for shift or whether previous goals were addressed. Suggests either incomplete documentation or lack of treatment continuity."
+      },
+      {
+        "severity": "Minor",
+        "points_deducted": 5,
+        "section_id": "hnfi-1",
+        "section": "Plan and Collaboration",
+        "justification": "Plan lacks measurable, specific goals. 'Continue working on identifying and challenging negative thought patterns' is vague and not specific to this date of service. No frequency, duration, or success criteria documented."
+      },
+      {
+        "severity": "Minor",
+        "points_deducted": 5,
+        "section_id": "rb2f-1",
+        "section": "Objective",
+        "justification": "Minimal objective documentation. Only mood and engagement noted. Lacks description of other observable behaviors, affect congruence details, or presentation specifics relevant to this session's focus on social anxiety and relationship concerns."
+      }
+    ],
+    "humanReviews": [
+      {
+        "noteId": "3828ccd0-2424-4ea4-bdfb-abb4da59b405",
+        "comment": "Its critical",
+        "errorType": {
+          "id": 1,
+          "name": "minor",
+          "displayName": "Minor (-5 pts)",
+          "points": 5
+        },
+        "issuesRelatedTo": {
+          "id": 13,
+          "fieldId": "overall",
+          "displayName": "Overall"
+        }
+      },
+      {
+        "noteId": "3828ccd0-2424-4ea4-bdfb-abb4da59b405",
+        "comment": "This is updated comment",
+        "errorType": {
+          "id": 2,
+          "name": "moderate",
+          "displayName": "Moderate (-15 pts)",
+          "points": 15
+        },
+        "issuesRelatedTo": {
+          "id": 2,
+          "fieldId": "1hye-1",
+          "displayName": "Mental Status"
+        }
+      },
+      {
+        "noteId": "3828ccd0-2424-4ea4-bdfb-abb4da59b405",
+        "comment": "The client presented in a anxious manner. Client discussed recent challenges within her relationship. Client was able to express her worries and fears. Client was vocal in the session",
+        "errorType": {
+          "id": 3,
+          "name": "critical",
+          "displayName": "Critical (-25 pts)",
+          "points": 25
+        },
+        "issuesRelatedTo": {
+          "id": 2,
+          "fieldId": "1hye-1",
+          "displayName": "Mental Status"
+        }
+      },
+      {
+        "noteId": "3828ccd0-2424-4ea4-bdfb-abb4da59b405",
+        "comment": "test comment 1222",
+        "errorType": {
+          "id": 3,
+          "name": "critical",
+          "displayName": "Critical (-25 pts)",
+          "points": 25
+        },
+        "issuesRelatedTo": {
+          "id": 11,
+          "fieldId": "kxgx-8",
+          "displayName": "Homicidality"
+        }
+      },
+      {
+        "noteId": "3828ccd0-2424-4ea4-bdfb-abb4da59b405",
+        "comment": null,
+        "errorType": {
+          "id": 3,
+          "name": "critical",
+          "displayName": "Critical (-25 pts)",
+          "points": 25
+        },
+        "issuesRelatedTo": {
+          "id": 2,
+          "fieldId": "1hye-1",
+          "displayName": "Mental Status"
+        }
+      }
+    ]
+  }
+}

@@ -75,7 +75,11 @@ export const invokeBedrockModel = async (
         'Invoking Bedrock Converse (custom deployment):',
         actualModelId,
         'in region:',
-        bedrockConfig.region
+        bedrockConfig.region,
+        'system prompt length:',
+        systemPrompt?.length,
+        'system prompt preview:',
+        systemPrompt?.substring(0, 150)
       )
       const converseRes = await client.send(converseCommand)
       const content = converseRes.output?.message?.content ?? []
@@ -148,6 +152,22 @@ export const invokeBedrockModel = async (
   } catch (error: any) {
     console.log('Bedrock API Error:', error.message)
     const msg = error?.message ?? ''
+    const code = error?.code ?? ''
+    
+    // Network/DNS errors
+    if (
+      msg.includes('ENOTFOUND') ||
+      msg.includes('getaddrinfo') ||
+      msg.includes('ECONNREFUSED') ||
+      code === 'ENOTFOUND' ||
+      code === 'ECONNREFUSED'
+    ) {
+      throw new Error(
+        `Network error: Cannot connect to AWS Bedrock. Please check:\n1. Internet connectivity\n2. AWS region configuration (current: ${bedrockConfig.region})\n3. Firewall/proxy settings\n4. DNS resolution`
+      )
+    }
+    
+    // Custom model deployment errors
     if (
       msg.includes('Custom model inference is no longer supported directly') ||
       msg.includes('provisioned throughput or custom model deployment')
@@ -156,7 +176,19 @@ export const invokeBedrockModel = async (
         'Custom model cannot be used by ARN directly. Create an on-demand deployment in Bedrock Console (Custom models → your model → Deploy), then set BEDROCK_CUSTOM_MODEL_ARN to the deployment identifier (not the model ARN).'
       )
     }
-    throw new Error('Failed to communicate with AI service. Please try again later.')
+    
+    // Credentials errors
+    if (
+      msg.includes('credentials') ||
+      msg.includes('UnauthorizedOperation') ||
+      msg.includes('AccessDenied')
+    ) {
+      throw new Error(
+        'AWS credentials error. Please check AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in your environment variables.'
+      )
+    }
+    
+    throw new Error(`Failed to communicate with AI service: ${msg || 'Unknown error'}`)
   }
 }
 
