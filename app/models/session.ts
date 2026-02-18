@@ -35,6 +35,7 @@ export const sessionFilterEnum = [
   'search',
   'cpt_code_id',
   'created_at',
+  'not_reviewed_by_user_id',
 ]
 export const sessionSortEnum = [
   'id',

@@ -82,16 +82,33 @@ export const noteListing = async (
       })
 
     let searchFilter: any = null
+    let notReviewedByUserIdFilter: any = null
     let otherFilters: Array<any> = []
 
     if (filters?.length) {
       filters.forEach((filter) => {
         if (filter.columnName === 'search') {
           searchFilter = filter
+        } else if (filter.columnName === 'not_reviewed_by_user_id') {
+          notReviewedByUserIdFilter = filter
         } else {
           otherFilters.push(filter)
         }
       })
+    }
+
+    // Handle filter for notes not reviewed by a specific user
+    if (notReviewedByUserIdFilter && notReviewedByUserIdFilter.value) {
+      const userId = Number.parseInt(String(notReviewedByUserIdFilter.value))
+      if (!Number.isNaN(userId)) {
+        noteListings = noteListings.whereNotExists((subQuery: any) => {
+          subQuery
+            .from('sme_issues')
+            .whereRaw('sme_issues.note_id = session.note_id')
+            .where('sme_issues.reviewer_id', userId)
+            .whereNull('sme_issues.deleted_at')
+        })
+      }
     }
 
     if (searchFilter && searchFilter.value) {
