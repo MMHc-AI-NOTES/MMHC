@@ -36,6 +36,7 @@ export const WorkflowEnum = {
   in_queue: 2,
   returned: 3,
   blacklisted: 4,
+  failed: 5,
 }
 
 // Priority Enum

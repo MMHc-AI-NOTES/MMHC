@@ -3,6 +3,7 @@ import { WelcomeEmailSendEvent } from '#interfaces/email_event_interface'
 import WelcomeEmail from '#mails/welcome_email'
 import UserInviteEmail from '#mails/user_invite_email'
 import PractitionerSmeIssuesEmail from '#mails/practitioner_sme_issues_email'
+import MissingFieldsEmail from '#mails/missing_fields_email'
 import type SmeIssue from '#models/sme_issue'
 import mail from '@adonisjs/mail/services/main'
 export const dispatchWelcomeEmail = async () => {
@@ -91,6 +92,30 @@ export const sendPractitionerSmeIssuesEmail = async (
     )
   } catch (error) {
     console.log('sendPractitionerSmeIssuesEmail Error:', error)
+    throw error
+  }
+}
+
+export const sendMissingFieldsEmail = async (
+  practitionerEmail: string,
+  practitionerName: string,
+  missingFields: string[],
+  noteId: string
+) => {
+  try {
+    await mail.send(
+      new MissingFieldsEmail({
+        to: practitionerEmail,
+        subject: 'Session Fields Missing - Action Required',
+        data: {
+          practitionerName,
+          missingFields,
+          noteId,
+        },
+      })
+    )
+  } catch (error) {
+    console.log('sendMissingFieldsEmail Error:', error)
     throw error
   }
 }
