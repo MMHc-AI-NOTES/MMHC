@@ -4,6 +4,7 @@ import { testChatValidator } from '#validators/test_chat_validator'
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 import { agentModelKeys } from '#enums/agent_enum'
+import { bedrockConfig } from '#config/services'
 
 export default class TestController {
   /**
@@ -14,16 +15,15 @@ export default class TestController {
     try {
       const payload = await testChatValidator.validate(ctx.request.body())
 
+      const customModelArn = bedrockConfig.customModelArn
       const requestedModel =
-        payload.model_id === 'CUSTOM_EXPERTSCLOUD'
-          ? agentModelKeys.CUSTOM_EXPERTSCLOUD
-          : payload.model_id
+        payload.model_id === 'CUSTOM_EXPERTSCLOUD' ? customModelArn : payload.model_id
       const modelId =
         (requestedModel && requestedModel.length > 0 ? requestedModel : null) ||
         agentModelKeys.CLAUDE_4_5_HAIKU_V1
       const isCustomDeployment =
         !!modelId &&
-        (modelId === agentModelKeys.CUSTOM_EXPERTSCLOUD ||
+        (modelId === customModelArn ||
           modelId.includes('custom-model-deployment') ||
           modelId.includes('model-deployment'))
 
