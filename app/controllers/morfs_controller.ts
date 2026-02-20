@@ -7,6 +7,7 @@ export default class MorfsController {
   public async create(ctx: HttpContext) {
     try {
       const body = ctx.request.body()
+      console.log('🚀 ~ MorfsController ~ create ~ body:', body)
 
       await Morf.create({
         noteId: body.NoteId,
