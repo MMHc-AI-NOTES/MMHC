@@ -5,6 +5,7 @@ import User from '#models/user'
 import Chat from '#models/chat'
 import Patient from '#models/patient'
 import HumanReview from '#models/human_review'
+import ManagerReview from '#models/manager_review'
 import CptCode from '#models/cpt_code'
 import WebhookSessionVersion from '#models/webhook_session_version'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
@@ -34,6 +35,7 @@ export const sessionFilterEnum = [
   'search',
   'cpt_code_id',
   'created_at',
+  'not_reviewed_by_user_id',
 ]
 export const sessionSortEnum = [
   'id',
@@ -199,6 +201,12 @@ export default class Session extends BaseModel {
     localKey: 'noteId',
   })
   declare humanReviews: HasMany<typeof HumanReview>
+
+  @hasMany(() => ManagerReview, {
+    foreignKey: 'noteId',
+    localKey: 'noteId',
+  })
+  declare managerReviews: HasMany<typeof ManagerReview>
 
   @hasMany(() => WebhookSessionVersion, {
     foreignKey: 'noteId',

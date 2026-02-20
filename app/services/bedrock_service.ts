@@ -53,16 +53,17 @@ export const invokeBedrockModel = async (
   try {
     const actualModelId = modelId
 
-    // Custom model deployments require Converse API; InvokeModel is not supported.
-    if (isCustomModelDeployment(actualModelId)) {
+    // Custom deployments + non-Anthropic models (Llama, Nova, GPT OSS) use Converse API
+    const isConverseModel =
+      isCustomModelDeployment(actualModelId) ||
+      actualModelId === agentModelKeys.LLAMA_4_SCOUT_17B ||
+      actualModelId === agentModelKeys.GPT_OSS_SAFEGUARD_120B ||
+      actualModelId === agentModelKeys.NOVA_PREMIER
+
+    if (isConverseModel) {
       const converseCommand = new ConverseCommand({
         modelId: actualModelId,
-        messages: [
-          {
-            role: 'user',
-            content: [{ text: userPrompt }],
-          },
-        ],
+        messages: [{ role: 'user', content: [{ text: userPrompt }] }],
         system: systemPrompt ? [{ text: systemPrompt }] : undefined,
         inferenceConfig: {
           maxTokens: bedrockConfig.maxTokens,
@@ -71,16 +72,6 @@ export const invokeBedrockModel = async (
           ...(typeof topK === 'number' && { topK }),
         },
       })
-      console.log(
-        'Invoking Bedrock Converse (custom deployment):',
-        actualModelId,
-        'in region:',
-        bedrockConfig.region,
-        'system prompt length:',
-        systemPrompt?.length,
-        'system prompt preview:',
-        systemPrompt?.substring(0, 150)
-      )
       const converseRes = await client.send(converseCommand)
       const content = converseRes.output?.message?.content ?? []
       const textContent = content
@@ -95,10 +86,12 @@ export const invokeBedrockModel = async (
       }
     }
 
-    // Foundation models: use InvokeModel (Claude API format)
-    const isClaude45 =
+    // Claude models: use InvokeModel with Anthropic format
+    // Claude 4.5/4.6 models don't support both temperature and top_p together
+    const isClaude45Or46 =
       actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1 ||
-      actualModelId === agentModelKeys.CLAUDE_4_5_SONNET_V1
+      actualModelId === agentModelKeys.CLAUDE_4_5_SONNET_V1 ||
+      actualModelId === agentModelKeys.CLAUDE_4_6_SONNET
 
     const body: any = {
       anthropic_version: bedrockConfig.anthropicVersion,
@@ -112,7 +105,8 @@ export const invokeBedrockModel = async (
       ],
     }
 
-    if (isClaude45) {
+    // For Claude 4.5/4.6, only use temperature (not top_p)
+    if (isClaude45Or46) {
       body.temperature = temperature
     } else {
       body.temperature = temperature
@@ -153,7 +147,7 @@ export const invokeBedrockModel = async (
     console.log('Bedrock API Error:', error.message)
     const msg = error?.message ?? ''
     const code = error?.code ?? ''
-    
+
     // Network/DNS errors
     if (
       msg.includes('ENOTFOUND') ||
@@ -166,7 +160,7 @@ export const invokeBedrockModel = async (
         `Network error: Cannot connect to AWS Bedrock. Please check:\n1. Internet connectivity\n2. AWS region configuration (current: ${bedrockConfig.region})\n3. Firewall/proxy settings\n4. DNS resolution`
       )
     }
-    
+
     // Custom model deployment errors
     if (
       msg.includes('Custom model inference is no longer supported directly') ||
@@ -176,7 +170,7 @@ export const invokeBedrockModel = async (
         'Custom model cannot be used by ARN directly. Create an on-demand deployment in Bedrock Console (Custom models → your model → Deploy), then set BEDROCK_CUSTOM_MODEL_ARN to the deployment identifier (not the model ARN).'
       )
     }
-    
+
     // Credentials errors
     if (
       msg.includes('credentials') ||
@@ -187,7 +181,7 @@ export const invokeBedrockModel = async (
         'AWS credentials error. Please check AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in your environment variables.'
       )
     }
-    
+
     throw new Error(`Failed to communicate with AI service: ${msg || 'Unknown error'}`)
   }
 }

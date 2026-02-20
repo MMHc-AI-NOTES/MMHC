@@ -18,3 +18,24 @@ export const bedrockConfig = {
   /** ARN of fine-tuned custom model (or its deployment). Set after Bedrock model customization job completes. */
   customModelArn: env.get('BEDROCK_CUSTOM_MODEL_ARN', ''),
 }
+
+export const smtpConfig = {
+  host: env.get('SMTP_HOST', ''),
+  port: env.get('SMTP_PORT', '587'),
+  username: env.get('SMTP_USERNAME', ''),
+  password: env.get('SMTP_PASSWORD', ''),
+  from: env.get('SMTP_FROM', 'noreply@example.com'),
+}
+
+export const practiceQConfig = {
+  apiKey: env.get('PRACTICEQ_API_KEY', ''),
+  baseUrl: env.get('PRACTICEQ_BASE_URL', 'https://intakeq.com/api/v1'),
+}
+
+export const redisConfig = {
+  host: env.get('REDIS_HOST', '127.0.0.1'),
+  port: Number(env.get('REDIS_PORT', '6379')),
+  password: env.get('REDIS_PASSWORD', '') || undefined,
+  db: Number(env.get('REDIS_DB', '0')),
+  keyPrefix: env.get('REDIS_KEY_PREFIX', 'mmh-'),
+}

@@ -8,6 +8,41 @@ import { DateTime } from 'luxon'
 import Chat from '#models/chat'
 import type { updateNoteValidatorInterface } from '#validators/note_validator'
 
+/**
+ * Extract unique reviewers from a serialized note object
+ */
+const extractReviewers = (serialized: any): any[] => {
+  const reviewersMap = new Map<number, any>()
+
+  // Helper to add reviewer if exists
+  const addReviewer = (id: number | null, reviewer: any) => {
+    if (id && reviewer) {
+      reviewersMap.set(id, reviewer)
+    }
+  }
+
+  // From direct humanReviews
+  serialized.human_reviews?.forEach((review: any) => {
+    addReviewer(review.reviewer_id, review.reviewer)
+  })
+
+  // From humanReviews through chats
+  serialized.chats?.forEach((chat: any) => {
+    chat.human_reviews?.forEach((review: any) => {
+      addReviewer(review.reviewer_id, review.reviewer)
+    })
+  })
+
+  // From SME Issues through webhookVersions
+  serialized.webhook_versions?.forEach((version: any) => {
+    version.sme_issues?.forEach((issue: any) => {
+      addReviewer(issue.reviewer_id, issue.reviewer)
+    })
+  })
+
+  return Array.from(reviewersMap.values())
+}
+
 export const noteListing = async (
   page?: number,
   pageSize?: number,
@@ -24,8 +59,11 @@ export const noteListing = async (
       .preload('patient')
       .preload('chats', (chatsQuery) => {
         chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
-          humanReviewsQuery.orderBy('id', 'desc')
+          humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
         })
+      })
+      .preload('humanReviews', (humanReviewsQuery) => {
+        humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
       })
       .preload('webhookVersions', (versionsQuery) => {
         versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
@@ -44,16 +82,33 @@ export const noteListing = async (
       })
 
     let searchFilter: any = null
+    let notReviewedByUserIdFilter: any = null
     let otherFilters: Array<any> = []
 
     if (filters?.length) {
       filters.forEach((filter) => {
         if (filter.columnName === 'search') {
           searchFilter = filter
+        } else if (filter.columnName === 'not_reviewed_by_user_id') {
+          notReviewedByUserIdFilter = filter
         } else {
           otherFilters.push(filter)
         }
       })
+    }
+
+    // Handle filter for notes not reviewed by a specific user
+    if (notReviewedByUserIdFilter && notReviewedByUserIdFilter.value) {
+      const userId = Number.parseInt(String(notReviewedByUserIdFilter.value))
+      if (!Number.isNaN(userId)) {
+        noteListings = noteListings.whereNotExists((subQuery: any) => {
+          subQuery
+            .from('sme_issues')
+            .whereRaw('sme_issues.note_id = session.note_id')
+            .where('sme_issues.reviewer_id', userId)
+            .whereNull('sme_issues.deleted_at')
+        })
+      }
     }
 
     if (searchFilter && searchFilter.value) {
@@ -106,6 +161,7 @@ export const noteListing = async (
           ...serialized,
           chat_count: note.$extras.chat_count || 0,
           version_count: note.$extras.version_count || 0,
+          reviewers: extractReviewers(serialized),
         }
       }),
     }
@@ -126,8 +182,11 @@ export const getNoteWithChats = async (noteId: string) => {
           .orderBy('id', 'desc')
           .limit(10)
           .preload('humanReviews', (humanReviewsQuery) => {
-            humanReviewsQuery.orderBy('id', 'desc')
+            humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
           })
+      })
+      .preload('humanReviews', (humanReviewsQuery) => {
+        humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
       })
       .preload('webhookVersions', (versionsQuery) => {
         versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
@@ -156,6 +215,7 @@ export const getNoteWithChats = async (noteId: string) => {
       ...serialized,
       chat_count: note.$extras.chat_count || 0,
       version_count: note.$extras.version_count || 0,
+      reviewers: extractReviewers(serialized),
     }
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)
