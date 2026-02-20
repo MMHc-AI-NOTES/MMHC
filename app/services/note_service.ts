@@ -77,6 +77,9 @@ export const noteListing = async (
         })
         versionsQuery.orderBy('id', 'desc')
       })
+      .preload('noteReviewMarks', (marksQuery) => {
+        marksQuery.preload('reviewer')
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
       })
@@ -213,6 +216,9 @@ export const getNoteWithChats = async (noteId: string) => {
           smeIssuesQuery.preload('reviewer')
         })
         versionsQuery.orderBy('id', 'desc')
+      })
+      .preload('noteReviewMarks', (marksQuery) => {
+        marksQuery.preload('reviewer')
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')

@@ -1,0 +1,38 @@
+import type { HttpContext } from '@adonisjs/core/http'
+import { markNoteReviewedValidator } from '#validators/note_review_mark_validator'
+import { markNoteReviewed, getNoteReviewMark } from '#services/note_review_mark_service'
+import ErrorService from '#services/error_service'
+import vine from '@vinejs/vine'
+
+const paramsValidator = vine.compile(
+  vine.object({
+    note_id: vine.string().trim().minLength(1),
+    reviewer_id: vine.number().withoutDecimals(),
+  })
+)
+
+export default class NoteReviewMarkController {
+  public async update(ctx: HttpContext) {
+    try {
+      const payload = await markNoteReviewedValidator.validate(ctx.request.body())
+      const response = await markNoteReviewed(payload)
+      return response
+    } catch (error) {
+      console.log('Note review mark update error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async show(ctx: HttpContext) {
+    try {
+      const { note_id: noteId, reviewer_id: reviewerId } = await paramsValidator.validate(
+        ctx.params
+      )
+      const response = await getNoteReviewMark(noteId, reviewerId)
+      return response
+    } catch (error) {
+      console.log('Note review mark get error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+}
