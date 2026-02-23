@@ -1,9 +1,12 @@
 import Session, { sessionFilterEnum, sessionSortEnum } from '#models/session'
+import User from '#models/user'
+import Patient from '#models/patient'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { AiStatusEnum, HumanReviewEnum, ManagerEnum, WorkflowEnum } from '#enums/session_enum'
+import { UserTypeEnum } from '#enums/user_type_enum'
 import { DateTime } from 'luxon'
 import Chat from '#models/chat'
 import type { updateNoteValidatorInterface } from '#validators/note_validator'
@@ -74,6 +77,9 @@ export const noteListing = async (
         })
         versionsQuery.orderBy('id', 'desc')
       })
+      .preload('noteReviewMarks', (marksQuery) => {
+        marksQuery.preload('reviewer')
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
       })
@@ -82,29 +88,60 @@ export const noteListing = async (
       })
 
     let searchFilter: any = null
+    let notReviewedByUserIdFilter: any = null
     let otherFilters: Array<any> = []
 
     if (filters?.length) {
       filters.forEach((filter) => {
         if (filter.columnName === 'search') {
           searchFilter = filter
+        } else if (filter.columnName === 'not_reviewed_by_user_id') {
+          notReviewedByUserIdFilter = filter
         } else {
           otherFilters.push(filter)
         }
       })
     }
 
+    // Handle filter for notes not reviewed by a specific user
+    if (notReviewedByUserIdFilter && notReviewedByUserIdFilter.value) {
+      const userId = Number.parseInt(String(notReviewedByUserIdFilter.value))
+      if (!Number.isNaN(userId)) {
+        noteListings = noteListings.whereNotExists((subQuery: any) => {
+          subQuery
+            .from('sme_issues')
+            .whereRaw('sme_issues.note_id = session.note_id')
+            .where('sme_issues.reviewer_id', userId)
+            .whereNull('sme_issues.deleted_at')
+        })
+      }
+    }
+
     if (searchFilter && searchFilter.value) {
       const searchValue = String(searchFilter.value).trim()
       if (searchValue) {
         const searchPattern = `%${searchValue}%`
-        const searchNumber = Number.parseInt(searchValue)
+
+        // 1. Practitioner name: users (type=practitioner) → practitioner_id IN (ids)
+        const practitionerIds = await User.query()
+          .select('id')
+          .where('type', UserTypeEnum.practitioner)
+          .whereILike('full_name', searchPattern)
+          .then((rows) => rows.map((r) => r.id))
+
+        // 2. Client ID: patients.client_id → patient_id IN (ids)
+        const patientIds = await Patient.query()
+          .select('id')
+          .whereILike('client_id', searchPattern)
+          .then((rows) => rows.map((r) => r.id))
 
         noteListings = noteListings.where((subQuery: any) => {
           subQuery.whereILike('note_id', searchPattern)
-
-          if (!Number.isNaN(searchNumber)) {
-            subQuery.orWhere('practitioner_id', searchNumber).orWhere('patient_id', searchNumber)
+          if (practitionerIds.length > 0) {
+            subQuery.orWhereIn('practitioner_id', practitionerIds)
+          }
+          if (patientIds.length > 0) {
+            subQuery.orWhereIn('patient_id', patientIds)
           }
         })
       }
@@ -179,6 +216,9 @@ export const getNoteWithChats = async (noteId: string) => {
           smeIssuesQuery.preload('reviewer')
         })
         versionsQuery.orderBy('id', 'desc')
+      })
+      .preload('noteReviewMarks', (marksQuery) => {
+        marksQuery.preload('reviewer')
       })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')

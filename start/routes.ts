@@ -25,6 +25,7 @@ import '#start/routes/error_type_routes'
 import '#start/routes/issues_related_to_routes'
 import '#start/routes/issue_description_routes'
 import '#start/routes/sme_issue_template_routes'
+import '#start/routes/note_review_mark_routes'
 import { sendSuccess } from '#services/custom_response_service'
 
 router.get('/', async () => {

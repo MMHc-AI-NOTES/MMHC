@@ -1,4 +1,8 @@
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  InvokeModelCommand,
+} from '@aws-sdk/client-bedrock-runtime'
 import { bedrockConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import { agentModelKeys } from '#enums/agent_enum'
@@ -40,15 +44,44 @@ export const invokeBedrockModel = async (
     // Use modelId as-is (no conversion)
     const actualModelId = modelId
 
-    // Claude 3 API format requires:
-    // - anthropic_version field
-    // - max_tokens (not maxTokens)
-    // - system message in separate field (not in messages array)
-    // - No inferenceConfig wrapper
-    // Claude 4.5 models don't support both temperature and top_p together
-    const isClaude45 =
+    // Non-Anthropic models (Llama, Nova, GPT OSS) use Converse API
+    const isConverseModel =
+      actualModelId === agentModelKeys.LLAMA_4_SCOUT_17B ||
+      actualModelId === agentModelKeys.GPT_OSS_SAFEGUARD_120B ||
+      actualModelId === agentModelKeys.NOVA_PREMIER
+
+    if (isConverseModel) {
+      const converseCommand = new ConverseCommand({
+        modelId: actualModelId,
+        messages: [{ role: 'user', content: [{ text: userPrompt }] }],
+        system: systemPrompt ? [{ text: systemPrompt }] : undefined,
+        inferenceConfig: {
+          maxTokens: bedrockConfig.maxTokens,
+          temperature,
+          ...(typeof topP === 'number' && { topP }),
+          ...(typeof topK === 'number' && { topK }),
+        },
+      })
+      const converseRes = await client.send(converseCommand)
+      const content = converseRes.output?.message?.content ?? []
+      const textContent = content
+        .map((block: { text?: string }) => (block && 'text' in block ? block.text : ''))
+        .join('')
+      return {
+        output_text: textContent,
+        content: content.map((block: { text?: string }) => ({
+          type: 'text',
+          text: block?.text ?? '',
+        })),
+      }
+    }
+
+    // Claude models: use InvokeModel with Anthropic format
+    // Claude 4.5/4.6 models don't support both temperature and top_p together
+    const isClaude45Or46 =
       actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1 ||
-      actualModelId === agentModelKeys.CLAUDE_4_5_SONNET_V1
+      actualModelId === agentModelKeys.CLAUDE_4_5_SONNET_V1 ||
+      actualModelId === agentModelKeys.CLAUDE_4_6_SONNET
 
     const body: any = {
       anthropic_version: bedrockConfig.anthropicVersion,
@@ -62,8 +95,8 @@ export const invokeBedrockModel = async (
       ],
     }
 
-    // For Claude 4.5, only use temperature (not top_p)
-    if (isClaude45) {
+    // For Claude 4.5/4.6, only use temperature (not top_p)
+    if (isClaude45Or46) {
       body.temperature = temperature
     } else {
       // For other models, use temperature and optionally top_p/top_k

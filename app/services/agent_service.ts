@@ -251,15 +251,28 @@ export const listAgents = async (
 
 export const getagentDefaultSettings = async (model: string) => {
   try {
-    // Claude 4.5 models only support temperature (not top_p/top_k)
+    // Claude 4.5/4.6 models only support temperature (not top_p/top_k)
     if (
       model === agentModelKeys.CLAUDE_4_5_HAIKU_V1 ||
-      model === agentModelKeys.CLAUDE_4_5_SONNET_V1
+      model === agentModelKeys.CLAUDE_4_5_SONNET_V1 ||
+      model === agentModelKeys.CLAUDE_4_6_SONNET
     ) {
       return {
         temperature: aiDefaultConfig.temperature,
         top_p: null,
         top_k: null,
+      }
+    }
+    // Llama, Nova, GPT OSS (Converse API) - temperature + optional top_p/top_k
+    if (
+      model === agentModelKeys.LLAMA_4_SCOUT_17B ||
+      model === agentModelKeys.GPT_OSS_SAFEGUARD_120B ||
+      model === agentModelKeys.NOVA_PREMIER
+    ) {
+      return {
+        temperature: aiDefaultConfig.temperature,
+        top_p: aiDefaultConfig.top_p ?? null,
+        top_k: aiDefaultConfig.top_k ?? null,
       }
     }
     // Free Claude Haiku models use temperature + top_p/top_k controls
