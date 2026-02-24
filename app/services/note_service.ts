@@ -21,6 +21,10 @@ const serializeNoteWithChildren = (note: any, isChild = false): any => {
   const isCurrentNote = serialized.parent_note_id === null
   const prev = (note.childNotes || [])[0]
   const previousNote = isChild ? null : prev ? { id: prev.id, note_id: prev.noteId } : null
+  serialized.webhook_versions = (serialized.webhook_versions || []).map((v: any) => ({
+    ...v,
+    previous_note: previousNote,
+  }))
   const children = (note.childNotes || []).map((child: any) =>
     serializeNoteWithChildren(child, true)
   )
@@ -28,10 +32,6 @@ const serializeNoteWithChildren = (note: any, isChild = false): any => {
     ...serialized,
     is_current_note: isCurrentNote,
     previous_note: previousNote,
-    webhook_versions: (serialized.webhook_versions || []).map((v: any) => ({
-      ...v,
-      previous_note: previousNote,
-    })),
     chat_count: note.$extras?.chat_count || 0,
     version_count: note.$extras?.version_count || 0,
     reviewers: extractReviewers(serialized),
@@ -216,16 +216,15 @@ export const noteListing = async (
               parent_note_id: note.parentNote.parentNoteId,
             }
           : null
-
+        serialized.webhook_versions = (serialized.webhook_versions || []).map((v: any) => ({
+          ...v,
+          previous_note: previousNote,
+        }))
         return {
           ...serialized,
           is_current_note: isCurrentNote,
           previous_note: previousNote,
           child_note: childNote,
-          webhook_versions: (serialized.webhook_versions || []).map((v: any) => ({
-            ...v,
-            previous_note: previousNote,
-          })),
           chat_count: note.$extras.chat_count || 0,
           version_count: note.$extras.version_count || 0,
           reviewers: extractReviewers(serialized),
@@ -294,15 +293,15 @@ export const getNoteWithChats = async (noteId: string) => {
           parent_note_id: note.parentNote.parentNoteId,
         }
       : null
+    serialized.webhook_versions = (serialized.webhook_versions || []).map((v: any) => ({
+      ...v,
+      previous_note: previousNote,
+    }))
     const noteWithCount = {
       ...serialized,
       is_current_note: isCurrentNote,
       previous_note: previousNote,
       child_note: childNote,
-      webhook_versions: (serialized.webhook_versions || []).map((v: any) => ({
-        ...v,
-        previous_note: previousNote,
-      })),
       chat_count: note.$extras.chat_count || 0,
       version_count: note.$extras.version_count || 0,
       reviewers: extractReviewers(serialized),
