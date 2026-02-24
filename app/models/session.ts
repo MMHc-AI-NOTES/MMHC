@@ -40,6 +40,7 @@ export const sessionFilterEnum = [
 ]
 export const sessionSortEnum = [
   'id',
+  'session_time',
   'note_id',
   'session_id',
   'practitioner_id',

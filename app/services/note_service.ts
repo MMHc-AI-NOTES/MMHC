@@ -186,11 +186,6 @@ export const noteListing = async (
       }
     }
     query = filterData?.query ?? noteListings
-    if (!sorts?.length) {
-      // Default: one client's notes together, within client current first (id desc) then previous
-      // query = query.orderBy('session_time', 'desc').orderBy('id', 'desc')
-      query = query.orderBy('id', 'desc')
-    }
     if (sorts?.length) {
       sortNote = applySorting(query, sorts, sessionSortEnum)
       if (sortNote?.status) {
