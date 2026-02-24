@@ -58,19 +58,12 @@ export const createChat = async (
       throw new Error('Agent model is not configured')
     }
 
-    // Get single previous session for the same patient (for better evaluation based on patient history)
-    // Previous session has lower id than current session
+    // Get previous note from chain (same as webhook/note API: note whose parent_note_id = current)
     let previousNote: string | undefined
-    if (session.patientId !== null) {
-      // Find the single most recent previous session (highest id < current session id)
-      const previousSession = await Session.query()
-        .where('patient_id', session.patientId)
-        .where('id', '<', session.id)
-        .orderBy('id', 'desc')
-        .first()
-
-      previousNote = previousSession?.session || undefined
-    }
+    const previousSession = await Session.query()
+      .where('parent_note_id', session.id)
+      .first()
+    previousNote = previousSession?.session || undefined
 
     // Use session.session as current note and agent.prompt as prompt
     const currentNote = session.session
@@ -427,19 +420,12 @@ export const reevaluateChat = async (chatId: number) => {
       throw new Error('Session not found for this chat')
     }
 
-    // Get single previous session for the same patient (for better evaluation based on patient history)
-    // Previous session has lower id than current session
+    // Get previous note from chain (same as webhook/note API: note whose parent_note_id = current)
     let previousNote: string | undefined
-    if (session.patientId !== null) {
-      // Find the single most recent previous session (highest id < current session id)
-      const previousSession = await Session.query()
-        .where('patient_id', session.patientId)
-        .where('id', '<', session.id)
-        .orderBy('id', 'desc')
-        .first()
-
-      previousNote = previousSession?.session || undefined
-    }
+    const previousSession = await Session.query()
+      .where('parent_note_id', session.id)
+      .first()
+    previousNote = previousSession?.session || undefined
 
     if (!chat.prompt) {
       console.log(
