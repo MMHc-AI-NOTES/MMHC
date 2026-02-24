@@ -5,6 +5,7 @@ import Session from '#models/session'
 import Patient from '#models/patient'
 import User from '#models/user'
 import CptCode from '#models/cpt_code'
+import WebhookSessionVersion from '#models/webhook_session_version'
 import {
   SessionTypeEnum,
   AiStatusEnum,
@@ -78,11 +79,12 @@ export default class SyncMorfNotes extends BaseCommand {
       process.exit(1)
     }
 
-    // Group by patient (patient_id or client_id)
+    // Group by patient; preserve order of first occurrence (first client in data = first processed)
     const byPatient = new Map<
       string,
       { morf: Morf; data: any; noteId: string; timeMs: number; patientId: number | null }[]
     >()
+    const patientOrder: string[] = []
 
     for (const row of rows) {
       const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
@@ -122,18 +124,24 @@ export default class SyncMorfNotes extends BaseCommand {
         continue
       }
       const timeMs = getSortableTime(data, row.createdAt)
-      if (!byPatient.has(key)) byPatient.set(key, [])
+      if (!byPatient.has(key)) {
+        byPatient.set(key, [])
+        patientOrder.push(key)
+      }
       byPatient.get(key)!.push({ morf: row, data, noteId, timeMs, patientId })
     }
 
     this.logger.info(`Grouped into ${byPatient.size} patients`)
+
+    // Process in order of first occurrence: first client's notes get ids 1,2,3… then next client
+    const sortedPatients = patientOrder.map((key) => [key, byPatient.get(key)!] as const)
 
     let created = 0
     let updated = 0
     let skipped = 0
     let errors = 0
 
-    for (const [pidStr, notes] of byPatient) {
+    for (const [pidStr, notes] of sortedPatients) {
       const patientId = Number(pidStr)
       const patient = await Patient.find(patientId)
       if (!patient) {
@@ -142,8 +150,8 @@ export default class SyncMorfNotes extends BaseCommand {
         continue
       }
 
-      // Sort by time descending (latest first) – latest = current note, store first with parent null; then older notes with parent_note_id = previously created id
-      notes.sort((a, b) => b.timeMs - a.timeMs)
+      // Sort notes by time ascending (oldest first) – insert oldest then … then current last, so current gets highest id; listing desc then shows current first
+      notes.sort((a, b) => a.timeMs - b.timeMs)
 
       let lastSession: Session | null = null
 
@@ -211,6 +219,17 @@ export default class SyncMorfNotes extends BaseCommand {
             })
             lastSession = session
             created++
+          }
+
+          // Ensure default version exists for this note (for version listing)
+          const hasVersion = await WebhookSessionVersion.query()
+            .where('note_id', lastSession.noteId)
+            .first()
+          if (!hasVersion) {
+            await WebhookSessionVersion.create({
+              noteId: lastSession.noteId,
+              sessionJson: lastSession.session || '{}',
+            })
           }
 
           morf.isProcessed = true
