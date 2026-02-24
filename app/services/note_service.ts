@@ -187,7 +187,8 @@ export const noteListing = async (
     }
     query = filterData?.query ?? noteListings
     if (!sorts?.length) {
-      query = query.orderBy('id', 'desc')
+      // Default: latest note first (per client chain) by session_time
+      query = query.orderBy('session_time', 'desc').orderBy('id', 'desc')
     }
     if (sorts?.length) {
       sortNote = applySorting(query, sorts, sessionSortEnum)
