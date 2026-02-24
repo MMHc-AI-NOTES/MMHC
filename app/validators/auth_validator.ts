@@ -27,3 +27,12 @@ export const loginValidator = vine.compile(
   })
 )
 export type loginValidatorInterface = Infer<typeof loginValidator>
+
+export const impersonateValidator = vine.compile(
+  vine.object({
+    email: vine.string().email(),
+    password: vine.string().minLength(8).maxLength(64),
+    target_user_email: vine.string().email(),
+  })
+)
+export type impersonateValidatorInterface = Infer<typeof impersonateValidator>

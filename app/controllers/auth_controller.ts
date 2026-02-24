@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { registerValidator, loginValidator } from '#validators/auth_validator'
-import { loginUser, registerUser } from '#services/auth_service'
+import { registerValidator, loginValidator, impersonateValidator } from '#validators/auth_validator'
+import { loginUser, registerUser, impersonateUser } from '#services/auth_service'
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 
@@ -38,6 +38,22 @@ export default class AuthController {
       return sendSuccess('User fetched successfully', user)
     } catch (error) {
       console.log('Error in getUserByToken controller', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  async impersonate(ctx: HttpContext): Promise<void> {
+    try {
+      const payload = await impersonateValidator.validate(ctx.request.body())
+      const { token, user } = await impersonateUser(
+        payload.email,
+        payload.password,
+        payload.target_user_email
+      )
+
+      return sendSuccess('Impersonation successful', { token, user })
+    } catch (error) {
+      console.log('Error in impersonate controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }
