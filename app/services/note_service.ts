@@ -17,12 +17,10 @@ import type { updateNoteValidatorInterface } from '#validators/note_validator'
  */
 const serializeNoteWithChildren = (note: any, isChild = false): any => {
   const serialized = note.serialize()
+  // parent_note_id = newer note. Current = latest (parent_note_id === null). Previous = older = note that has us as parent (childNotes[0]).
   const isCurrentNote = serialized.parent_note_id === null
-  const previousNote = isChild
-    ? null
-    : note.parentNote
-      ? { id: note.parentNote.id, note_id: note.parentNote.noteId }
-      : null
+  const prev = (note.childNotes || [])[0]
+  const previousNote = isChild ? null : prev ? { id: prev.id, note_id: prev.noteId } : null
   const children = (note.childNotes || []).map((child: any) =>
     serializeNoteWithChildren(child, true)
   )
@@ -203,21 +201,15 @@ export const noteListing = async (
       page_size: noteListingPaginated.perPage,
       data: noteListingPaginated['rows'].map((note: any) => {
         const serialized = note.serialize()
+        // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.
         const isCurrentNote = serialized.parent_note_id === null
-
-        const previousNote = note.parentNote
+        const prev = (note.childNotes || [])[0]
+        const previousNote = prev ? { id: prev.id, note_id: prev.noteId } : null
+        const childNote = note.parentNote
           ? {
               id: note.parentNote.id,
               note_id: note.parentNote.noteId,
-            }
-          : null
-
-        const child = (note.childNotes || [])[0]
-        const childNote = child
-          ? {
-              id: child.id,
-              note_id: child.noteId,
-              parent_note_id: child.parentNoteId,
+              parent_note_id: note.parentNote.parentNoteId,
             }
           : null
 
@@ -244,6 +236,7 @@ export const getNoteWithChats = async (noteId: string) => {
       .where('note_id', noteId)
       .preload('practitioner')
       .preload('patient')
+      .preload('parentNote')
       .preload('childNotes')
       .preload('chats', (chatsQuery) => {
         chatsQuery
@@ -282,13 +275,16 @@ export const getNoteWithChats = async (noteId: string) => {
     }
 
     const serialized = note.serialize()
+    // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.
     const isCurrentNote = serialized.parent_note_id === null
-    const previousNote = note.parentNote
-      ? { id: note.parentNote.id, note_id: note.parentNote.noteId }
-      : null
-    const child = (note.childNotes || [])[0]
-    const childNote = child
-      ? { id: child.id, note_id: child.noteId, parent_note_id: child.parentNoteId }
+    const prev = (note.childNotes || [])[0]
+    const previousNote = prev ? { id: prev.id, note_id: prev.noteId } : null
+    const childNote = note.parentNote
+      ? {
+          id: note.parentNote.id,
+          note_id: note.parentNote.noteId,
+          parent_note_id: note.parentNote.parentNoteId,
+        }
       : null
     const noteWithCount = {
       ...serialized,

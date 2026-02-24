@@ -150,10 +150,11 @@ export default class SyncMorfNotes extends BaseCommand {
         continue
       }
 
-      // Sort notes by time ascending (oldest first) – insert oldest then … then current last, so current gets highest id; listing desc then shows current first
+      // Sort notes by session_time ascending (oldest first): note 1, then 2, then 3...
+      // parent_note_id = newer note (next in time). Note 1's parent = Note 2, Note 2's parent = Note 3, Note 3's parent = null.
       notes.sort((a, b) => a.timeMs - b.timeMs)
 
-      let lastSession: Session | null = null
+      let previousSession: Session | null = null
 
       for (const { morf, data, noteId } of notes) {
         try {
@@ -182,13 +183,15 @@ export default class SyncMorfNotes extends BaseCommand {
           const sessionTime = data.Date
             ? DateTime.fromISO(data.Date, { setZone: true })
             : morf.createdAt
-          const parentNoteId: number | null = lastSession ? lastSession.id : null
+          // New note always created with parent_note_id = null; we link previous → current below
+          const parentNoteId: number | null = null
 
           const existing = await Session.query()
             .where('note_id', noteId)
             .orWhere('session_id', sessionId)
             .first()
 
+          let currentSession: Session
           if (existing) {
             existing.session = sessionString
             existing.sessionTime = sessionTime.isValid ? sessionTime : morf.createdAt
@@ -196,10 +199,10 @@ export default class SyncMorfNotes extends BaseCommand {
             existing.patientId = patient.id
             existing.parentNoteId = parentNoteId
             await existing.save()
-            lastSession = existing
+            currentSession = existing
             updated++
           } else {
-            const session: Session = await Session.create({
+            currentSession = await Session.create({
               noteId,
               sessionId,
               session: sessionString,
@@ -217,18 +220,25 @@ export default class SyncMorfNotes extends BaseCommand {
               reviewCycle: ReviewCycleEnum.cycle_1_of_3,
               parentNoteId,
             })
-            lastSession = session
             created++
           }
 
+          // Link previous note → current: previous note's parent_note_id = this (newer) note.
+          // Only update if different row (avoid setting current note's parent to itself when same noteId repeats).
+          if (previousSession && previousSession.id !== currentSession.id) {
+            previousSession.parentNoteId = currentSession.id
+            await previousSession.save()
+          }
+          previousSession = currentSession
+
           // Ensure default version exists for this note (for version listing)
           const hasVersion = await WebhookSessionVersion.query()
-            .where('note_id', lastSession.noteId)
+            .where('note_id', currentSession.noteId)
             .first()
           if (!hasVersion) {
             await WebhookSessionVersion.create({
-              noteId: lastSession.noteId,
-              sessionJson: lastSession.session || '{}',
+              noteId: currentSession.noteId,
+              sessionJson: currentSession.session || '{}',
             })
           }
 
