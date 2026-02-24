@@ -69,8 +69,8 @@ export default class SyncMorfNotes extends BaseCommand {
   }
 
   async run() {
-    const rows = await Morf.query().orderBy('id', 'asc')
-    this.logger.info(`Found ${rows.length} rows in morf_data`)
+    const rows = await Morf.query().where('is_processed', false).orderBy('id', 'asc')
+    this.logger.info(`Found ${rows.length} unprocessed rows in morf_data`)
 
     const cptCode = await CptCode.findBy('code', '90791')
     if (!cptCode) {
@@ -94,11 +94,20 @@ export default class SyncMorfNotes extends BaseCommand {
       const clientId = data.ClientId ?? data.client_id ?? data.clientId ?? data.ClientID ?? null
 
       let patientId: number | null = null
-      if (patientIdRaw != null && String(patientIdRaw).trim() !== '') {
+      if (
+        patientIdRaw !== null &&
+        patientIdRaw !== undefined &&
+        String(patientIdRaw).trim() !== ''
+      ) {
         const p = await Patient.query().where('id', Number(patientIdRaw)).first()
         if (p) patientId = p.id
       }
-      if (patientId === null && clientId != null && String(clientId).trim() !== '') {
+      if (
+        patientId === null &&
+        clientId !== null &&
+        clientId !== undefined &&
+        String(clientId).trim() !== ''
+      ) {
         const p = await Patient.query().where('client_id', String(clientId).trim()).first()
         if (p) patientId = p.id
       }
@@ -203,6 +212,9 @@ export default class SyncMorfNotes extends BaseCommand {
             lastSession = session
             created++
           }
+
+          morf.isProcessed = true
+          await morf.save()
         } catch (err: any) {
           errors++
           this.logger.error(`Row id=${morf.id} noteId=${noteId}: ${err.message}`)

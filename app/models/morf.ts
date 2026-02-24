@@ -13,6 +13,9 @@ export default class Morf extends BaseModel {
   @column()
   declare data: any
 
+  @column({ columnName: 'is_processed' })
+  declare isProcessed: boolean
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
