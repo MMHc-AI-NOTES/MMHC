@@ -12,6 +12,32 @@ import Chat from '#models/chat'
 import type { updateNoteValidatorInterface } from '#validators/note_validator'
 
 /**
+ * Serialize a note with nested children for listing.
+ * Child notes don't include previous_note (parent) since parent is already in tree above.
+ */
+const serializeNoteWithChildren = (note: any, isChild = false): any => {
+  const serialized = note.serialize()
+  const isCurrentNote = serialized.parent_note_id === null
+  const previousNote = isChild
+    ? null
+    : note.parentNote
+      ? { id: note.parentNote.id, note_id: note.parentNote.noteId }
+      : null
+  const children = (note.childNotes || []).map((child: any) =>
+    serializeNoteWithChildren(child, true)
+  )
+  return {
+    ...serialized,
+    is_current_note: isCurrentNote,
+    previous_note: previousNote,
+    chat_count: note.$extras?.chat_count || 0,
+    version_count: note.$extras?.version_count || 0,
+    reviewers: extractReviewers(serialized),
+    children,
+  }
+}
+
+/**
  * Extract unique reviewers from a serialized note object
  */
 const extractReviewers = (serialized: any): any[] => {
@@ -60,6 +86,9 @@ export const noteListing = async (
     let noteListings: any = Session.query()
       .preload('practitioner')
       .preload('patient')
+      .preload('parentNote')
+      // Preload direct child (if any). We only care about the first-level child for listing.
+      .preload('childNotes')
       .preload('chats', (chatsQuery) => {
         chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
           humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
@@ -177,8 +206,29 @@ export const noteListing = async (
       page_size: noteListingPaginated.perPage,
       data: noteListingPaginated['rows'].map((note: any) => {
         const serialized = note.serialize()
+        const isCurrentNote = serialized.parent_note_id === null
+
+        const previousNote = note.parentNote
+          ? {
+              id: note.parentNote.id,
+              note_id: note.parentNote.noteId,
+            }
+          : null
+
+        const child = (note.childNotes || [])[0]
+        const childNote = child
+          ? {
+              id: child.id,
+              note_id: child.noteId,
+              parent_note_id: child.parentNoteId,
+            }
+          : null
+
         return {
           ...serialized,
+          is_current_note: isCurrentNote,
+          previous_note: previousNote,
+          child_note: childNote,
           chat_count: note.$extras.chat_count || 0,
           version_count: note.$extras.version_count || 0,
           reviewers: extractReviewers(serialized),
@@ -197,6 +247,7 @@ export const getNoteWithChats = async (noteId: string) => {
       .where('note_id', noteId)
       .preload('practitioner')
       .preload('patient')
+      .preload('childNotes')
       .preload('chats', (chatsQuery) => {
         chatsQuery
           .orderBy('id', 'desc')
@@ -234,8 +285,19 @@ export const getNoteWithChats = async (noteId: string) => {
     }
 
     const serialized = note.serialize()
+    const isCurrentNote = serialized.parent_note_id === null
+    const previousNote = note.parentNote
+      ? { id: note.parentNote.id, note_id: note.parentNote.noteId }
+      : null
+    const child = (note.childNotes || [])[0]
+    const childNote = child
+      ? { id: child.id, note_id: child.noteId, parent_note_id: child.parentNoteId }
+      : null
     const noteWithCount = {
       ...serialized,
+      is_current_note: isCurrentNote,
+      previous_note: previousNote,
+      child_note: childNote,
       chat_count: note.$extras.chat_count || 0,
       version_count: note.$extras.version_count || 0,
       reviewers: extractReviewers(serialized),

@@ -7,7 +7,7 @@ export default class Morf extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
-  @column({ isPrimary: true })
+  @column()
   declare noteId: string
 
   @column()
