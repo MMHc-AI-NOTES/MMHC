@@ -21,10 +21,13 @@ const serializeNoteWithChildren = (note: any, isChild = false): any => {
   const isCurrentNote = serialized.parent_note_id === null
   const prev = (note.childNotes || [])[0]
   const previousNote = isChild ? null : prev ? { id: prev.id, note_id: prev.noteId } : null
-  serialized.webhook_versions = (serialized.webhook_versions || []).map((v: any) => ({
+  const versions = serialized.webhookVersions ?? serialized.webhook_versions ?? []
+  const versionsWithPrev = versions.map((v: any) => ({
     ...v,
-    previous_note: previousNote,
+    previous_note: prev ? prev.serialize() : null,
   }))
+  serialized.webhookVersions = versionsWithPrev
+  delete serialized.webhook_versions
   const children = (note.childNotes || []).map((child: any) =>
     serializeNoteWithChildren(child, true)
   )
@@ -89,8 +92,9 @@ export const noteListing = async (
       .preload('practitioner')
       .preload('patient')
       .preload('parentNote')
-      // Preload direct child (if any). We only care about the first-level child for listing.
-      .preload('childNotes')
+      .preload('childNotes', (childQuery) => {
+        childQuery.preload('practitioner').preload('patient')
+      })
       .preload('chats', (chatsQuery) => {
         chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
           humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
@@ -216,10 +220,13 @@ export const noteListing = async (
               parent_note_id: note.parentNote.parentNoteId,
             }
           : null
-        serialized.webhook_versions = (serialized.webhook_versions || []).map((v: any) => ({
+        const versions = serialized.webhookVersions ?? serialized.webhook_versions ?? []
+        const versionsWithPrev = versions.map((v: any) => ({
           ...v,
-          previous_note: previousNote,
+          previous_note: prev ? prev.serialize() : null,
         }))
+        serialized.webhookVersions = versionsWithPrev
+        delete serialized.webhook_versions
         return {
           ...serialized,
           is_current_note: isCurrentNote,
@@ -244,7 +251,9 @@ export const getNoteWithChats = async (noteId: string) => {
       .preload('practitioner')
       .preload('patient')
       .preload('parentNote')
-      .preload('childNotes')
+      .preload('childNotes', (childQuery) => {
+        childQuery.preload('practitioner').preload('patient')
+      })
       .preload('chats', (chatsQuery) => {
         chatsQuery
           .orderBy('id', 'desc')
@@ -293,10 +302,13 @@ export const getNoteWithChats = async (noteId: string) => {
           parent_note_id: note.parentNote.parentNoteId,
         }
       : null
-    serialized.webhook_versions = (serialized.webhook_versions || []).map((v: any) => ({
+    const versions = serialized.webhookVersions ?? serialized.webhook_versions ?? []
+    const versionsWithPrev = versions.map((v: any) => ({
       ...v,
-      previous_note: previousNote,
+      previous_note: prev ? prev.serialize() : null,
     }))
+    serialized.webhookVersions = versionsWithPrev
+    delete serialized.webhook_versions
     const noteWithCount = {
       ...serialized,
       is_current_note: isCurrentNote,
