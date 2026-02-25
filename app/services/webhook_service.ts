@@ -89,204 +89,195 @@ function getSessionTimeFromPayload(payload: webhookSessionValidatorInterface): D
  */
 export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
   try {
-    // Only process webhook if Status is "locked", otherwise silently ignore
-    if (payload.Status === 'locked') {
-      // Get CPT code 90791 (default for sessions)
-      const cptCode = await CptCode.findBy('code', '90791')
-      if (!cptCode) {
-        throw new Error('CPT code 90791 not found. Please ensure CPT code seeder has been run.')
-      }
+    // Get CPT code 90791 (default for sessions)
+    const cptCode = await CptCode.findBy('code', '90791')
+    if (!cptCode) {
+      throw new Error('CPT code 90791 not found. Please ensure CPT code seeder has been run.')
+    }
 
-      // Find or create practitioner by PractitionerEmail or PractitionerId
-      let practitionerId: number | null = null
+    // Find or create practitioner by PractitionerEmail or PractitionerId
+    let practitionerId: number | null = null
 
-      // First, try to find by PractitionerEmail if provided (any user with this email)
-      if (payload.PractitionerEmail) {
-        const practitionerByEmail = await User.query()
-          .where('email', payload.PractitionerEmail)
-          .first()
+    // First, try to find by PractitionerEmail if provided (any user with this email)
+    if (payload.PractitionerEmail) {
+      const practitionerByEmail = await User.query()
+        .where('email', payload.PractitionerEmail)
+        .first()
 
-        if (practitionerByEmail) {
-          practitionerId = practitionerByEmail.id
-        } else {
-          // Create new practitioner only if no user exists with this email
-          const newPractitioner = await User.create({
-            email: payload.PractitionerEmail,
-            fullName: payload.PractitionerName || null,
-            type: UserTypeEnum.practitioner,
-            isActive: true,
-            password: null,
-          })
-          practitionerId = newPractitioner.id
-        }
-      } else if (payload.PractitionerId) {
-        const pidStr = String(payload.PractitionerId).trim()
-        // Try by pq_id first (MORF-style), then by numeric id
-        const byPqId = await User.query().where('pq_id', pidStr).first()
-        if (byPqId) {
-          practitionerId = byPqId.id
-        } else {
-          const numericId = Number(pidStr)
-          if (!Number.isNaN(numericId)) {
-            const byId = await User.query()
-              .where('type', UserTypeEnum.practitioner)
-              .where('id', numericId)
-              .first()
-            if (byId) practitionerId = byId.id
-          }
-        }
-      }
-
-      if (!practitionerId) {
-        throw new Error(
-          `Practitioner not found. Please provide PractitionerEmail or valid PractitionerId.`
-        )
-      }
-
-      // Find or create patient by ClientId
-      let patientId: number | null = null
-      if (payload.ClientId) {
-        const clientIdString = String(payload.ClientId)
-        const patient = await Patient.query().where('client_id', clientIdString).first()
-
-        if (patient) {
-          patientId = patient.id
-        } else {
-          // Create new patient if not found
-          const newPatient = await Patient.create({
-            clientId: clientIdString,
-          })
-          patientId = newPatient.id
-        }
-      }
-
-      // Only include fields that exist in FIELD_MAPPING (First Name, Last Name, Session Duration, etc.); ignore all other keys
-      const sessionObject: Record<string, string> = {}
-      for (const q of payload.Questions) {
-        const id = q.id ?? (q as any).Id
-        const answer = q.answer ?? (q as any).Answer ?? ''
-        const fieldName = FIELD_MAPPING[id]
-        if (fieldName) sessionObject[fieldName] = answer ?? ''
-      }
-      const sessionString = JSON.stringify(sessionObject)
-      const sessionTime = getSessionTimeFromPayload(payload)
-
-      // Store webhook session version if JSON is different from previous
-      const versionResult = await storeWebhookSessionVersionIfDifferent(
-        payload.NoteId,
-        sessionObject
-      )
-
-      // session_id must be unique per note so new note always gets its own row
-      const sessionId = `session-${payload.NoteId}`
-
-      // Only treat as existing if this exact note_id already has a session (do not match by session_id prefix)
-      const existingSession = await Session.query().where('note_id', payload.NoteId).first()
-
-      let session: Session
-
-      if (existingSession) {
-        // Update existing session (parent-child: do not change parentNoteId)
-        existingSession.session = sessionString
-        existingSession.sessionTime = sessionTime.isValid ? sessionTime : DateTime.now()
-        existingSession.practitionerId = practitionerId
-        existingSession.patientId = patientId
-        await existingSession.save()
-        session = existingSession
+      if (practitionerByEmail) {
+        practitionerId = practitionerByEmail.id
       } else {
-        // Create new session with parent_note_id = null (this note is latest for chain)
-        session = await Session.create({
-          noteId: payload.NoteId,
-          sessionId,
-          session: sessionString,
-          sessionTime: sessionTime.isValid ? sessionTime : DateTime.now(),
-          practitionerId,
-          patientId,
-          type: SessionTypeEnum.intake,
-          cptCodeId: cptCode.id,
-          aiScore: null,
-          aiStatus: AiStatusEnum.not_reviewed,
-          humanReview: HumanReviewEnum.pending,
-          manager: ManagerEnum.pending,
-          workflow: WorkflowEnum.in_queue,
-          priority: PriorityEnum.low,
-          reviewCycle: ReviewCycleEnum.cycle_1_of_3,
-          parentNoteId: null,
+        // Create new practitioner only if no user exists with this email
+        const newPractitioner = await User.create({
+          email: payload.PractitionerEmail,
+          fullName: payload.PractitionerName || null,
+          type: UserTypeEnum.practitioner,
+          isActive: true,
+          password: null,
         })
-
-        // Parent-child: link previous "latest" note for this patient to this new note
-        if (patientId !== null) {
-          const previousLatest = await Session.query()
-            .where('patient_id', patientId)
-            .whereNull('parent_note_id')
-            .whereNot('id', session.id)
+        practitionerId = newPractitioner.id
+      }
+    } else if (payload.PractitionerId) {
+      const pidStr = String(payload.PractitionerId).trim()
+      // Try by pq_id first (MORF-style), then by numeric id
+      const byPqId = await User.query().where('pq_id', pidStr).first()
+      if (byPqId) {
+        practitionerId = byPqId.id
+      } else {
+        const numericId = Number(pidStr)
+        if (!Number.isNaN(numericId)) {
+          const byId = await User.query()
+            .where('type', UserTypeEnum.practitioner)
+            .where('id', numericId)
             .first()
-          if (previousLatest) {
-            previousLatest.parentNoteId = session.id
-            await previousLatest.save()
-          }
-        }
-
-        // Ensure at least one webhook version exists for this note (same as MORF sync)
-        const hasVersion = await WebhookSessionVersion.query()
-          .where('note_id', session.noteId)
-          .first()
-        if (!hasVersion) {
-          await WebhookSessionVersion.create({
-            noteId: session.noteId,
-            sessionJson: session.session || '{}',
-          })
+          if (byId) practitionerId = byId.id
         }
       }
+    }
 
-      // Automatically create chat with default prompt for AI evaluation
-      // Create chat if: 1) Chat doesn't exist, OR 2) New version was stored (details changed)
-      try {
-        // Check if chat already exists for this note
-        const existingChat = await Chat.query().where('note_id', payload.NoteId).first()
-
-        // Create chat if: no chat exists OR new version was stored
-        const shouldCreateChat = !existingChat || versionResult.stored
-
-        if (shouldCreateChat) {
-          // Find default active agent
-          const defaultAgent = await Agent.query()
-            .where('is_default', true)
-            .where('is_active', true)
-            .first()
-
-          if (defaultAgent && defaultAgent.prompt && defaultAgent.model) {
-            // Create chat with default agent for automatic evaluation
-            // Pass the session instance we already have to avoid querying again
-            await createChat(
-              {
-                note_id: payload.NoteId,
-                prompt_id: defaultAgent.id,
-              },
-              practitionerId,
-              session // Pass the session instance we already have
-            )
-          }
-        }
-      } catch (chatError: any) {
-        // Log error but don't fail webhook processing
-        console.log(`Error creating automatic chat for note ${payload.NoteId}:`, chatError.message)
-      }
-
-      return sendSuccess(
-        existingSession
-          ? 'Session updated successfully from webhook'
-          : 'Session created successfully from webhook',
-        {
-          session: session,
-          versionStored: versionResult.stored,
-          versionMessage: versionResult.message,
-        }
+    if (!practitionerId) {
+      throw new Error(
+        `Practitioner not found. Please provide PractitionerEmail or valid PractitionerId.`
       )
     }
 
-    // If Status is not "locked", silently ignore and return success
-    return sendSuccess('Webhook received but not processed (Status is not locked)', {})
+    // Find or create patient by ClientId
+    let patientId: number | null = null
+    if (payload.ClientId) {
+      const clientIdString = String(payload.ClientId)
+      const patient = await Patient.query().where('client_id', clientIdString).first()
+
+      if (patient) {
+        patientId = patient.id
+      } else {
+        // Create new patient if not found
+        const newPatient = await Patient.create({
+          clientId: clientIdString,
+        })
+        patientId = newPatient.id
+      }
+    }
+
+    // Only include fields that exist in FIELD_MAPPING (First Name, Last Name, Session Duration, etc.); ignore all other keys
+    const sessionObject: Record<string, string> = {}
+    for (const q of payload.Questions) {
+      const id = q.id ?? (q as any).Id
+      const answer = q.answer ?? (q as any).Answer ?? ''
+      const fieldName = FIELD_MAPPING[id]
+      if (fieldName) sessionObject[fieldName] = answer ?? ''
+    }
+    const sessionString = JSON.stringify(sessionObject)
+    const sessionTime = getSessionTimeFromPayload(payload)
+
+    // Store webhook session version if JSON is different from previous
+    const versionResult = await storeWebhookSessionVersionIfDifferent(payload.NoteId, sessionObject)
+
+    // session_id must be unique per note so new note always gets its own row
+    const sessionId = `session-${payload.NoteId}`
+
+    // Only treat as existing if this exact note_id already has a session (do not match by session_id prefix)
+    const existingSession = await Session.query().where('note_id', payload.NoteId).first()
+
+    let session: Session
+
+    if (existingSession) {
+      // Update existing session (parent-child: do not change parentNoteId)
+      existingSession.session = sessionString
+      existingSession.sessionTime = sessionTime.isValid ? sessionTime : DateTime.now()
+      existingSession.practitionerId = practitionerId
+      existingSession.patientId = patientId
+      await existingSession.save()
+      session = existingSession
+    } else {
+      // Create new session with parent_note_id = null (this note is latest for chain)
+      session = await Session.create({
+        noteId: payload.NoteId,
+        sessionId,
+        session: sessionString,
+        sessionTime: sessionTime.isValid ? sessionTime : DateTime.now(),
+        practitionerId,
+        patientId,
+        type: SessionTypeEnum.intake,
+        cptCodeId: cptCode.id,
+        aiScore: null,
+        aiStatus: AiStatusEnum.not_reviewed,
+        humanReview: HumanReviewEnum.pending,
+        manager: ManagerEnum.pending,
+        workflow: WorkflowEnum.in_queue,
+        priority: PriorityEnum.low,
+        reviewCycle: ReviewCycleEnum.cycle_1_of_3,
+        parentNoteId: null,
+      })
+
+      // Parent-child: link previous "latest" note for this patient to this new note
+      if (patientId !== null) {
+        const previousLatest = await Session.query()
+          .where('patient_id', patientId)
+          .whereNull('parent_note_id')
+          .whereNot('id', session.id)
+          .first()
+        if (previousLatest) {
+          previousLatest.parentNoteId = session.id
+          await previousLatest.save()
+        }
+      }
+
+      // Ensure at least one webhook version exists for this note (same as MORF sync)
+      const hasVersion = await WebhookSessionVersion.query()
+        .where('note_id', session.noteId)
+        .first()
+      if (!hasVersion) {
+        await WebhookSessionVersion.create({
+          noteId: session.noteId,
+          sessionJson: session.session || '{}',
+        })
+      }
+    }
+
+    // Automatically create chat with default prompt for AI evaluation
+    // Create chat if: 1) Chat doesn't exist, OR 2) New version was stored (details changed)
+    try {
+      // Check if chat already exists for this note
+      const existingChat = await Chat.query().where('note_id', payload.NoteId).first()
+
+      // Create chat if: no chat exists OR new version was stored
+      const shouldCreateChat = !existingChat || versionResult.stored
+
+      if (shouldCreateChat) {
+        // Find default active agent
+        const defaultAgent = await Agent.query()
+          .where('is_default', true)
+          .where('is_active', true)
+          .first()
+
+        if (defaultAgent && defaultAgent.prompt && defaultAgent.model) {
+          // Create chat with default agent for automatic evaluation
+          // Pass the session instance we already have to avoid querying again
+          await createChat(
+            {
+              note_id: payload.NoteId,
+              prompt_id: defaultAgent.id,
+            },
+            practitionerId,
+            session // Pass the session instance we already have
+          )
+        }
+      }
+    } catch (chatError: any) {
+      // Log error but don't fail webhook processing
+      console.log(`Error creating automatic chat for note ${payload.NoteId}:`, chatError.message)
+    }
+
+    return sendSuccess(
+      existingSession
+        ? 'Session updated successfully from webhook'
+        : 'Session created successfully from webhook',
+      {
+        session: session,
+        versionStored: versionResult.stored,
+        versionMessage: versionResult.message,
+      }
+    )
   } catch (error: any) {
     console.log('Error in createSessionFromWebhook:', error.message)
     throw error
