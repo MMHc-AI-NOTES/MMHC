@@ -1,0 +1,21 @@
+import { DateTime } from 'luxon'
+import { BaseModel, column } from '@adonisjs/lucid/orm'
+
+export default class Morf extends BaseModel {
+  static table = 'morf_data'
+
+  @column({ isPrimary: true })
+  declare id: number
+
+  @column({ isPrimary: true })
+  declare noteId: string
+
+  @column()
+  declare data: any
+
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
