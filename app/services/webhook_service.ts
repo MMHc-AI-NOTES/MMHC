@@ -4,6 +4,7 @@ import User from '#models/user'
 import Patient from '#models/patient'
 import Agent from '#models/agent'
 import Chat from '#models/chat'
+import WebhookSessionVersion from '#models/webhook_session_version'
 import {
   SessionTypeEnum,
   AiStatusEnum,
@@ -23,6 +24,69 @@ import type { WebhookJobData } from '#jobs/queues/webhook_queue'
 import { sendMissingFieldsEmail } from '#services/email_service'
 import { createChat } from '#services/chat_service'
 
+/**
+ * Field mapping: question id → canonical session field name.
+ * Covers both MORF-style IDs and webhook payload IDs (e.g. Progress Note).
+ */
+const FIELD_MAPPING: Record<string, string> = {
+  // MORF / legacy
+  'p9m9-1': 'Session Duration',
+  '1hye-1': 'Mental Status (optional)',
+  'kxgx-7': 'Suicidality',
+  'kxgx-8': 'Homicidality',
+  '6tx9-1': 'Subjective',
+  'rb2f-1': 'Objective',
+  'zad8-1': 'Assessment & Therapeutic Intervention',
+  'ugq6-1': 'Reaction to Intervention',
+  'hnfi-1': 'Plan and Collaboration',
+  '9z5t-1': 'Therapist Reflection and Insight (optional)',
+  'gm4p-1': 'Progress',
+  '4lbp-1': 'Therapist Initials',
+  // Progress Note / webhook payload (same input shape)
+  'p46w-1': 'First Name:',
+  'p46w-2': 'Last Name:',
+  'p46w-3': 'Date of Birth:',
+  'g39u-1': 'Session Duration',
+  'd1zt-1': 'Encounter Type & Method',
+  'cupi-1': 'Mental Status (optional)',
+  'br4k-1': 'Suicidality',
+  'br4k-2': 'Homicidality',
+  'ujky-1': 'Subjective',
+  'k8nq-1': 'Objective',
+  'nbli-1': 'Assessment & Therapeutic Intervention',
+  'm5uu-1': 'Reaction to Intervention',
+  'u3jf-1': 'Plan and Collaboration',
+  'x1gq-1': 'Therapist Reflection and Insight (optional)',
+  'cpb1-1': 'Progress',
+  'zqpc-1': 'Full Name & Credentials (Signature)',
+  'zqpc-2': 'Date Completed',
+  '5r6o-1': 'Documented by Supervised Clinician (if applicable)',
+}
+
+function getSessionTimeFromPayload(payload: webhookSessionValidatorInterface): DateTime {
+  const dateStr = payload.Date ?? (payload as any).LastModified
+  if (dateStr && typeof dateStr === 'string') {
+    const parsed = DateTime.fromISO(dateStr, { setZone: true })
+    if (parsed.isValid) return parsed
+  }
+  const et = payload.EventTime ?? (payload as any).EventTimestamp
+  if (et && typeof et === 'object' && typeof (et as any).seconds === 'number') {
+    const s = (et as any).seconds
+    const ns = (et as any).nanoseconds ?? 0
+    return DateTime.fromMillis(s * 1000 + ns / 1e6)
+  }
+  return DateTime.now()
+}
+
+/**
+ * Webhook flow (parent-child method):
+ * 1. Use ClientId to resolve patient (find or create).
+ * 2. If this NoteId already exists in DB: update session; compare with latest version,
+ *    and create new version only if content is different.
+ * 3. If this NoteId does not exist: create new note (session). This new note is the
+ *    latest for the client (parent_note_id = null). Update this client's previous
+ *    "latest" note: set its parent_note_id = this new note's id.
+ */
 export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
   try {
     // Only process webhook if Status is "locked", otherwise silently ignore
@@ -36,17 +100,16 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       // Find or create practitioner by PractitionerEmail or PractitionerId
       let practitionerId: number | null = null
 
-      // First, try to find by PractitionerEmail if provided
+      // First, try to find by PractitionerEmail if provided (any user with this email)
       if (payload.PractitionerEmail) {
         const practitionerByEmail = await User.query()
           .where('email', payload.PractitionerEmail)
-          .where('type', UserTypeEnum.practitioner)
           .first()
 
         if (practitionerByEmail) {
           practitionerId = practitionerByEmail.id
         } else {
-          // Create new practitioner if not found
+          // Create new practitioner only if no user exists with this email
           const newPractitioner = await User.create({
             email: payload.PractitionerEmail,
             fullName: payload.PractitionerName || null,
@@ -57,14 +120,20 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
           practitionerId = newPractitioner.id
         }
       } else if (payload.PractitionerId) {
-        // Fallback to PractitionerId if email not provided
-        const practitioner = await User.query()
-          .where('type', UserTypeEnum.practitioner)
-          .where('id', payload.PractitionerId)
-          .first()
-
-        if (practitioner) {
-          practitionerId = practitioner.id
+        const pidStr = String(payload.PractitionerId).trim()
+        // Try by pq_id first (MORF-style), then by numeric id
+        const byPqId = await User.query().where('pq_id', pidStr).first()
+        if (byPqId) {
+          practitionerId = byPqId.id
+        } else {
+          const numericId = Number(pidStr)
+          if (!Number.isNaN(numericId)) {
+            const byId = await User.query()
+              .where('type', UserTypeEnum.practitioner)
+              .where('id', numericId)
+              .first()
+            if (byId) practitionerId = byId.id
+          }
         }
       }
 
@@ -91,44 +160,17 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         }
       }
 
-      // Map Questions array to session object format
+      // Build session JSON from Questions (same pattern as MORF sync)
       const sessionObject: Record<string, string> = {}
-      payload.Questions.forEach((question) => {
-        // Map question IDs to session field names
-        const fieldMapping: Record<string, string> = {
-          'p9m9-1': 'Session Duration',
-          '1hye-1': 'Mental Status (optional)',
-          'kxgx-7': 'Suicidality',
-          'kxgx-8': 'Homicidality',
-          '6tx9-1': 'Subjective',
-          'rb2f-1': 'Objective',
-          'zad8-1': 'Assessment & Therapeutic Intervention',
-          'ugq6-1': 'Reaction to Intervention',
-          'hnfi-1': 'Plan and Collaboration',
-          '9z5t-1': 'Therapist Reflection and Insight (optional)',
-          'gm4p-1': 'Progress',
-          '4lbp-1': 'Therapist Initials',
-        }
-
-        const fieldName = fieldMapping[question.id] || question.text
-        // Skip questions with missing text if not in fieldMapping
-        if (!fieldName) {
-          return
-        }
-
-        if (fieldName && question.answer) {
-          sessionObject[fieldName] = question.answer
-        } else if (
-          fieldName &&
-          (question.id.includes('optional') || (question.text?.includes('optional') ?? false))
-        ) {
-          // Include optional fields even if empty
-          sessionObject[fieldName] = ''
-        }
-      })
-
-      // Convert session object to JSON string
+      for (const q of payload.Questions) {
+        const id = q.id ?? (q as any).Id
+        const text = q.text ?? (q as any).Text
+        const answer = q.answer ?? (q as any).Answer ?? ''
+        const fieldName = FIELD_MAPPING[id] || text
+        if (fieldName) sessionObject[fieldName] = answer ?? ''
+      }
       const sessionString = JSON.stringify(sessionObject)
+      const sessionTime = getSessionTimeFromPayload(payload)
 
       // Store webhook session version if JSON is different from previous
       const versionResult = await storeWebhookSessionVersionIfDifferent(
@@ -136,33 +178,31 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         sessionObject
       )
 
-      // Generate sessionId from NoteId (use NoteId as sessionId or create pattern)
-      const sessionId = `session-${payload.NoteId.substring(0, 8)}`
+      // session_id must be unique per note so new note always gets its own row
+      const sessionId = `session-${payload.NoteId}`
 
-      // Check if session already exists
-      const existingSession = await Session.query()
-        .where('note_id', payload.NoteId)
-        .orWhere('session_id', sessionId)
-        .first()
+      // Only treat as existing if this exact note_id already has a session (do not match by session_id prefix)
+      const existingSession = await Session.query().where('note_id', payload.NoteId).first()
 
       let session: Session
 
-      // Update/create session with new JSON data
-      // If version was stored (JSON changed), session will be updated with new data
-      // If version was not stored (JSON same), session will still be updated to latest JSON
       if (existingSession) {
-        // Update existing session with new session data
+        // Update existing session (parent-child: do not change parentNoteId)
         existingSession.session = sessionString
+        existingSession.sessionTime = sessionTime.isValid ? sessionTime : DateTime.now()
+        existingSession.practitionerId = practitionerId
+        existingSession.patientId = patientId
         await existingSession.save()
         session = existingSession
       } else {
-        // Create new session
+        // Create new session with parent_note_id = null (this note is latest for chain)
         session = await Session.create({
           noteId: payload.NoteId,
-          sessionId: sessionId,
+          sessionId,
           session: sessionString,
-          practitionerId: practitionerId,
-          patientId: patientId,
+          sessionTime: sessionTime.isValid ? sessionTime : DateTime.now(),
+          practitionerId,
+          patientId,
           type: SessionTypeEnum.intake,
           cptCodeId: cptCode.id,
           aiScore: null,
@@ -172,7 +212,32 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
           workflow: WorkflowEnum.in_queue,
           priority: PriorityEnum.low,
           reviewCycle: ReviewCycleEnum.cycle_1_of_3,
+          parentNoteId: null,
         })
+
+        // Parent-child: link previous "latest" note for this patient to this new note
+        if (patientId !== null) {
+          const previousLatest = await Session.query()
+            .where('patient_id', patientId)
+            .whereNull('parent_note_id')
+            .whereNot('id', session.id)
+            .first()
+          if (previousLatest) {
+            previousLatest.parentNoteId = session.id
+            await previousLatest.save()
+          }
+        }
+
+        // Ensure at least one webhook version exists for this note (same as MORF sync)
+        const hasVersion = await WebhookSessionVersion.query()
+          .where('note_id', session.noteId)
+          .first()
+        if (!hasVersion) {
+          await WebhookSessionVersion.create({
+            noteId: session.noteId,
+            sessionJson: session.session || '{}',
+          })
+        }
       }
 
       // Automatically create chat with default prompt for AI evaluation
@@ -409,26 +474,59 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     }
   }
 
-  let extractedNoteContent = ''
+  // Build session JSON from noteDetails.Questions (same MORF parent-child pattern)
+  let sessionString = ''
   if (noteDetails && 'Questions' in noteDetails && Array.isArray((noteDetails as any).Questions)) {
+    const sessionObject: Record<string, string> = {}
     const questions = (noteDetails as any).Questions
-
-    extractedNoteContent = questions
-      .map((q: any) => {
-        if (q.Answer && q.Answer.trim()) {
-          return `${q.Text || ''}: ${q.Answer}`
-        }
-        return null
-      })
-      .filter(Boolean)
-      .join('\n\n')
+    for (const q of questions) {
+      const id = q.Id ?? q.id
+      const text = q.Text ?? q.text
+      const answer = q.Answer ?? q.answer ?? ''
+      const fieldName = FIELD_MAPPING[id] || text
+      if (fieldName) sessionObject[fieldName] = answer ?? ''
+    }
+    sessionString = JSON.stringify(sessionObject)
   }
 
   let patientId: number | null = null
   if (clientId) {
-    const patient = await Patient.query().where('client_id', String(clientId)).first()
+    const clientIdString = String(clientId)
+    const patient = await Patient.query().where('client_id', clientIdString).first()
     if (patient) {
       patientId = patient.id
+    } else {
+      const newPatient = await Patient.create({ clientId: clientIdString })
+      patientId = newPatient.id
+    }
+  }
+
+  const cptCode = await CptCode.findBy('code', '90791')
+  const sessionId = `session-${noteId || ''}`
+  const sessionTime = (() => {
+    const d = (noteDetails as any)?.Date ?? (noteDetails as any)?.LastModified
+    if (d && typeof d === 'string') {
+      const parsed = DateTime.fromISO(d, { setZone: true })
+      if (parsed.isValid) return parsed
+    }
+    return DateTime.now()
+  })()
+
+  let practitionerId = 1
+  const pl = payload as any
+  if (pl.PractitionerEmail) {
+    const u = await User.query().where('email', pl.PractitionerEmail).first()
+    if (u) practitionerId = u.id
+  } else if (pl.PractitionerId) {
+    const pidStr = String(pl.PractitionerId).trim()
+    const byPqId = await User.query().where('pq_id', pidStr).first()
+    if (byPqId) practitionerId = byPqId.id
+    else {
+      const numericId = Number(pidStr)
+      if (!Number.isNaN(numericId)) {
+        const byId = await User.query().where('id', numericId).first()
+        if (byId) practitionerId = byId.id
+      }
     }
   }
 
@@ -439,30 +537,54 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
 
   let session: Session | null = null
 
-  if (!existing && noteId) {
-    const now = DateTime.now()
+  if (existing) {
+    session = existing
+    existing.session = sessionString || existing.session
+    existing.sessionTime = sessionTime.isValid ? sessionTime : DateTime.now()
+    existing.practitionerId = practitionerId
+    existing.patientId = patientId
+    existing.workflow = workflowStatus
+    await existing.save()
+    await session.load('practitioner')
+  } else if (noteId) {
     session = await Session.create({
-      noteId: noteId,
-      sessionId: `session-${noteId}`,
-      session: extractedNoteContent || '',
-      sessionTime: now,
-      practitionerId: 1,
-      patientId: patientId,
-      type: SessionTypeEnum.progress_note,
+      noteId,
+      sessionId,
+      session: sessionString || '{}',
+      sessionTime: sessionTime.isValid ? sessionTime : DateTime.now(),
+      practitionerId,
+      patientId,
+      type: SessionTypeEnum.intake,
+      cptCodeId: cptCode?.id ?? null,
       aiScore: null,
       aiStatus: AiStatusEnum.not_reviewed,
       humanReview: HumanReviewEnum.pending,
       manager: ManagerEnum.pending,
       workflow: workflowStatus,
-      priority: PriorityEnum.medium,
-      cptCodeId: null,
-      reviewCycle: null,
+      priority: PriorityEnum.low,
+      reviewCycle: ReviewCycleEnum.cycle_1_of_3,
+      parentNoteId: null,
     })
     await session.load('practitioner')
-  } else if (existing) {
-    session = existing
-    if (workflowStatus === WorkflowEnum.failed) {
-      await existing.merge({ workflow: workflowStatus }).save()
+
+    if (patientId !== null) {
+      const previousLatest = await Session.query()
+        .where('patient_id', patientId)
+        .whereNull('parent_note_id')
+        .whereNot('id', session.id)
+        .first()
+      if (previousLatest) {
+        previousLatest.parentNoteId = session.id
+        await previousLatest.save()
+      }
+    }
+
+    const hasVersion = await WebhookSessionVersion.query().where('note_id', session.noteId).first()
+    if (!hasVersion) {
+      await WebhookSessionVersion.create({
+        noteId: session.noteId,
+        sessionJson: session.session || '{}',
+      })
     }
   }
 
@@ -506,7 +628,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     workflow: workflowStatus === WorkflowEnum.in_queue ? 'in_queue' : 'failed',
     validationErrors: allValidationErrors,
     noteDetails: noteDetails ? { Id: noteDetails.Id } : null,
-    extractedNoteContent: extractedNoteContent ? 'Content extracted' : null,
+    sessionStored: session ? true : null,
     patientId,
   }
 }
