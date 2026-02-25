@@ -7,11 +7,14 @@ export default class Morf extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
-  @column({ isPrimary: true })
+  @column()
   declare noteId: string
 
   @column()
   declare data: any
+
+  @column({ columnName: 'is_processed' })
+  declare isProcessed: boolean
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

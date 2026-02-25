@@ -40,6 +40,7 @@ export const sessionFilterEnum = [
 ]
 export const sessionSortEnum = [
   'id',
+  'session_time',
   'note_id',
   'session_id',
   'practitioner_id',
@@ -64,6 +65,9 @@ export default class Session extends BaseModel {
 
   @column()
   declare noteId: string
+
+  @column({ columnName: 'parent_note_id' })
+  declare parentNoteId: number | null
 
   @column()
   declare sessionId: string
@@ -190,6 +194,16 @@ export default class Session extends BaseModel {
     foreignKey: 'cptCodeId',
   })
   declare cptCode: BelongsTo<typeof CptCode>
+
+  @belongsTo(() => Session, {
+    foreignKey: 'parentNoteId',
+  })
+  declare parentNote: BelongsTo<typeof Session>
+
+  @hasMany(() => Session, {
+    foreignKey: 'parentNoteId',
+  })
+  declare childNotes: HasMany<typeof Session>
 
   @hasMany(() => Chat, {
     foreignKey: 'noteId',

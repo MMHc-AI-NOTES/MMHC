@@ -27,6 +27,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare email: string
 
   @column()
+  declare pqId: string | null
+
+  @column()
   declare type: number
 
   @column({
