@@ -7,6 +7,7 @@ router
   .group(() => {
     router.post('register', [AuthController, 'register'])
     router.post('login', [AuthController, 'login'])
+    router.get('logout', [AuthController, 'logout'])
     router.post('impersonate', [AuthController, 'impersonate'])
     router.get('/me', [AuthController, 'getUserByToken']).use([middleware.auth()])
   })
