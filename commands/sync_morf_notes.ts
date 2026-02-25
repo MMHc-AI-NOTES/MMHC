@@ -17,6 +17,7 @@ import {
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { DateTime } from 'luxon'
 
+/** Same as webhook_service: only these fields are stored; all other keys ignored */
 const FIELD_MAPPING: Record<string, string> = {
   'p9m9-1': 'Session Duration',
   '1hye-1': 'Mental Status (optional)',
@@ -30,6 +31,24 @@ const FIELD_MAPPING: Record<string, string> = {
   '9z5t-1': 'Therapist Reflection and Insight (optional)',
   'gm4p-1': 'Progress',
   '4lbp-1': 'Therapist Initials',
+  'p46w-1': 'First Name:',
+  'p46w-2': 'Last Name:',
+  'p46w-3': 'Date of Birth:',
+  'g39u-1': 'Session Duration',
+  'd1zt-1': 'Encounter Type & Method',
+  'cupi-1': 'Mental Status (optional)',
+  'br4k-1': 'Suicidality',
+  'br4k-2': 'Homicidality',
+  'ujky-1': 'Subjective',
+  'k8nq-1': 'Objective',
+  'nbli-1': 'Assessment & Therapeutic Intervention',
+  'm5uu-1': 'Reaction to Intervention',
+  'u3jf-1': 'Plan and Collaboration',
+  'x1gq-1': 'Therapist Reflection and Insight (optional)',
+  'cpb1-1': 'Progress',
+  'zqpc-1': 'Full Name & Credentials (Signature)',
+  'zqpc-2': 'Date Completed',
+  '5r6o-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
 function getSortableTime(data: any, morfCreatedAt: DateTime): number {
@@ -51,9 +70,8 @@ function buildSessionStringFromQuestions(data: any): string {
   const sessionObject: Record<string, string> = {}
   for (const q of questions) {
     const id = q?.id ?? q?.Id
-    const text = q?.text ?? q?.Text
     const answer = q?.answer ?? q?.Answer ?? ''
-    const fieldName = FIELD_MAPPING[id] || text
+    const fieldName = FIELD_MAPPING[id]
     if (fieldName) sessionObject[fieldName] = answer ?? ''
   }
   return JSON.stringify(sessionObject)

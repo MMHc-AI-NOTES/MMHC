@@ -31,6 +31,7 @@ export const startWebhookWorker = () => {
     {
       connection: redisConfig,
       concurrency: 5,
+      lockDuration: 120000,
     }
   )
 
@@ -42,7 +43,10 @@ export const startWebhookWorker = () => {
     console.error(`Job ${job?.id} has failed with error: ${err.message}`)
   })
 
-  webhookWorker.on('error', (err) => {
+  webhookWorker.on('error', (err: any) => {
+    if (err?.message?.includes?.('Missing key for job')) {
+      return
+    }
     console.error('Worker error:', err)
   })
 
