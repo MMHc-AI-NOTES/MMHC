@@ -88,6 +88,9 @@ function getSessionTimeFromPayload(payload: webhookSessionValidatorInterface): D
  *    "latest" note: set its parent_note_id = this new note's id.
  */
 export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
+  const noteId = payload.NoteId
+  console.log('[Webhook] Processing started', { noteId })
+
   try {
     // Get CPT code 90791 (default for sessions)
     const cptCode = await CptCode.findBy('code', '90791')
@@ -268,6 +271,8 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       console.log(`Error creating automatic chat for note ${payload.NoteId}:`, chatError.message)
     }
 
+    const status = existingSession ? 'updated' : 'created'
+    console.log('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
     return sendSuccess(
       existingSession
         ? 'Session updated successfully from webhook'
@@ -279,6 +284,11 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       }
     )
   } catch (error: any) {
+    console.log('[Webhook] Processing ended', {
+      noteId,
+      status: 'not processed',
+      error: error.message,
+    })
     console.log('Error in createSessionFromWebhook:', error.message)
     throw error
   }
