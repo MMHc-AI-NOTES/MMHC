@@ -16,100 +16,100 @@ export default class UserSeeder extends BaseSeeder {
       }
     )
 
-    await User.updateOrCreate(
-      { id: 2 },
-      {
-        id: 2,
-        email: 'themustafadeveloper+1@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Raquel Castello',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 2 },
+    //   {
+    //     id: 2,
+    //     email: 'themustafadeveloper+1@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Raquel Castello',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
 
-    await User.updateOrCreate(
-      { id: 3 },
-      {
-        id: 3,
-        email: 'themustafadeveloper+2@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Alexandra Tesnakis',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 3 },
+    //   {
+    //     id: 3,
+    //     email: 'themustafadeveloper+2@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Alexandra Tesnakis',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
 
-    await User.updateOrCreate(
-      { id: 4 },
-      {
-        id: 4,
-        email: 'themustafadeveloper+3@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Carol Black',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 4 },
+    //   {
+    //     id: 4,
+    //     email: 'themustafadeveloper+3@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Carol Black',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
 
-    await User.updateOrCreate(
-      { id: 5 },
-      {
-        id: 5,
-        email: 'themustafadeveloper+4@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Alexis Weddle',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 5 },
+    //   {
+    //     id: 5,
+    //     email: 'themustafadeveloper+4@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Alexis Weddle',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
 
-    await User.updateOrCreate(
-      { id: 6 },
-      {
-        id: 6,
-        email: 'themustafadeveloper+5@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Alyssa Jenkins',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 6 },
+    //   {
+    //     id: 6,
+    //     email: 'themustafadeveloper+5@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Alyssa Jenkins',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
 
-    await User.updateOrCreate(
-      { id: 7 },
-      {
-        id: 7,
-        email: 'themustafadeveloper+6@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Andrea Singh',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 7 },
+    //   {
+    //     id: 7,
+    //     email: 'themustafadeveloper+6@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Andrea Singh',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
 
-    await User.updateOrCreate(
-      { id: 8 },
-      {
-        id: 8,
-        email: 'themustafadeveloper+7@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Alexis Lyons',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 8 },
+    //   {
+    //     id: 8,
+    //     email: 'themustafadeveloper+7@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Alexis Lyons',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
 
-    await User.updateOrCreate(
-      { id: 9 },
-      {
-        id: 9,
-        email: 'themustafadeveloper+8@experts.com',
-        password: 'Abc@1234',
-        fullName: 'Chantal Amoussou',
-        type: UserTypeEnum.practitioner,
-        isActive: true,
-      }
-    )
+    // await User.updateOrCreate(
+    //   { id: 9 },
+    //   {
+    //     id: 9,
+    //     email: 'themustafadeveloper+8@experts.com',
+    //     password: 'Abc@1234',
+    //     fullName: 'Chantal Amoussou',
+    //     type: UserTypeEnum.practitioner,
+    //     isActive: true,
+    //   }
+    // )
   }
 }
