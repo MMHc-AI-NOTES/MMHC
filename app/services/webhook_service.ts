@@ -160,13 +160,12 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         }
       }
 
-      // Build session JSON from Questions (same pattern as MORF sync)
+      // Only include fields that exist in FIELD_MAPPING (First Name, Last Name, Session Duration, etc.); ignore all other keys
       const sessionObject: Record<string, string> = {}
       for (const q of payload.Questions) {
         const id = q.id ?? (q as any).Id
-        const text = q.text ?? (q as any).Text
         const answer = q.answer ?? (q as any).Answer ?? ''
-        const fieldName = FIELD_MAPPING[id] || text
+        const fieldName = FIELD_MAPPING[id]
         if (fieldName) sessionObject[fieldName] = answer ?? ''
       }
       const sessionString = JSON.stringify(sessionObject)
@@ -474,16 +473,15 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     }
   }
 
-  // Build session JSON from noteDetails.Questions (same MORF parent-child pattern)
+  // Only include fields that exist in FIELD_MAPPING; ignore all other keys
   let sessionString = ''
   if (noteDetails && 'Questions' in noteDetails && Array.isArray((noteDetails as any).Questions)) {
     const sessionObject: Record<string, string> = {}
     const questions = (noteDetails as any).Questions
     for (const q of questions) {
       const id = q.Id ?? q.id
-      const text = q.Text ?? q.text
       const answer = q.Answer ?? q.answer ?? ''
-      const fieldName = FIELD_MAPPING[id] || text
+      const fieldName = FIELD_MAPPING[id]
       if (fieldName) sessionObject[fieldName] = answer ?? ''
     }
     sessionString = JSON.stringify(sessionObject)
