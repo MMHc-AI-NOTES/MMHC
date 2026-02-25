@@ -10,6 +10,7 @@ export const modelAgents = [
   'meta.llama4-scout-17b-instruct-v1:0', // Llama 4 Scout 17B (base ID)
   'openai.gpt-oss-safeguard-120b', // GPT OSS Safeguard 120B (base ID)
   'us.amazon.nova-premier-v1:0', // Nova Premier (inference profile - cross-region)
+  'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/y5k4mxdxqxbx', // Custom model deployment (chat)
 ] as const
 
 export const agentModelKeys = {
@@ -22,4 +23,6 @@ export const agentModelKeys = {
   LLAMA_4_SCOUT_17B: 'meta.llama4-scout-17b-instruct-v1:0', // Llama 4 Scout 17B
   GPT_OSS_SAFEGUARD_120B: 'openai.gpt-oss-safeguard-120b', // GPT OSS Safeguard 120B
   NOVA_PREMIER: 'us.amazon.nova-premier-v1:0', // Nova Premier (inference profile)
+  CUSTOM_DEPLOYMENT_Y5K4:
+    'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/y5k4mxdxqxbx', // Custom model (chat)
 } as const

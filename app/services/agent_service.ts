@@ -275,6 +275,14 @@ export const getagentDefaultSettings = async (model: string) => {
         top_k: aiDefaultConfig.top_k ?? null,
       }
     }
+    // Custom model deployment (chat)
+    if (model === agentModelKeys.CUSTOM_DEPLOYMENT_Y5K4) {
+      return {
+        temperature: aiDefaultConfig.temperature,
+        top_p: aiDefaultConfig.top_p ?? null,
+        top_k: aiDefaultConfig.top_k ?? null,
+      }
+    }
     // Free Claude Haiku models use temperature + top_p/top_k controls
     if (model === agentModelKeys.CLAUDE_3_HAIKU || model === agentModelKeys.CLAUDE_3_5_HAIKU_V1) {
       return {
