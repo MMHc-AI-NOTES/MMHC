@@ -218,7 +218,7 @@ const validateBedrockResponse = (
   }
 }
 
-/** Single evaluation result format (Prompt V4) – no raw_response to avoid duplicating full JSON */
+/** Single evaluation result format (Prompt V4) */
 function buildEvaluationResult(params: {
   score: number
   pass: boolean
@@ -233,6 +233,7 @@ function buildEvaluationResult(params: {
     section: string
     justification: string
   }>
+  raw_response: string
   user_input: string
   validation_result: { isValid: boolean; status: 'pass' | 'fail' | 'error'; message: string }
   sectionFields?: {
@@ -264,6 +265,7 @@ function buildEvaluationResult(params: {
     'gm4p-1_progress': sections['gm4p-1_progress'] ?? null,
     'kxgx-7_&_kxgx-8_suicidality/homicidality':
       sections['kxgx-7_&_kxgx-8_suicidality/homicidality'] ?? null,
+    'raw_response': params.raw_response,
     'user_input': params.user_input,
     'validation_result': params.validation_result,
   }
@@ -299,6 +301,7 @@ export const evaluateChatWithBedrock = async (
   '9z5t-1_therapist_reflection'?: string | null
   'gm4p-1_progress'?: string | null
   'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string | null
+  'raw_response': string
   'user_input': string
   'validation_result'?: {
     isValid: boolean
@@ -492,6 +495,7 @@ No previous sessions available for this patient`
         summary: parsed.summary ?? null,
         evaluation: parsed.evaluation ?? null,
         issues,
+        raw_response: responseText,
         user_input: evaluationUserPrompt,
         validation_result: validation,
         sectionFields: {
@@ -539,6 +543,7 @@ No previous sessions available for this patient`
       summary: null,
       evaluation: null,
       issues: [],
+      raw_response: responseText,
       user_input: evaluationUserPrompt,
       validation_result: validation,
     })
@@ -559,6 +564,7 @@ No previous sessions available for this patient`
       summary: null,
       evaluation: null,
       issues: [],
+      raw_response: cleanedResponseText,
       user_input: evaluationUserPrompt,
       validation_result: {
         isValid: false,
