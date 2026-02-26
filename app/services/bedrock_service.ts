@@ -149,13 +149,12 @@ const validateBedrockResponse = (
   status: 'pass' | 'fail' | 'error'
   message: string
 } => {
-  // Required main fields
+  // Required main fields (summary, sentiment, evaluation may be null per Prompt V4)
   const requiredMainFields = ['score', 'pass', 'issues', 'summary', 'sentiment', 'evaluation']
   const missingMainFields: string[] = []
 
-  // Check if main fields exist
   requiredMainFields.forEach((field) => {
-    if (parsed[field] === undefined || parsed[field] === null) {
+    if (parsed[field] === undefined) {
       missingMainFields.push(field)
     }
   })
@@ -178,9 +177,15 @@ const validateBedrockResponse = (
     }
   }
 
-  // Check issues array subfields if issues array exists
+  // Check issues array subfields (Prompt V4: severity_details = exact matched violation wording)
   if (Array.isArray(parsed.issues)) {
-    const requiredIssueFields = ['severity', 'points_deducted', 'section', 'justification']
+    const requiredIssueFields = [
+      'severity',
+      'severity_details',
+      'points_deducted',
+      'section',
+      'justification',
+    ]
     const issuesWithMissingFields: number[] = []
 
     parsed.issues.forEach((issue: any, index: number) => {
@@ -226,14 +231,15 @@ export const evaluateChatWithBedrock = async (
   'pass': boolean
   'issues': Array<{
     severity: string
+    severity_details?: string
     points_deducted: number
-    section_id?: string
+    section_id?: string | null
     section: string
     justification: string
   }>
-  'summary': string
-  'sentiment': string
-  'evaluation': string
+  'summary': string | null
+  'sentiment': string | null
+  'evaluation': string | null
   '6tx9-1_subjective'?: string
   'rb2f-1_objective'?: string
   'zad8-1_asment_&_therapeutic_intervention'?: string
@@ -396,10 +402,13 @@ No previous sessions available for this patient`
             severity = 'minor'
           }
         }
+        // Normalise severity to lowercase; Prompt V4: severity_details = exact matched violation wording
+        const severityNormalized = (severity || '').toLowerCase()
         return {
-          severity: (severity || '') as string,
+          severity: severityNormalized || 'minor',
+          severity_details: issue.severity_details ?? '',
           points_deducted: pointsDeducted,
-          section_id: issue.section_id || '',
+          section_id: issue.section_id ?? null,
           section: issue.section || '',
           justification: issue.justification || '',
         }
@@ -421,10 +430,10 @@ No previous sessions available for this patient`
         'score': score,
         'pass': score >= 75,
         'issues': issues,
-        'summary': parsed.summary || '',
+        'summary': parsed.summary ?? null,
         'sentiment':
-          parsed.sentiment || (score > 75 ? 'positive' : score >= 50 ? 'neutral' : 'negative'),
-        'evaluation': parsed.evaluation || parsed.summary || responseText,
+          parsed.sentiment ?? (score > 75 ? 'positive' : score >= 50 ? 'neutral' : 'negative'),
+        'evaluation': parsed.evaluation ?? parsed.summary ?? responseText,
         '6tx9-1_subjective': parsed['6tx9-1_subjective'] || '',
         'rb2f-1_objective': parsed['rb2f-1_objective'] || '',
         'zad8-1_asment_&_therapeutic_intervention':
