@@ -240,14 +240,14 @@ export const evaluateChatWithBedrock = async (
   'summary': string | null
   'sentiment': string | null
   'evaluation': string | null
-  '6tx9-1_subjective'?: string
-  'rb2f-1_objective'?: string
-  'zad8-1_asment_&_therapeutic_intervention'?: string
-  'ugq6-1_reaction_to_intervention'?: string
-  'hnfi-1_plan_and_collaboration'?: string
-  '9z5t-1_therapist_reflection'?: string
-  'gm4p-1_progress'?: string
-  'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string
+  '6tx9-1_subjective'?: string | null
+  'rb2f-1_objective'?: string | null
+  'zad8-1_asment_&_therapeutic_intervention'?: string | null
+  'ugq6-1_reaction_to_intervention'?: string | null
+  'hnfi-1_plan_and_collaboration'?: string | null
+  '9z5t-1_therapist_reflection'?: string | null
+  'gm4p-1_progress'?: string | null
+  'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string | null
   'raw_response': string
   'user_input': string
   'validation_result'?: {
@@ -426,24 +426,24 @@ No previous sessions available for this patient`
         score = 100 - totalDeduction
       }
 
+      // Return as per format: null keys stay null, no processing/substitution for them
       return {
         'score': score,
         'pass': score >= 75,
-        'issues': issues,
+        'sentiment': parsed.sentiment ?? null,
         'summary': parsed.summary ?? null,
-        'sentiment':
-          parsed.sentiment ?? (score > 75 ? 'positive' : score >= 50 ? 'neutral' : 'negative'),
-        'evaluation': parsed.evaluation ?? parsed.summary ?? responseText,
-        '6tx9-1_subjective': parsed['6tx9-1_subjective'] || '',
-        'rb2f-1_objective': parsed['rb2f-1_objective'] || '',
+        'evaluation': parsed.evaluation ?? null,
+        'issues': issues,
+        '6tx9-1_subjective': parsed['6tx9-1_subjective'] ?? null,
+        'rb2f-1_objective': parsed['rb2f-1_objective'] ?? null,
         'zad8-1_asment_&_therapeutic_intervention':
-          parsed['zad8-1_asment_&_therapeutic_intervention'] || '',
-        'ugq6-1_reaction_to_intervention': parsed['ugq6-1_reaction_to_intervention'] || '',
-        'hnfi-1_plan_and_collaboration': parsed['hnfi-1_plan_and_collaboration'] || '',
-        '9z5t-1_therapist_reflection': parsed['9z5t-1_therapist_reflection'] || '',
-        'gm4p-1_progress': parsed['gm4p-1_progress'] || '',
+          parsed['zad8-1_asment_&_therapeutic_intervention'] ?? null,
+        'ugq6-1_reaction_to_intervention': parsed['ugq6-1_reaction_to_intervention'] ?? null,
+        'hnfi-1_plan_and_collaboration': parsed['hnfi-1_plan_and_collaboration'] ?? null,
+        '9z5t-1_therapist_reflection': parsed['9z5t-1_therapist_reflection'] ?? null,
+        'gm4p-1_progress': parsed['gm4p-1_progress'] ?? null,
         'kxgx-7_&_kxgx-8_suicidality/homicidality':
-          parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] || '',
+          parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] ?? null,
         'raw_response': responseText,
         'user_input': evaluationUserPrompt,
         'validation_result': validation,
@@ -476,18 +476,18 @@ No previous sessions available for this patient`
     return {
       'score': clampedScore,
       'pass': clampedScore >= 75,
+      'sentiment': null,
+      'summary': null,
+      'evaluation': null,
       'issues': [],
-      'summary': responseText,
-      'sentiment': 'neutral',
-      'evaluation': responseText,
-      '6tx9-1_subjective': '',
-      'rb2f-1_objective': '',
-      'zad8-1_asment_&_therapeutic_intervention': '',
-      'ugq6-1_reaction_to_intervention': '',
-      'hnfi-1_plan_and_collaboration': '',
-      '9z5t-1_therapist_reflection': '',
-      'gm4p-1_progress': '',
-      'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
+      '6tx9-1_subjective': null,
+      'rb2f-1_objective': null,
+      'zad8-1_asment_&_therapeutic_intervention': null,
+      'ugq6-1_reaction_to_intervention': null,
+      'hnfi-1_plan_and_collaboration': null,
+      '9z5t-1_therapist_reflection': null,
+      'gm4p-1_progress': null,
+      'kxgx-7_&_kxgx-8_suicidality/homicidality': null,
       'raw_response': responseText,
       'user_input': evaluationUserPrompt,
       'validation_result': validation,
@@ -505,18 +505,18 @@ No previous sessions available for this patient`
     return {
       'score': 0,
       'pass': false,
+      'sentiment': null,
+      'summary': null,
+      'evaluation': null,
       'issues': [],
-      'summary': cleanedResponseText,
-      'sentiment': 'neutral',
-      'evaluation': cleanedResponseText,
-      '6tx9-1_subjective': '',
-      'rb2f-1_objective': '',
-      'zad8-1_asment_&_therapeutic_intervention': '',
-      'ugq6-1_reaction_to_intervention': '',
-      'hnfi-1_plan_and_collaboration': '',
-      '9z5t-1_therapist_reflection': '',
-      'gm4p-1_progress': '',
-      'kxgx-7_&_kxgx-8_suicidality/homicidality': '',
+      '6tx9-1_subjective': null,
+      'rb2f-1_objective': null,
+      'zad8-1_asment_&_therapeutic_intervention': null,
+      'ugq6-1_reaction_to_intervention': null,
+      'hnfi-1_plan_and_collaboration': null,
+      '9z5t-1_therapist_reflection': null,
+      'gm4p-1_progress': null,
+      'kxgx-7_&_kxgx-8_suicidality/homicidality': null,
       'raw_response': cleanedResponseText,
       'user_input': evaluationUserPrompt,
       'validation_result': {
