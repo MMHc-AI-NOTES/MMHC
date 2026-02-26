@@ -218,6 +218,57 @@ const validateBedrockResponse = (
   }
 }
 
+/** Single evaluation result format (Prompt V4) – no raw_response to avoid duplicating full JSON */
+function buildEvaluationResult(params: {
+  score: number
+  pass: boolean
+  sentiment: string | null
+  summary: string | null
+  evaluation: string | null
+  issues: Array<{
+    severity: string
+    severity_details?: string
+    points_deducted: number
+    section_id?: string | null
+    section: string
+    justification: string
+  }>
+  user_input: string
+  validation_result: { isValid: boolean; status: 'pass' | 'fail' | 'error'; message: string }
+  sectionFields?: {
+    '6tx9-1_subjective'?: string | null
+    'rb2f-1_objective'?: string | null
+    'zad8-1_asment_&_therapeutic_intervention'?: string | null
+    'ugq6-1_reaction_to_intervention'?: string | null
+    'hnfi-1_plan_and_collaboration'?: string | null
+    '9z5t-1_therapist_reflection'?: string | null
+    'gm4p-1_progress'?: string | null
+    'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string | null
+  }
+}) {
+  const sections = params.sectionFields ?? {}
+  return {
+    'score': params.score,
+    'pass': params.pass,
+    'sentiment': params.sentiment,
+    'summary': params.summary,
+    'evaluation': params.evaluation,
+    'issues': params.issues,
+    '6tx9-1_subjective': sections['6tx9-1_subjective'] ?? null,
+    'rb2f-1_objective': sections['rb2f-1_objective'] ?? null,
+    'zad8-1_asment_&_therapeutic_intervention':
+      sections['zad8-1_asment_&_therapeutic_intervention'] ?? null,
+    'ugq6-1_reaction_to_intervention': sections['ugq6-1_reaction_to_intervention'] ?? null,
+    'hnfi-1_plan_and_collaboration': sections['hnfi-1_plan_and_collaboration'] ?? null,
+    '9z5t-1_therapist_reflection': sections['9z5t-1_therapist_reflection'] ?? null,
+    'gm4p-1_progress': sections['gm4p-1_progress'] ?? null,
+    'kxgx-7_&_kxgx-8_suicidality/homicidality':
+      sections['kxgx-7_&_kxgx-8_suicidality/homicidality'] ?? null,
+    'user_input': params.user_input,
+    'validation_result': params.validation_result,
+  }
+}
+
 export const evaluateChatWithBedrock = async (
   modelId: string,
   currentNote: string,
@@ -248,7 +299,6 @@ export const evaluateChatWithBedrock = async (
   '9z5t-1_therapist_reflection'?: string | null
   'gm4p-1_progress'?: string | null
   'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string | null
-  'raw_response': string
   'user_input': string
   'validation_result'?: {
     isValid: boolean
@@ -404,9 +454,18 @@ No previous sessions available for this patient`
         }
         // Normalise severity to lowercase; Prompt V4: severity_details = exact matched violation wording
         const severityNormalized = (severity || '').toLowerCase()
+        // When model leaves severity_details empty but puts criterion in justification (e.g. "Vague or non-specific language: ..."), derive it
+        let severityDetails = (issue.severity_details ?? '').trim()
+        if (!severityDetails && issue.justification) {
+          const justificationStr = String(issue.justification).trim()
+          const colonIndex = justificationStr.indexOf(':')
+          if (colonIndex > 0) {
+            severityDetails = justificationStr.slice(0, colonIndex).trim()
+          }
+        }
         return {
           severity: severityNormalized || 'minor',
-          severity_details: issue.severity_details ?? '',
+          severity_details: severityDetails || (issue.severity_details ?? ''),
           points_deducted: pointsDeducted,
           section_id: issue.section_id ?? null,
           section: issue.section || '',
@@ -426,28 +485,28 @@ No previous sessions available for this patient`
         score = 100 - totalDeduction
       }
 
-      // Return as per format: null keys stay null, no processing/substitution for them
-      return {
-        'score': score,
-        'pass': score >= 75,
-        'sentiment': parsed.sentiment ?? null,
-        'summary': parsed.summary ?? null,
-        'evaluation': parsed.evaluation ?? null,
-        'issues': issues,
-        '6tx9-1_subjective': parsed['6tx9-1_subjective'] ?? null,
-        'rb2f-1_objective': parsed['rb2f-1_objective'] ?? null,
-        'zad8-1_asment_&_therapeutic_intervention':
-          parsed['zad8-1_asment_&_therapeutic_intervention'] ?? null,
-        'ugq6-1_reaction_to_intervention': parsed['ugq6-1_reaction_to_intervention'] ?? null,
-        'hnfi-1_plan_and_collaboration': parsed['hnfi-1_plan_and_collaboration'] ?? null,
-        '9z5t-1_therapist_reflection': parsed['9z5t-1_therapist_reflection'] ?? null,
-        'gm4p-1_progress': parsed['gm4p-1_progress'] ?? null,
-        'kxgx-7_&_kxgx-8_suicidality/homicidality':
-          parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] ?? null,
-        'raw_response': responseText,
-        'user_input': evaluationUserPrompt,
-        'validation_result': validation,
-      }
+      return buildEvaluationResult({
+        score,
+        pass: score >= 75,
+        sentiment: parsed.sentiment ?? null,
+        summary: parsed.summary ?? null,
+        evaluation: parsed.evaluation ?? null,
+        issues,
+        user_input: evaluationUserPrompt,
+        validation_result: validation,
+        sectionFields: {
+          '6tx9-1_subjective': parsed['6tx9-1_subjective'] ?? null,
+          'rb2f-1_objective': parsed['rb2f-1_objective'] ?? null,
+          'zad8-1_asment_&_therapeutic_intervention':
+            parsed['zad8-1_asment_&_therapeutic_intervention'] ?? null,
+          'ugq6-1_reaction_to_intervention': parsed['ugq6-1_reaction_to_intervention'] ?? null,
+          'hnfi-1_plan_and_collaboration': parsed['hnfi-1_plan_and_collaboration'] ?? null,
+          '9z5t-1_therapist_reflection': parsed['9z5t-1_therapist_reflection'] ?? null,
+          'gm4p-1_progress': parsed['gm4p-1_progress'] ?? null,
+          'kxgx-7_&_kxgx-8_suicidality/homicidality':
+            parsed['kxgx-7_&_kxgx-8_suicidality/homicidality'] ?? null,
+        },
+      })
     }
 
     // Fallback: extract from text
@@ -473,25 +532,16 @@ No previous sessions available for this patient`
       // Already set validation to error
     }
 
-    return {
-      'score': clampedScore,
-      'pass': clampedScore >= 75,
-      'sentiment': null,
-      'summary': null,
-      'evaluation': null,
-      'issues': [],
-      '6tx9-1_subjective': null,
-      'rb2f-1_objective': null,
-      'zad8-1_asment_&_therapeutic_intervention': null,
-      'ugq6-1_reaction_to_intervention': null,
-      'hnfi-1_plan_and_collaboration': null,
-      '9z5t-1_therapist_reflection': null,
-      'gm4p-1_progress': null,
-      'kxgx-7_&_kxgx-8_suicidality/homicidality': null,
-      'raw_response': responseText,
-      'user_input': evaluationUserPrompt,
-      'validation_result': validation,
-    }
+    return buildEvaluationResult({
+      score: clampedScore,
+      pass: clampedScore >= 75,
+      sentiment: null,
+      summary: null,
+      evaluation: null,
+      issues: [],
+      user_input: evaluationUserPrompt,
+      validation_result: validation,
+    })
   } catch (error: any) {
     // For errors, return fallback response with error validation status
     // Clean markdown code blocks from response text
@@ -502,28 +552,19 @@ No previous sessions available for this patient`
       .replace(/\s*```$/i, '')
       .trim()
 
-    return {
-      'score': 0,
-      'pass': false,
-      'sentiment': null,
-      'summary': null,
-      'evaluation': null,
-      'issues': [],
-      '6tx9-1_subjective': null,
-      'rb2f-1_objective': null,
-      'zad8-1_asment_&_therapeutic_intervention': null,
-      'ugq6-1_reaction_to_intervention': null,
-      'hnfi-1_plan_and_collaboration': null,
-      '9z5t-1_therapist_reflection': null,
-      'gm4p-1_progress': null,
-      'kxgx-7_&_kxgx-8_suicidality/homicidality': null,
-      'raw_response': cleanedResponseText,
-      'user_input': evaluationUserPrompt,
-      'validation_result': {
+    return buildEvaluationResult({
+      score: 0,
+      pass: false,
+      sentiment: null,
+      summary: null,
+      evaluation: null,
+      issues: [],
+      user_input: evaluationUserPrompt,
+      validation_result: {
         isValid: false,
         status: 'error',
         message: error.message || 'Failed to parse Bedrock response',
       },
-    }
+    })
   }
 }
