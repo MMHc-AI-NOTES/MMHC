@@ -25,7 +25,7 @@ export default class NoteReviewMark extends BaseModel {
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true, serializeAs: null })
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
   @belongsTo(() => User, {
