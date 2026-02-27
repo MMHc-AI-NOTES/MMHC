@@ -294,7 +294,7 @@ export const getNoteWithChats = async (noteId: string) => {
     // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.
     const isCurrentNote = serialized.parent_note_id === null
     const prev = (note.childNotes || [])[0]
-    const previousNote = prev ? { id: prev.id, note_id: prev.noteId } : null
+    const previousNote = prev ? prev.serialize() : null
     const childNote = note.parentNote
       ? {
           id: note.parentNote.id,
