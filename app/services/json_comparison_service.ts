@@ -1,5 +1,6 @@
 import isEqual from 'lodash.isequal'
 import WebhookSessionVersion from '#models/webhook_session_version'
+import SmeIssue from '#models/sme_issue'
 
 /**
  * Compare two JSON objects and determine if they are different
@@ -109,6 +110,23 @@ export const storeWebhookSessionVersionIfDifferent = async (
       noteId: noteId,
       sessionJson: sessionJsonString,
     })
+
+    // Copy previous version's SME issues to the new version
+    const previousSmeIssues = await SmeIssue.query().where('version_id', latestVersion.id)
+    if (previousSmeIssues.length > 0) {
+      await SmeIssue.createMany(
+        previousSmeIssues.map((issue) => ({
+          reviewerId: issue.reviewerId,
+          errorTypeId: issue.errorTypeId,
+          issuesRelatedToId: issue.issuesRelatedToId,
+          issueDescriptionId: issue.issueDescriptionId,
+          noteId: issue.noteId,
+          versionId: newVersion.id,
+          status: issue.status,
+          comment: issue.comment,
+        }))
+      )
+    }
 
     return {
       stored: true,
