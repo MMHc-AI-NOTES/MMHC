@@ -399,7 +399,7 @@ export const notifyPractitioner = async (reqData: notifyPractitionerValidatorInt
       .where('reviewer_id', reqData.reviewer_id)
       .where('version_id', reqData.version_id)
       .update({
-        practitioner_notified_at: DateTime.now().toSQL(),
+        practitioner_notified_at: DateTime.now().toSQL({ includeOffset: false }),
       })
 
     return sendSuccess('Email sent to practitioner successfully', {
