@@ -60,9 +60,7 @@ export const createChat = async (
 
     // Get previous note from chain (same as webhook/note API: note whose parent_note_id = current)
     let previousNote: string | undefined
-    const previousSession = await Session.query()
-      .where('parent_note_id', session.id)
-      .first()
+    const previousSession = await Session.query().where('parent_note_id', session.id).first()
     previousNote = previousSession?.session || undefined
 
     // Use session.session as current note and agent.prompt as prompt
@@ -422,9 +420,7 @@ export const reevaluateChat = async (chatId: number) => {
 
     // Get previous note from chain (same as webhook/note API: note whose parent_note_id = current)
     let previousNote: string | undefined
-    const previousSession = await Session.query()
-      .where('parent_note_id', session.id)
-      .first()
+    const previousSession = await Session.query().where('parent_note_id', session.id).first()
     previousNote = previousSession?.session || undefined
 
     if (!chat.prompt) {
