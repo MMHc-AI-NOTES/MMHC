@@ -18,6 +18,7 @@ import type {
 } from '#validators/manager_review_validator'
 import { ManagerEnum } from '#enums/session_enum'
 import { sendPractitionerSmeIssuesEmail } from '#services/email_service'
+import { DateTime } from 'luxon'
 
 export const listManagerReviews = async (
   page?: number,
@@ -390,6 +391,16 @@ export const notifyPractitioner = async (reqData: notifyPractitionerValidatorInt
       reqData.version_id,
       smeIssues
     )
+
+    // Update manager review(s) with notification time
+    await ManagerReview.query()
+      .where('note_id', reqData.note_id)
+      .where('practitioner_id', reqData.practitioner_id)
+      .where('reviewer_id', reqData.reviewer_id)
+      .where('version_id', reqData.version_id)
+      .update({
+        practitioner_notified_at: DateTime.now().toSQL(),
+      })
 
     return sendSuccess('Email sent to practitioner successfully', {
       practitioner_id: reqData.practitioner_id,
