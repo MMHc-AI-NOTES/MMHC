@@ -7,6 +7,7 @@ router
   .group(() => {
     router.post('/listing', [ManagerReviewController, 'listing'])
     router.post('/notify-practitioner', [ManagerReviewController, 'notifyPractitioner'])
+    router.post('/bulk-notify-practitioner', [ManagerReviewController, 'bulkNotifyPractitioner'])
     router.get('/:id', [ManagerReviewController, 'show'])
     router.patch('/:id', [ManagerReviewController, 'update'])
     router.delete('/:id', [ManagerReviewController, 'destroy'])

@@ -3,6 +3,7 @@ import { WelcomeEmailSendEvent } from '#interfaces/email_event_interface'
 import WelcomeEmail from '#mails/welcome_email'
 import UserInviteEmail from '#mails/user_invite_email'
 import PractitionerSmeIssuesEmail from '#mails/practitioner_sme_issues_email'
+import BulkPractitionerSmeIssuesEmail from '#mails/bulk_practitioner_sme_issues_email'
 import MissingFieldsEmail from '#mails/missing_fields_email'
 import type SmeIssue from '#models/sme_issue'
 import mail from '@adonisjs/mail/services/main'
@@ -92,6 +93,43 @@ export const sendPractitionerSmeIssuesEmail = async (
     )
   } catch (error) {
     console.log('sendPractitionerSmeIssuesEmail Error:', error)
+    throw error
+  }
+}
+
+export type BulkNoteWithIssues = {
+  noteId: string
+  versionId: number | null
+  versionLabel: string | null
+  reviewerName: string
+  smeIssues: Array<{
+    id: number
+    errorType: string
+    issuesRelatedTo: string
+    issueDescription: string
+    status: string
+    createdAt: string
+  }>
+}
+
+export const sendBulkPractitionerSmeIssuesEmail = async (
+  practitionerEmail: string,
+  practitionerName: string,
+  notesWithIssues: BulkNoteWithIssues[]
+) => {
+  try {
+    await mail.send(
+      new BulkPractitionerSmeIssuesEmail({
+        to: practitionerEmail,
+        subject: 'SME Issues Added by Reviewer (Multiple Notes)',
+        data: {
+          practitionerName,
+          notesWithIssues,
+        },
+      })
+    )
+  } catch (error) {
+    console.log('sendBulkPractitionerSmeIssuesEmail Error:', error)
     throw error
   }
 }
