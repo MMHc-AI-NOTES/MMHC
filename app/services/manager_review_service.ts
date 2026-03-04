@@ -17,8 +17,13 @@ import type {
   notifyPractitionerValidatorInterface,
 } from '#validators/manager_review_validator'
 import { ManagerEnum } from '#enums/session_enum'
-import { sendPractitionerSmeIssuesEmail } from '#services/email_service'
+import {
+  sendPractitionerSmeIssuesEmail,
+  sendBulkPractitionerSmeIssuesEmail,
+} from '#services/email_service'
 import { DateTime } from 'luxon'
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const listManagerReviews = async (
   page?: number,
@@ -411,6 +416,129 @@ export const notifyPractitioner = async (reqData: notifyPractitionerValidatorInt
     })
   } catch (error: any) {
     console.log('Error in notifyPractitioner:', error.message)
+    return sendError(error.message)
+  }
+}
+
+export const bulkNotifyPractitioner = async (managerReviewIds: number[]) => {
+  try {
+    const reviews = await ManagerReview.query()
+      .whereIn('id', managerReviewIds)
+      .preload('practitioner')
+      .preload('reviewer')
+
+    if (reviews.length === 0) {
+      return sendError('No manager reviews found for the provided IDs')
+    }
+
+    // Group reviews by practitioner_id
+    const byPractitionerId: Record<
+      number,
+      Array<{ review: ManagerReview; practitioner: User; reviewer: User | null }>
+    > = {}
+    for (const review of reviews) {
+      const practitioner = review.practitioner
+      if (!practitioner) continue
+      if (!byPractitionerId[review.practitionerId]) {
+        byPractitionerId[review.practitionerId] = []
+      }
+      byPractitionerId[review.practitionerId].push({
+        review,
+        practitioner,
+        reviewer: review.reviewer ?? null,
+      })
+    }
+
+    const nowSql = DateTime.now().toSQL({ includeOffset: false })
+    const allNotifiedIds: number[] = []
+    const practitionerIds = Object.keys(byPractitionerId).map(Number)
+
+    for (const practitionerId of practitionerIds) {
+      const rows = byPractitionerId[practitionerId]
+      const practitioner = rows[0].practitioner
+
+      if (!practitioner.email) continue
+
+      // Build note cards (dedupe by note_id + version_id + reviewer_id)
+      const seenKeys: string[] = []
+      const notesWithIssues: any[] = []
+
+      for (const row of rows) {
+        const review = row.review
+        const reviewer = row.reviewer
+        const key = `${review.noteId}|${review.versionId ?? 'n'}|${reviewer?.id ?? 'n'}`
+        if (seenKeys.indexOf(key) !== -1) continue
+        seenKeys.push(key)
+
+        let smeIssuesQuery = SmeIssue.query()
+          .where('note_id', review.noteId)
+          .where('reviewer_id', review.reviewerId ?? reviewer?.id ?? 0)
+        if (review.versionId !== null && review.versionId !== undefined) {
+          smeIssuesQuery = smeIssuesQuery.where('version_id', review.versionId)
+        } else {
+          smeIssuesQuery = smeIssuesQuery.whereNull('version_id')
+        }
+        const smeIssues = await smeIssuesQuery
+          .preload('errorType')
+          .preload('issuesRelatedTo')
+          .preload('issueDescription')
+
+        const formattedIssues = smeIssues.map((issue) => {
+          const errorType = issue.$preloaded?.errorType as any
+          const issuesRelatedTo = issue.$preloaded?.issuesRelatedTo as any
+          const issueDescription = issue.$preloaded?.issueDescription as any
+          let formattedDate = 'N/A'
+          if (issue.createdAt) {
+            formattedDate = issue.createdAt.toFormat("MMMM dd, yyyy 'at' hh:mm a")
+          }
+          return {
+            id: issue.id,
+            errorType: errorType?.name || 'N/A',
+            issuesRelatedTo: issuesRelatedTo?.displayName || 'N/A',
+            issueDescription: issueDescription?.description || 'N/A',
+            status: issue.status === 1 ? 'Active' : issue.status === 2 ? 'Resolved' : 'N/A',
+            createdAt: formattedDate,
+          }
+        })
+
+        notesWithIssues.push({
+          noteId: review.noteId,
+          versionId: review.versionId,
+          versionLabel: review.versionLabel ?? null,
+          reviewerName: reviewer?.fullName || 'Reviewer',
+          smeIssues: formattedIssues,
+        })
+      }
+
+      if (notesWithIssues.length === 0) continue
+
+      await sendBulkPractitionerSmeIssuesEmail(
+        practitioner.email,
+        practitioner.fullName || 'Practitioner',
+        notesWithIssues
+      )
+
+      // Small delay between emails to avoid provider rate limits
+      await sleep(3000)
+
+      for (const row of rows) {
+        allNotifiedIds.push(row.review.id)
+      }
+    }
+
+    if (allNotifiedIds.length > 0) {
+      await ManagerReview.query()
+        .whereIn('id', allNotifiedIds)
+        .update({ practitioner_notified_at: nowSql })
+    }
+
+    return sendSuccess('Bulk emails sent to practitioners successfully', {
+      manager_review_ids: managerReviewIds,
+      practitioners_notified: practitionerIds.length,
+      reviews_updated: allNotifiedIds.length,
+    })
+  } catch (error: any) {
+    console.log('Error in bulkNotifyPractitioner:', error.message)
     return sendError(error.message)
   }
 }
