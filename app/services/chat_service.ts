@@ -11,6 +11,8 @@ import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
 import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
+import { createAuditLog } from '#services/audit_log_service'
+import { AuditActionEnum } from '#enums/audit_log_enum'
 import type {
   createChatValidatorInterface,
   updateChatValidatorInterface,
@@ -141,6 +143,19 @@ export const createChat = async (
     }
 
     const chat = await Chat.create(chatData)
+
+    // Audit log: chat created
+    await createAuditLog({
+      userId,
+      description: `Chat created for note ${reqData.note_id}`,
+      action: AuditActionEnum.chatCreated,
+      status: true,
+      metadata: {
+        note_id: reqData.note_id,
+        chat_id: chat.id,
+        agent_id: reqData.prompt_id,
+      },
+    })
 
     // Update session with AI score and status
     const aiScore = evaluation.score

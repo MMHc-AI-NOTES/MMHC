@@ -2,6 +2,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { webhookSessionValidator } from '#validators/webhook_validator'
 import ErrorService from '#services/error_service'
 import { createSessionFromWebhook } from '#services/webhook_service'
+import { createAuditLog } from '#services/audit_log_service'
+import { AuditActionEnum } from '#enums/audit_log_enum'
 
 export default class WebhookController {
   /**
@@ -11,6 +13,16 @@ export default class WebhookController {
   public async session(ctx: HttpContext) {
     try {
       const payload = await webhookSessionValidator.validate(ctx.request.body())
+      await createAuditLog({
+        ctx,
+        description: `Webhook received for note ${payload.NoteId}`,
+        action: AuditActionEnum.webhookSessionReceived,
+        status: true,
+        metadata: {
+          note_id: payload.NoteId,
+          raw_payload: payload,
+        },
+      })
       const result = await createSessionFromWebhook(payload)
       return ctx.response.send(result)
     } catch (error: any) {

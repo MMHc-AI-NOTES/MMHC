@@ -7,6 +7,8 @@ import BulkPractitionerSmeIssuesEmail from '#mails/bulk_practitioner_sme_issues_
 import MissingFieldsEmail from '#mails/missing_fields_email'
 import type SmeIssue from '#models/sme_issue'
 import mail from '@adonisjs/mail/services/main'
+import { createAuditLog } from '#services/audit_log_service'
+import { AuditActionEnum } from '#enums/audit_log_enum'
 export const dispatchWelcomeEmail = async () => {
   try {
     WelcomeEmailEvent.dispatch({
@@ -91,6 +93,20 @@ export const sendPractitionerSmeIssuesEmail = async (
         },
       })
     )
+
+    await createAuditLog({
+      description: 'SME issues email sent to practitioner',
+      action: AuditActionEnum.emailSmeIssues,
+      status: true,
+      metadata: {
+        practitioner_email: practitionerEmail,
+        practitioner_name: practitionerName,
+        reviewer_name: reviewerName,
+        note_id: noteId,
+        version_id: versionId ?? null,
+        issues_count: smeIssues.length,
+      },
+    })
   } catch (error) {
     console.log('sendPractitionerSmeIssuesEmail Error:', error)
     throw error
@@ -128,6 +144,17 @@ export const sendBulkPractitionerSmeIssuesEmail = async (
         },
       })
     )
+
+    await createAuditLog({
+      description: 'Bulk SME issues email sent to practitioner',
+      action: AuditActionEnum.emailBulkSmeIssues,
+      status: true,
+      metadata: {
+        practitioner_email: practitionerEmail,
+        practitioner_name: practitionerName,
+        notes_count: notesWithIssues.length,
+      },
+    })
   } catch (error) {
     console.log('sendBulkPractitionerSmeIssuesEmail Error:', error)
     throw error
@@ -152,6 +179,18 @@ export const sendMissingFieldsEmail = async (
         },
       })
     )
+
+    await createAuditLog({
+      description: 'Missing fields email sent to practitioner',
+      action: AuditActionEnum.emailMissingFields,
+      status: true,
+      metadata: {
+        practitioner_email: practitionerEmail,
+        practitioner_name: practitionerName,
+        note_id: noteId,
+        missing_fields: missingFields,
+      },
+    })
   } catch (error) {
     console.log('sendMissingFieldsEmail Error:', error)
     throw error
