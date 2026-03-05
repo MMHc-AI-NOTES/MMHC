@@ -20,7 +20,7 @@ export default class ChatController {
     try {
       const payload = await createChatValidator.validate(ctx.request.body())
       const user = ctx.auth.getUserOrFail()
-      const chatResponse = await createChat(payload, user.id)
+      const chatResponse = await createChat(payload, user.id, undefined, ctx)
       return chatResponse
     } catch (error) {
       console.log('chat creating error', error)

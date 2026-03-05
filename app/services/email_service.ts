@@ -6,6 +6,7 @@ import PractitionerSmeIssuesEmail from '#mails/practitioner_sme_issues_email'
 import BulkPractitionerSmeIssuesEmail from '#mails/bulk_practitioner_sme_issues_email'
 import MissingFieldsEmail from '#mails/missing_fields_email'
 import type SmeIssue from '#models/sme_issue'
+import Session from '#models/session'
 import mail from '@adonisjs/mail/services/main'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
@@ -94,10 +95,15 @@ export const sendPractitionerSmeIssuesEmail = async (
       })
     )
 
+    const session = await Session.query().where('note_id', noteId).first()
+
     await createAuditLog({
       description: 'SME issues email sent to practitioner',
       action: AuditActionEnum.emailSmeIssues,
       status: true,
+      modelType: session ? 'Session' : null,
+      modelId: session?.id ?? null,
+      noteId: noteId,
       metadata: {
         practitioner_email: practitionerEmail,
         practitioner_name: practitionerName,
@@ -180,10 +186,15 @@ export const sendMissingFieldsEmail = async (
       })
     )
 
+    const session = await Session.query().where('note_id', noteId).first()
+
     await createAuditLog({
       description: 'Missing fields email sent to practitioner',
       action: AuditActionEnum.emailMissingFields,
       status: true,
+      modelType: session ? 'Session' : null,
+      modelId: session?.id ?? null,
+      noteId: noteId,
       metadata: {
         practitioner_email: practitionerEmail,
         practitioner_name: practitionerName,

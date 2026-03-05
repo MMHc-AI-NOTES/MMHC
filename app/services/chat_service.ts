@@ -12,6 +12,7 @@ import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/
 import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
 import { createAuditLog } from '#services/audit_log_service'
+import type { HttpContext } from '@adonisjs/core/http'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type {
   createChatValidatorInterface,
@@ -21,7 +22,8 @@ import type {
 export const createChat = async (
   reqData: createChatValidatorInterface,
   userId: number,
-  sessionInstance?: Session
+  sessionInstance?: Session,
+  ctx?: HttpContext
 ) => {
   try {
     // Use provided session instance or query for it
@@ -146,11 +148,13 @@ export const createChat = async (
 
     // Audit log: chat created
     await createAuditLog({
+      ctx,
       userId,
       description: `Chat created for note ${reqData.note_id}`,
       action: AuditActionEnum.chatCreated,
       modelType: 'Chat',
       modelId: chat.id,
+      noteId: reqData.note_id,
       status: true,
       metadata: {
         note_id: reqData.note_id,

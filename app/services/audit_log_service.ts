@@ -12,6 +12,7 @@ interface CreateAuditLogParams {
   status: boolean
   modelType?: string | null
   modelId?: number | null
+  noteId?: string | null
   metadata?: AuditLogMetadata
 }
 
@@ -38,6 +39,7 @@ export const createAuditLog = async (params: CreateAuditLogParams) => {
       action: params.action,
       modelType: params.modelType ?? null,
       modelId: params.modelId ?? null,
+      noteId: params.noteId ?? null,
       ipAddress,
       userAgent,
       actionTime: DateTime.now(),
