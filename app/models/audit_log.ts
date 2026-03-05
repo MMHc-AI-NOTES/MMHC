@@ -17,6 +17,12 @@ export default class AuditLog extends BaseModel {
   declare action: string
 
   @column()
+  declare modelType: string | null
+
+  @column()
+  declare modelId: number | null
+
+  @column()
   declare ipAddress: string
 
   @column()

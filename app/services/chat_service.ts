@@ -149,6 +149,8 @@ export const createChat = async (
       userId,
       description: `Chat created for note ${reqData.note_id}`,
       action: AuditActionEnum.chatCreated,
+      modelType: 'Chat',
+      modelId: chat.id,
       status: true,
       metadata: {
         note_id: reqData.note_id,
