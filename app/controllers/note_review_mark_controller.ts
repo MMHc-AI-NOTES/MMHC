@@ -8,6 +8,7 @@ const paramsValidator = vine.compile(
   vine.object({
     note_id: vine.string().trim().minLength(1),
     reviewer_id: vine.number().withoutDecimals(),
+    note_version_id: vine.number().withoutDecimals(),
   })
 )
 
@@ -25,10 +26,12 @@ export default class NoteReviewMarkController {
 
   public async show(ctx: HttpContext) {
     try {
-      const { note_id: noteId, reviewer_id: reviewerId } = await paramsValidator.validate(
-        ctx.params
-      )
-      const response = await getNoteReviewMark(noteId, reviewerId)
+      const {
+        note_id: noteId,
+        reviewer_id: reviewerId,
+        note_version_id: noteVersionId,
+      } = await paramsValidator.validate(ctx.params)
+      const response = await getNoteReviewMark(noteId, reviewerId, noteVersionId)
       return response
     } catch (error) {
       console.log('Note review mark get error', error)

@@ -20,7 +20,7 @@ const serializeNoteWithChildren = (note: any, isChild = false): any => {
   // parent_note_id = newer note. Current = latest (parent_note_id === null). Previous = older = note that has us as parent (childNotes[0]).
   const isCurrentNote = serialized.parent_note_id === null
   const prev = (note.childNotes || [])[0]
-  const previousNote = isChild ? null : prev ? { id: prev.id, note_id: prev.noteId } : null
+  const previousNote = isChild ? null : prev ? prev.serialize() : null
   const versions = serialized.webhookVersions ?? serialized.webhook_versions ?? []
   const versionsWithPrev = versions.map((v: any) => ({
     ...v,
@@ -294,7 +294,7 @@ export const getNoteWithChats = async (noteId: string) => {
     // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.
     const isCurrentNote = serialized.parent_note_id === null
     const prev = (note.childNotes || [])[0]
-    const previousNote = prev ? { id: prev.id, note_id: prev.noteId } : null
+    const previousNote = prev ? prev.serialize() : null
     const childNote = note.parentNote
       ? {
           id: note.parentNote.id,

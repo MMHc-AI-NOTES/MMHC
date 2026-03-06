@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
 import User from '#models/user'
 import Session from '#models/session'
+import WebhookSessionVersion from '#models/webhook_session_version'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 
 export default class NoteReviewMark extends BaseModel {
@@ -12,6 +13,9 @@ export default class NoteReviewMark extends BaseModel {
 
   @column()
   declare noteId: string
+
+  @column()
+  declare noteVersionId: number | null
 
   @column()
   declare reviewerId: number
@@ -25,7 +29,7 @@ export default class NoteReviewMark extends BaseModel {
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true, serializeAs: null })
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
   @belongsTo(() => User, {
@@ -38,4 +42,9 @@ export default class NoteReviewMark extends BaseModel {
     localKey: 'noteId',
   })
   declare note: BelongsTo<typeof Session>
+
+  @belongsTo(() => WebhookSessionVersion, {
+    foreignKey: 'noteVersionId',
+  })
+  declare noteVersion: BelongsTo<typeof WebhookSessionVersion>
 }
