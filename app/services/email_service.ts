@@ -5,6 +5,7 @@ import UserInviteEmail from '#mails/user_invite_email'
 import PractitionerSmeIssuesEmail from '#mails/practitioner_sme_issues_email'
 import BulkPractitionerSmeIssuesEmail from '#mails/bulk_practitioner_sme_issues_email'
 import MissingFieldsEmail from '#mails/missing_fields_email'
+import ForgotPasswordEmail from '#mails/forgot_password_email'
 import type SmeIssue from '#models/sme_issue'
 import Session from '#models/session'
 import mail from '@adonisjs/mail/services/main'
@@ -48,6 +49,23 @@ export const sendUserInviteEmail = async (email: string, invitationLink: string)
     )
   } catch (error) {
     console.log('sendUserInviteEmail Error:', error)
+    throw error
+  }
+}
+
+export const sendForgotPasswordEmail = async (email: string, resetUrl: string) => {
+  try {
+    await mail.send(
+      new ForgotPasswordEmail({
+        to: email,
+        subject: 'Reset your password',
+        data: {
+          resetUrl,
+        },
+      })
+    )
+  } catch (error) {
+    console.log('sendForgotPasswordEmail Error:', error)
     throw error
   }
 }

@@ -1,8 +1,15 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { Secret } from '@adonisjs/core/helpers'
 import User from '#models/user'
-import { registerValidator, loginValidator, impersonateValidator } from '#validators/auth_validator'
+import {
+  registerValidator,
+  loginValidator,
+  impersonateValidator,
+  forgotPasswordValidator,
+  resetPasswordValidator,
+} from '#validators/auth_validator'
 import { loginUser, registerUser, impersonateUser } from '#services/auth_service'
+import { requestPasswordReset, resetPassword } from '#services/password_reset_service'
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 
@@ -86,6 +93,29 @@ export default class AuthController {
       return sendSuccess('Logged out successfully')
     } catch (error) {
       console.log('Error in logout controller', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  async forgotPassword(ctx: HttpContext): Promise<void> {
+    try {
+      const { email } = await forgotPasswordValidator.validate(ctx.request.body())
+      const response = await requestPasswordReset(email)
+
+      return response
+    } catch (error) {
+      console.log('Error in forgotPassword controller', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  async resetPassword(ctx: HttpContext): Promise<void> {
+    try {
+      const { token, password } = await resetPasswordValidator.validate(ctx.request.body())
+      const response = await resetPassword(token, password)
+      return response
+    } catch (error) {
+      console.log('Error in resetPassword controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }

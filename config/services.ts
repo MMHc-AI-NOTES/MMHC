@@ -50,3 +50,7 @@ export const redisConfig = {
   db: Number(env.get('REDIS_DB', '0')),
   keyPrefix: env.get('REDIS_KEY_PREFIX', 'mmh-'),
 }
+
+export const appConfig = {
+  frontendUrl: String(env.get('FRONTEND_URL', 'http://localhost:3000')).replace(/\/+$/, ''),
+}

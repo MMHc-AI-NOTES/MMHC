@@ -36,3 +36,18 @@ export const impersonateValidator = vine.compile(
   })
 )
 export type impersonateValidatorInterface = Infer<typeof impersonateValidator>
+
+export const forgotPasswordValidator = vine.compile(
+  vine.object({
+    email: vine.string().email().trim(),
+  })
+)
+export type forgotPasswordValidatorInterface = Infer<typeof forgotPasswordValidator>
+
+export const resetPasswordValidator = vine.compile(
+  vine.object({
+    token: vine.string().trim().minLength(10),
+    password: vine.string().confirmed().minLength(8).maxLength(64),
+  })
+)
+export type resetPasswordValidatorInterface = Infer<typeof resetPasswordValidator>
