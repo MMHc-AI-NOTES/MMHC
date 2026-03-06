@@ -41,10 +41,7 @@
                 <mj-spacer height="16px">
                 </mj-spacer>
                 <mj-text font-size="16px" line-height="1.6" padding="0px" color="#4A4A4A">
-                    The reviewer <strong>{{ reviewerName }} </strong>has added the following SME issues for Note ID: <strong>{{ noteId }}</strong>
-                    @if(versionId)
-                        (Version ID: <strong>{{ versionId }}</strong>)
-                    @endif
+                    The reviewer <strong>{{ reviewerName }}</strong> has added the following SME issues for Note ID: <a href="{{ intakeqFormNoteUrlBase }}{{ clientId }}?type=2&itemId={{ noteId }}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">{{ noteId }}</a><span style="color:#2563eb;font-size:14px;margin-left:2px;">&#8599;</span>
                 </mj-text>
                 <mj-spacer height="24px">
                 </mj-spacer>
@@ -58,9 +55,6 @@
                                 </mj-text>
                                 <mj-spacer height="8px">
                                 </mj-spacer>
-                                <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
-                                    <strong>Error Type: </strong>{{ issue.errorType }}
-                                </mj-text>
                                 <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
                                     <strong>Issues Related To: </strong>{{ issue.issuesRelatedTo }}
                                 </mj-text>
