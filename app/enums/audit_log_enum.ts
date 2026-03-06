@@ -5,4 +5,3 @@ export const AuditActionEnum = {
   emailMissingFields: 'email_missing_fields',
   webhookSessionReceived: 'webhook_session_received',
 } as const
-
