@@ -1,9 +1,11 @@
 import NoteReviewMark from '#models/note_review_mark'
+import HumanReview from '#models/human_review'
 import Session from '#models/session'
 import User from '#models/user'
 import WebhookSessionVersion from '#models/webhook_session_version'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type { markNoteReviewedValidatorInterface } from '#validators/note_review_mark_validator'
+import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { DateTime } from 'luxon'
 
 export const markNoteReviewed = async (
@@ -49,6 +51,30 @@ export const markNoteReviewed = async (
     mark.markedAsReviewed = reqData.marked
     mark.markedAt = reqData.marked ? DateTime.now() : null
     await mark.save()
+  }
+
+  // Ensure human_reviews has an entry so note preload shows reviewer (with or without SME issues)
+  let humanReview = await HumanReview.query()
+    .where('note_id', noteId)
+    .where('reviewer_id', reviewerId)
+    .where('version_id', reqData.note_version_id)
+    .first()
+
+  const humanReviewPayload = {
+    noteId,
+    practitionerId: note.practitionerId,
+    reviewerId,
+    versionId: reqData.note_version_id,
+    decision: HumanReviewDecisionEnum.accept_ai_evaluation,
+    aiStatus: note.aiStatus ?? null,
+    priority: note.priority ?? null,
+    chatId: null,
+  }
+
+  if (humanReview) {
+    await humanReview.merge(humanReviewPayload).save()
+  } else {
+    await HumanReview.create(humanReviewPayload)
   }
 
   await mark.load('reviewer')
