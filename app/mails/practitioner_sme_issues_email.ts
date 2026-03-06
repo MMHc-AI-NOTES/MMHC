@@ -2,7 +2,7 @@ import { BaseMail } from '@adonisjs/mail'
 import { EmailInterface } from '#interfaces/email_base_interface'
 import { emailConfig } from '#config/services'
 import edge from 'edge.js'
-import { emailCompanyLogo } from '#config/services'
+import { emailCompanyLogo, appConfig } from '#config/services'
 
 export default class PractitionerSmeIssuesEmail extends BaseMail {
   from = ''
@@ -32,7 +32,9 @@ export default class PractitionerSmeIssuesEmail extends BaseMail {
         reviewerName: data?.reviewerName,
         noteId: data?.noteId,
         versionId: data?.versionId,
+        clientId: data?.clientId ?? '',
         smeIssues: data?.smeIssues,
+        intakeqFormNoteUrlBase: appConfig.intakeqFormNoteUrlBase,
       })
   }
 }

@@ -76,6 +76,7 @@ export const sendPractitionerSmeIssuesEmail = async (
   reviewerName: string,
   noteId: string,
   versionId: number | null | undefined,
+  clientId: string,
   smeIssues: SmeIssue[]
 ) => {
   try {
@@ -88,6 +89,7 @@ export const sendPractitionerSmeIssuesEmail = async (
           reviewerName,
           noteId,
           versionId,
+          clientId,
           smeIssues: smeIssues.map((issue) => {
             // Access preloaded relationships - they are already loaded in notifyPractitioner
             const errorType = issue.$preloaded?.errorType as any
@@ -142,6 +144,7 @@ export type BulkNoteWithIssues = {
   versionId: number | null
   versionLabel: string | null
   reviewerName: string
+  clientId: string
   smeIssues: Array<{
     id: number
     errorType: string

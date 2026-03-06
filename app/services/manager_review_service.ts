@@ -3,6 +3,7 @@ import ManagerReview, {
   managerReviewSortEnum,
 } from '#models/manager_review'
 import Session from '#models/session'
+import Patient from '#models/patient'
 import HumanReview from '#models/human_review'
 import User from '#models/user'
 import Chat from '#models/chat'
@@ -388,12 +389,16 @@ export const notifyPractitioner = async (reqData: notifyPractitionerValidatorInt
       return sendError('Practitioner email not found')
     }
 
+    const patient = note.patientId ? await Patient.find(note.patientId) : null
+    const clientId = patient?.clientId ?? ''
+
     await sendPractitionerSmeIssuesEmail(
       practitioner.email,
       practitioner.fullName || 'Practitioner',
       reviewer.fullName || 'Reviewer',
       reqData.note_id,
       reqData.version_id,
+      clientId,
       smeIssues
     )
 
@@ -501,11 +506,16 @@ export const bulkNotifyPractitioner = async (managerReviewIds: number[]) => {
           }
         })
 
+        const session = await Session.query().where('note_id', review.noteId).first()
+        const patient = session?.patientId ? await Patient.find(session.patientId) : null
+        const clientId = patient?.clientId ?? ''
+
         notesWithIssues.push({
           noteId: review.noteId,
           versionId: review.versionId,
           versionLabel: review.versionLabel ?? null,
           reviewerName: reviewer?.fullName || 'Reviewer',
+          clientId,
           smeIssues: formattedIssues,
         })
       }

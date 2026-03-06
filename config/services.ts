@@ -53,4 +53,8 @@ export const redisConfig = {
 
 export const appConfig = {
   frontendUrl: String(env.get('FRONTEND_URL', 'http://localhost:3000')).replace(/\/+$/, ''),
+  /** Base URL for IntakeQ form note link: base + clientId + '?type=2&itemId=' + noteId */
+  intakeqFormNoteUrlBase: String(
+    env.get('INTAKEQ_FORM_NOTE_URL_BASE', 'https://intakeq.com/#/client/')
+  ),
 }
