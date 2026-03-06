@@ -6,11 +6,11 @@ import { sendSuccess, sendError } from '#services/custom_response_service'
 import type { markNoteReviewedValidatorInterface } from '#validators/note_review_mark_validator'
 import { DateTime } from 'luxon'
 
-export const markNoteReviewed = async (reqData: markNoteReviewedValidatorInterface) => {
-  const reviewerId = reqData.reviewer_id ?? reqData.practitioner_id
-  if (reviewerId === undefined) {
-    return sendError('Either reviewer_id or practitioner_id is required')
-  }
+export const markNoteReviewed = async (
+  reqData: markNoteReviewedValidatorInterface,
+  currentUserId: number
+) => {
+  const reviewerId = currentUserId
   const note = await Session.query().where('note_id', reqData.note_id).first()
   if (!note) {
     return sendError('Note not found for the provided note_id')
@@ -29,15 +29,17 @@ export const markNoteReviewed = async (reqData: markNoteReviewedValidatorInterfa
     return sendError('Reviewer not found for the provided reviewer_id')
   }
 
+  const noteId = note.noteId
+
   let mark = await NoteReviewMark.query()
-    .where('note_id', reqData.note_id)
+    .where('note_id', noteId)
     .where('note_version_id', reqData.note_version_id)
     .where('reviewer_id', reviewerId)
     .first()
 
   if (!mark) {
     mark = await NoteReviewMark.create({
-      noteId: reqData.note_id,
+      noteId,
       noteVersionId: reqData.note_version_id,
       reviewerId,
       markedAsReviewed: reqData.marked,
