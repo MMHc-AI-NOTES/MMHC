@@ -74,6 +74,11 @@ const extractReviewers = (serialized: any): any[] => {
     })
   })
 
+  // From note review marks (user marked note as reviewed)
+  serialized.note_review_marks?.forEach((mark: any) => {
+    addReviewer(mark.reviewer_id, mark.reviewer)
+  })
+
   return Array.from(reviewersMap.values())
 }
 
