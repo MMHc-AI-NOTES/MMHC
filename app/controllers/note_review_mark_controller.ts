@@ -16,7 +16,8 @@ export default class NoteReviewMarkController {
   public async update(ctx: HttpContext) {
     try {
       const payload = await markNoteReviewedValidator.validate(ctx.request.body())
-      const response = await markNoteReviewed(payload)
+      const currentUser = ctx.auth.getUserOrFail()
+      const response = await markNoteReviewed(payload, currentUser.id)
       return response
     } catch (error) {
       console.log('Note review mark update error', error)
