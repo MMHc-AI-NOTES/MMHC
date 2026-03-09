@@ -3,4 +3,5 @@ export const UserTypeEnum = {
   user: 2,
   practitioner: 3,
   sme_reviewer: 4,
+  system: 5,
 }
