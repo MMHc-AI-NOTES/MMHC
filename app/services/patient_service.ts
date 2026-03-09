@@ -14,6 +14,12 @@ export const patientListing = async (
     let filterData: any
     let sortPatient: any
     let patientListings: any = Patient.query()
+      .withCount('sessions', (countQuery) => {
+        countQuery.as('note_count')
+      })
+      .preload('sessions', (sessionsQuery) => {
+        sessionsQuery.orderBy('session_time', 'desc')
+      })
 
     if (filters?.length) {
       filterData = applyFilters(patientListings, filters, patientFilterEnum)
@@ -42,9 +48,13 @@ export const patientListing = async (
       total_page_count: patientListingPaginated.lastPage,
       page: patientListingPaginated.currentPage,
       page_size: patientListingPaginated.perPage,
-      data: patientListingPaginated['rows'].map((patient: any) => ({
-        ...patient.serialize(),
-      })),
+      data: patientListingPaginated['rows'].map((patient: any) => {
+        const serialized = patient.serialize()
+        return {
+          ...serialized,
+          note_count: patient.$extras?.note_count || 0,
+        }
+      }),
     }
   } catch (error) {
     throw new Error(`Error retrieving patients listings`)
