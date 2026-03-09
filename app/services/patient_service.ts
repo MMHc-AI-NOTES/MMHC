@@ -21,8 +21,36 @@ export const patientListing = async (
         sessionsQuery.orderBy('session_time', 'desc')
       })
 
+    let searchFilter: any = null
+    let otherFilters: Array<any> = []
+
     if (filters?.length) {
-      filterData = applyFilters(patientListings, filters, patientFilterEnum)
+      filters.forEach((filter) => {
+        if (filter.columnName === 'search') {
+          searchFilter = filter
+        } else {
+          otherFilters.push(filter)
+        }
+      })
+    }
+
+    if (searchFilter && searchFilter.value) {
+      const searchValue = String(searchFilter.value).trim()
+      if (searchValue) {
+        const searchPattern = `%${searchValue}%`
+        const maybeId = Number.parseInt(searchValue, 10)
+
+        patientListings = patientListings.where((subQuery: any) => {
+          subQuery.whereILike('client_id', searchPattern)
+          if (!Number.isNaN(maybeId)) {
+            subQuery.orWhere('id', maybeId)
+          }
+        })
+      }
+    }
+
+    if (otherFilters?.length) {
+      filterData = applyFilters(patientListings, otherFilters, patientFilterEnum)
     }
     if (filterData?.status === false) {
       return {
