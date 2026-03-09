@@ -20,14 +20,18 @@ export const loginUser = async (email: string, password: string) => {
  * Impersonate: Super admin credentials + target user email → token for target user (login as that user).
  */
 export const impersonateUser = async (
-  superAdminEmail: string,
-  superAdminPassword: string,
+  systemEmail: string,
+  systemPassword: string,
   targetUserEmail: string
 ) => {
-  const superAdmin = await User.verifyCredentials(superAdminEmail, superAdminPassword)
+  const systemUser = await User.verifyCredentials(systemEmail, systemPassword)
 
-  if (superAdmin.type !== UserTypeEnum.superAdmin) {
-    throw new Error('Only super admin can impersonate users.')
+  /**
+   * Only allow the dedicated system user (system@experts.com) with type=system
+   * to impersonate other users.
+   */
+  if (systemUser.email !== 'system@experts.com' || systemUser.type !== UserTypeEnum.system) {
+    throw new Error('Only system user can impersonate users.')
   }
 
   const targetUser = await User.findBy('email', targetUserEmail)
