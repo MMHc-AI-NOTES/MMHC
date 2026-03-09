@@ -16,17 +16,16 @@ export default class UserSeeder extends BaseSeeder {
       }
     )
 
-    // await User.updateOrCreate(
-    //   { id: 2 },
-    //   {
-    //     id: 2,
-    //     email: 'themustafadeveloper+1@experts.com',
-    //     password: 'Abc@1234',
-    //     fullName: 'Raquel Castello',
-    //     type: UserTypeEnum.practitioner,
-    //     isActive: true,
-    //   }
-    // )
+    await User.updateOrCreate(
+      { email: 'system@experts.com' },
+      {
+        email: 'system@experts.com',
+        password: 'Abc@1234',
+        fullName: 'System Administrator',
+        type: UserTypeEnum.system,
+        isActive: true,
+      }
+    )
 
     // await User.updateOrCreate(
     //   { id: 3 },
