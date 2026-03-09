@@ -4,7 +4,7 @@ import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import Session from '#models/session'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 
-export const patientFilterEnum = ['id', 'client_id', 'created_at']
+export const patientFilterEnum = ['id', 'client_id', 'created_at', 'search']
 export const patientSortEnum = ['id', 'client_id', 'created_at']
 
 export default class Patient extends BaseModel {
