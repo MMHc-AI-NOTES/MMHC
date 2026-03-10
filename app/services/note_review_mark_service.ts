@@ -6,11 +6,15 @@ import WebhookSessionVersion from '#models/webhook_session_version'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import type { markNoteReviewedValidatorInterface } from '#validators/note_review_mark_validator'
 import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
+import { createAuditLog } from '#services/audit_log_service'
+import { AuditActionEnum } from '#enums/audit_log_enum'
+import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 
 export const markNoteReviewed = async (
   reqData: markNoteReviewedValidatorInterface,
-  currentUserId: number
+  currentUserId: number,
+  ctx?: HttpContext
 ) => {
   const reviewerId = currentUserId
   const note = await Session.query().where('note_id', reqData.note_id).first()
@@ -78,6 +82,25 @@ export const markNoteReviewed = async (
   }
 
   await mark.load('reviewer')
+
+  await createAuditLog({
+    ctx,
+    userId: currentUserId,
+    description: `Note marked as ${reqData.marked ? 'reviewed' : 'unreviewed'} for note ${
+      noteId
+    } (version ${reqData.note_version_id})`,
+    action: AuditActionEnum.noteMarkedReviewed,
+    status: true,
+    modelType: 'NoteReviewMark',
+    modelId: mark.id,
+    noteId,
+    metadata: {
+      note_id: noteId,
+      note_version_id: reqData.note_version_id,
+      reviewer_id: reviewerId,
+      marked: reqData.marked,
+    },
+  })
 
   return sendSuccess('Note review mark updated successfully', {
     id: mark.id,
