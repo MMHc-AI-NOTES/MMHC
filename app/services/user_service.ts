@@ -75,9 +75,7 @@ export const userListing = async (
     }
 
     // Start with base query (exclude superAdmin and system users from listings)
-    let userListings: any = User.query()
-      .whereNot('type', UserTypeEnum.superAdmin)
-      .andWhereNot('type', UserTypeEnum.system)
+    let userListings: any = User.query().whereNot('type', UserTypeEnum.system)
 
     // Apply search filter (email and full_name)
     if (searchFilter && searchFilter.value) {
