@@ -149,10 +149,10 @@ export const noteListing = async (
       if (!Number.isNaN(userId)) {
         noteListings = noteListings.whereNotExists((subQuery: any) => {
           subQuery
-            .from('sme_issues')
-            .whereRaw('sme_issues.note_id = session.note_id')
-            .where('sme_issues.reviewer_id', userId)
-            .whereNull('sme_issues.deleted_at')
+            .from('human_reviews')
+            .whereRaw('human_reviews.note_id = session.note_id')
+            .where('human_reviews.reviewer_id', userId)
+            .whereNull('human_reviews.deleted_at')
         })
       }
     }
