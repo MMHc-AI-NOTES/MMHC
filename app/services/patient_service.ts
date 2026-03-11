@@ -59,16 +59,37 @@ export const patientListing = async (
       }
     }
     query = filterData?.query ?? patientListings
-    if (!sorts?.length) {
-      query = query.orderBy('id', 'desc')
-    }
+    // Sorting
+    let noteCountSort: any = null
+    let otherSorts: Array<any> = []
+
     if (sorts?.length) {
-      sortPatient = applySorting(query, sorts, patientSortEnum)
+      sorts.forEach((sort) => {
+        if (sort.columnName === 'note_count') {
+          noteCountSort = sort
+        } else {
+          otherSorts.push(sort)
+        }
+      })
+    }
+
+    if (otherSorts.length) {
+      sortPatient = applySorting(query, otherSorts, patientSortEnum)
       if (sortPatient?.status) {
         return sortPatient
       }
     }
+
     let sortQuery = sortPatient?.query ?? query
+
+    if (
+      noteCountSort &&
+      noteCountSort.orderBy &&
+      (noteCountSort.orderBy === 'asc' || noteCountSort.orderBy === 'desc')
+    ) {
+      // note_count is an alias from withCount, so we sort directly on it
+      sortQuery = sortQuery.orderBy('note_count', noteCountSort.orderBy)
+    }
     let patientListingPaginated = await paginateQuery(sortQuery, pageSize, page)
     return {
       count: patientListingPaginated['rows'].length,
