@@ -2,8 +2,6 @@ import Session from '#models/session'
 import CptCode from '#models/cpt_code'
 import User from '#models/user'
 import Patient from '#models/patient'
-import Agent from '#models/agent'
-import Chat from '#models/chat'
 import WebhookSessionVersion from '#models/webhook_session_version'
 import {
   SessionTypeEnum,
@@ -22,7 +20,9 @@ import { practiceQConfig } from '#config/services'
 import { DateTime } from 'luxon'
 import type { WebhookJobData } from '#jobs/queues/webhook_queue'
 import { sendMissingFieldsEmail } from '#services/email_service'
-import { createChat } from '#services/chat_service'
+// import Agent from '#models/agent'
+// import Chat from '#models/chat'
+// import { createChat } from '#services/chat_service'
 
 /**
  * Field mapping: question id → canonical session field name.
@@ -259,6 +259,9 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
 
     // Automatically create chat with default prompt for AI evaluation
     // Create chat if: 1) Chat doesn't exist, OR 2) New version was stored (details changed)
+    // NOTE: Temporarily disabled by commenting out the following block. Uncomment
+    // to re-enable automatic chat creation on webhook:
+    /*
     try {
       // Check if chat already exists for this note
       const existingChat = await Chat.query().where('note_id', payload.NoteId).first()
@@ -290,6 +293,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       // Log error but don't fail webhook processing
       console.log(`Error creating automatic chat for note ${payload.NoteId}:`, chatError.message)
     }
+    */
 
     const status = existingSession ? 'updated' : 'created'
     console.log('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
