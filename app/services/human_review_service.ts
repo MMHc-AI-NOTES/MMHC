@@ -134,21 +134,28 @@ export const listHumanReviews = async (
       humanReviewListings = filterData?.query ?? humanReviewListings
     }
 
-    // Apply search filter (note_id contains, practitioner_id exact if numeric)
+    // Apply search filter:
+    // - note_id contains search text
+    // - practitioner_id exact if numeric
+    // - practitioner full_name contains search text
     if (searchFilter && searchFilter.value) {
       const searchValue = String(searchFilter.value).trim()
       if (searchValue) {
         const searchPattern = `%${searchValue}%`
         const searchNumber = Number.parseInt(searchValue)
 
-        humanReviewListings = humanReviewListings.where((subQuery: any) => {
-          subQuery.whereILike('human_reviews.note_id', searchPattern)
+        humanReviewListings = humanReviewListings
+          .where((subQuery: any) => {
+            subQuery.whereILike('human_reviews.note_id', searchPattern)
 
-          // If numeric, search practitioner_id as well
-          if (!Number.isNaN(searchNumber)) {
-            subQuery.orWhere('human_reviews.practitioner_id', searchNumber)
-          }
-        })
+            // If numeric, search practitioner_id as well
+            if (!Number.isNaN(searchNumber)) {
+              subQuery.orWhere('human_reviews.practitioner_id', searchNumber)
+            }
+          })
+          .orWhereHas('practitioner', (practitionerQuery: any) => {
+            practitionerQuery.whereILike('full_name', searchPattern)
+          })
       }
     }
 

@@ -103,7 +103,7 @@ export default class SmeIssueController {
     try {
       const payload = await assignSmeIssueToManagerValidator.validate(ctx.request.body())
       const currentUser = ctx.auth.getUserOrFail()
-      const response = await assignSmeIssueToManager(payload, currentUser.id)
+      const response = await assignSmeIssueToManager(payload, currentUser.id, ctx)
       return response
     } catch (error) {
       console.log('SME issue assigning to manager error', error)

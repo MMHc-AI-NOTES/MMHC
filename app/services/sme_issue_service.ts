@@ -18,6 +18,9 @@ import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
+import { createAuditLog } from '#services/audit_log_service'
+import { AuditActionEnum } from '#enums/audit_log_enum'
+import type { HttpContext } from '@adonisjs/core/http'
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
@@ -492,7 +495,8 @@ export const deleteSmeIssuesByNoteAndVersion = async (
 
 export const assignSmeIssueToManager = async (
   reqData: assignSmeIssueToManagerValidatorInterface,
-  managerId: number
+  managerId: number,
+  ctx?: HttpContext
 ) => {
   try {
     // Verify note exists
@@ -618,6 +622,29 @@ export const assignSmeIssueToManager = async (
     await managerReview.load('practitioner')
     await managerReview.load('reviewer')
     await managerReview.load('version')
+
+    await createAuditLog({
+      ctx,
+      userId: managerId,
+      description: `SME issues assigned to manager for note ${reqData.note_id}`,
+      action: AuditActionEnum.smeAssignedToManager,
+      status: true,
+      modelType: 'ManagerReview',
+      modelId: managerReview.id,
+      noteId: reqData.note_id,
+      metadata: {
+        note_id: reqData.note_id,
+        version_id: reqData.version_id ?? null,
+        practitioner_id: reqData.practitioner_id,
+        reviewer_id: reqData.reviewer_id,
+        manager_id: managerId,
+        version_label: reqData.version_label ?? null,
+        ai_score: reqData.ai_score ?? null,
+        human_decision: reqData.human_decision ?? null,
+        disagreement: reqData.disagreement ?? null,
+        priority: reqData.priority ?? null,
+      },
+    })
 
     return sendSuccess('SME issue assigned to manager successfully', managerReview)
   } catch (error: any) {
