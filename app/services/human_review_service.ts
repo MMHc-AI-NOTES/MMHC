@@ -1,4 +1,5 @@
 import HumanReview, { humanReviewFilterEnum, humanReviewSortEnum } from '#models/human_review'
+import SmeIssue from '#models/sme_issue'
 import ManagerReview from '#models/manager_review'
 import Session from '#models/session'
 import User from '#models/user'
@@ -14,6 +15,7 @@ import { HumanReviewEnum, ManagerEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { UserTypeEnum } from '#enums/user_type_enum'
 import { DisagreementLevelEnum } from '#enums/disagreement_enum'
+import { ErrorTypePoints } from '#enums/manual_issue_enum'
 
 export const createHumanReview = async (reqData: createHumanReviewValidatorInterface) => {
   try {
@@ -172,15 +174,43 @@ export const listHumanReviews = async (
     let sortQuery = sortHumanReview?.query ?? query
     let humanReviewListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
+    const rows = humanReviewListingPaginated['rows']
+
+    // Compute human_review_score: note + version ke SME issues se score. 1→5, 2→15, 3→25; score = 100 - sum
+    const dataWithScores = []
+    for (const review of rows) {
+      const serialized = review.serialize()
+      let totalPoints = 0
+
+      if (serialized.noteId) {
+        const issuesQuery = SmeIssue.query().where('note_id', serialized.noteId)
+        if (serialized.versionId !== null && serialized.versionId !== undefined) {
+          issuesQuery.where('version_id', serialized.versionId)
+        } else {
+          issuesQuery.whereNull('version_id')
+        }
+        const issues = await issuesQuery
+        for (const issue of issues) {
+          totalPoints += ErrorTypePoints[issue.errorTypeId] ?? 0
+        }
+      }
+
+      let humanReviewScore = 100 - totalPoints
+      if (humanReviewScore < 0) humanReviewScore = 0
+
+      dataWithScores.push({
+        ...serialized,
+        human_review_score: humanReviewScore,
+      })
+    }
+
     return {
-      count: humanReviewListingPaginated['rows'].length,
+      count: rows.length,
       total_count: humanReviewListingPaginated.total,
       total_page_count: humanReviewListingPaginated.lastPage,
       page: humanReviewListingPaginated.currentPage,
       page_size: humanReviewListingPaginated.perPage,
-      data: humanReviewListingPaginated['rows'].map((review: any) => ({
-        ...review.serialize(),
-      })),
+      data: dataWithScores,
     }
   } catch (error: any) {
     console.log('Error in listHumanReviews:', error.message)
@@ -212,7 +242,30 @@ export const getHumanReview = async (
       return sendError('Human review not found')
     }
 
-    return sendSuccess('Human review retrieved successfully', review)
+    const serialized = review.serialize()
+
+    // Note + version ke SME issues se score: 1→5, 2→15, 3→25; score = 100 - sum
+    let totalPoints = 0
+    if (serialized.noteId) {
+      const issuesQuery = SmeIssue.query().where('note_id', serialized.noteId)
+      if (serialized.versionId !== null && serialized.versionId !== undefined) {
+        issuesQuery.where('version_id', serialized.versionId)
+      } else {
+        issuesQuery.whereNull('version_id')
+      }
+      const issues = await issuesQuery
+      for (const issue of issues) {
+        totalPoints += ErrorTypePoints[issue.errorTypeId] ?? 0
+      }
+    }
+
+    let humanReviewScore = 100 - totalPoints
+    if (humanReviewScore < 0) humanReviewScore = 0
+
+    return sendSuccess('Human review retrieved successfully', {
+      ...serialized,
+      human_review_score: humanReviewScore,
+    })
   } catch (error: any) {
     return sendError(error.message)
   }
