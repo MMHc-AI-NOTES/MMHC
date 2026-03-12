@@ -182,8 +182,10 @@ export const listHumanReviews = async (
       const serialized = review.serialize()
       let totalPoints = 0
 
-      if (serialized.noteId) {
-        const issuesQuery = SmeIssue.query().where('note_id', serialized.noteId)
+      if (serialized.noteId && serialized.reviewerId) {
+        const issuesQuery = SmeIssue.query()
+          .where('note_id', serialized.noteId)
+          .where('reviewer_id', serialized.reviewerId)
         if (serialized.versionId !== null && serialized.versionId !== undefined) {
           issuesQuery.where('version_id', serialized.versionId)
         } else {
@@ -246,8 +248,10 @@ export const getHumanReview = async (
 
     // Note + version ke SME issues se score: 1→5, 2→15, 3→25; score = 100 - sum
     let totalPoints = 0
-    if (serialized.noteId) {
-      const issuesQuery = SmeIssue.query().where('note_id', serialized.noteId)
+    if (serialized.noteId && serialized.reviewerId) {
+      const issuesQuery = SmeIssue.query()
+        .where('note_id', serialized.noteId)
+        .where('reviewer_id', serialized.reviewerId)
       if (serialized.versionId !== null && serialized.versionId !== undefined) {
         issuesQuery.where('version_id', serialized.versionId)
       } else {

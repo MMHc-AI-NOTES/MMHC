@@ -135,10 +135,12 @@ export const listManagerReviews = async (
         review.$setRelated('smeIssues', [])
       }
 
-      // human_review_score: note + version ke SME issues se; 1→5, 2→15, 3→25; score = 100 - sum
+      // human_review_score: current reviewer ke note + version SME issues se; 1→5, 2→15, 3→25; score = 100 - sum
       let totalPoints = 0
-      if (review.noteId) {
-        const issuesQuery = SmeIssue.query().where('note_id', review.noteId)
+      if (review.noteId && review.reviewerId !== null && review.reviewerId !== undefined) {
+        const issuesQuery = SmeIssue.query()
+          .where('note_id', review.noteId)
+          .where('reviewer_id', review.reviewerId)
         if (review.versionId !== null && review.versionId !== undefined) {
           issuesQuery.where('version_id', review.versionId)
         } else {
@@ -218,10 +220,12 @@ export const getManagerReview = async (id: number) => {
     const count = Number(chatCount[0].$extras.count) || 0
 
     // Compute human_review_score for this manager review:
-    // note + version ke SME issues se score. 1→5, 2→15, 3→25; score = 100 - sum
+    // sirf current reviewer ke note + version SME issues se score. 1→5, 2→15, 3→25; score = 100 - sum
     let totalPoints = 0
-    if (review.noteId) {
-      const issuesQuery = SmeIssue.query().where('note_id', review.noteId)
+    if (review.noteId && review.reviewerId !== null && review.reviewerId !== undefined) {
+      const issuesQuery = SmeIssue.query()
+        .where('note_id', review.noteId)
+        .where('reviewer_id', review.reviewerId)
       if (review.versionId !== null && review.versionId !== undefined) {
         issuesQuery.where('version_id', review.versionId)
       } else {
