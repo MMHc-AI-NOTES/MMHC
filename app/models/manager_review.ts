@@ -71,6 +71,12 @@ export default class ManagerReview extends BaseModel {
   declare versionId: number | null
 
   @column()
+  declare versionLabel: string | null
+
+  @column.dateTime()
+  declare practitionerNotifiedAt: DateTime | null
+
+  @column()
   declare chatId: number | null
 
   @column({

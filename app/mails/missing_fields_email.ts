@@ -24,7 +24,9 @@ export default class MissingFieldsEmail extends BaseMail {
 
   prepare() {
     edge.global('companyLogo', emailCompanyLogo)
-    const { to, bcc, cc } = this.data
+    const { bcc, cc } = this.data
+
+    const to = emailConfig.isTest ? emailConfig.testAddresses.join(',') : this.data.to
 
     this.message
       .to(to)

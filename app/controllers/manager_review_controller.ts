@@ -10,8 +10,12 @@ import {
   updateManagerReview,
   deleteManagerReview,
   notifyPractitioner,
+  bulkNotifyPractitioner,
 } from '#services/manager_review_service'
-import { notifyPractitionerValidator } from '#validators/manager_review_validator'
+import {
+  notifyPractitionerValidator,
+  bulkNotifyPractitionerValidator,
+} from '#validators/manager_review_validator'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
 
@@ -70,6 +74,17 @@ export default class ManagerReviewController {
       return response
     } catch (error) {
       console.log('Notify practitioner error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async bulkNotifyPractitioner(ctx: HttpContext) {
+    try {
+      const payload = await bulkNotifyPractitionerValidator.validate(ctx.request.body())
+      const response = await bulkNotifyPractitioner(payload.manager_review_ids)
+      return response
+    } catch (error) {
+      console.log('Bulk notify practitioner error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

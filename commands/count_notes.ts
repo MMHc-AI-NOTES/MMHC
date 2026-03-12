@@ -12,10 +12,7 @@ export default class CountNotes extends BaseCommand {
   }
 
   async run() {
-    const [totalResult] = await db
-      .from('session')
-      .whereNull('deleted_at')
-      .count('* as count')
+    const [totalResult] = await db.from('session').whereNull('deleted_at').count('* as count')
     const total = Number((totalResult as any).count)
 
     const [uniqueResult] = await db.rawQuery(

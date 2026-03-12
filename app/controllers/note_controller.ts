@@ -7,6 +7,7 @@ import {
   getWorkloadStatistics,
   updateNote,
 } from '#services/note_service'
+import { getNoteActivity } from '#services/note_activity_service'
 import { paginationValidator } from '#validators/pagination_validator'
 import { updateNoteValidator } from '#validators/note_validator'
 import vine from '@vinejs/vine'
@@ -39,6 +40,17 @@ export default class NotesController {
       return noteResponse
     } catch (error) {
       console.log('Note with chats getting error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async activity(ctx: HttpContext) {
+    try {
+      const { noteId } = await noteIdValidator.validate(ctx.params)
+      const activity = await getNoteActivity(noteId)
+      return activity
+    } catch (error) {
+      console.log('Note activity error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

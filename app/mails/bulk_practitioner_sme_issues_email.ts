@@ -4,7 +4,7 @@ import { emailConfig } from '#config/services'
 import edge from 'edge.js'
 import { emailCompanyLogo } from '#config/services'
 
-export default class UserInviteEmail extends BaseMail {
+export default class BulkPractitionerSmeIssuesEmail extends BaseMail {
   from = ''
   subject = ''
   data: EmailInterface
@@ -13,7 +13,7 @@ export default class UserInviteEmail extends BaseMail {
     super()
     this.data = data
     this.from = emailConfig.from
-    this.subject = this.data.subject || 'You have been invited to MMHF'
+    this.subject = this.data.subject || 'SME Issues Added by Reviewer (Multiple Notes)'
   }
 
   prepare() {
@@ -26,9 +26,10 @@ export default class UserInviteEmail extends BaseMail {
       .to(to)
       .bcc(bcc || [])
       .cc(cc || [])
-      .htmlView('emails/user_invite_email_mjml', {
+      .htmlView('emails/bulk_practitioner_sme_issues_email_mjml', {
         ...this.data,
-        invitationLink: data?.invitationLink,
+        practitionerName: data?.practitionerName,
+        notesWithIssues: data?.notesWithIssues ?? [],
       })
   }
 }

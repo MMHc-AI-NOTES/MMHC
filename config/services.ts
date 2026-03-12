@@ -5,8 +5,21 @@ export const emailCompanyLogo = env.get(
   'https://mmh-dev.theexpertscloud.com/assets/logo-with-text-CKWOTRJC.svg'
 )
 
+const parseTestEmails = (value: string | undefined): string[] => {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+}
+
+const isEmailTestEnabled = String(env.get('EMAIL_TEST', 'false')).toLowerCase() === 'true'
+const testEmailAddresses = parseTestEmails(env.get('EMAIL_TEST_ADDRESS'))
+
 export const emailConfig = {
   from: env.get('SMTP_FROM', 'noreply@example.com'),
+  isTest: isEmailTestEnabled,
+  testAddresses: testEmailAddresses,
 }
 
 export const bedrockConfig = {

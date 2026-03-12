@@ -49,6 +49,7 @@ export const assignSmeIssueToManagerValidator = vine.compile(
   vine.object({
     note_id: vine.string().trim().minLength(1),
     version_id: vine.number().withoutDecimals().nullable(),
+    version_label: vine.string().trim().optional().nullable(),
     practitioner_id: vine.number().withoutDecimals(),
     ai_score: vine.number().nullable(),
     reviewer_id: vine.number().withoutDecimals(),

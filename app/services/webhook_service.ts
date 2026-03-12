@@ -79,13 +79,41 @@ function getSessionTimeFromPayload(payload: webhookSessionValidatorInterface): D
 }
 
 /**
+ * Re-link all sessions for a patient into a parent-child chain based on sessionTime.
+ * Oldest note points to next newer via parent_note_id, and the newest note has parent_note_id = null.
+ */
+export async function relinkPatientSessions(patientId: number) {
+  const sessions = await Session.query()
+    .where('patient_id', patientId)
+    .orderBy('session_time', 'asc')
+    .orderBy('id', 'asc')
+
+  if (!sessions.length) {
+    return
+  }
+
+  for (let i = 0; i < sessions.length; i++) {
+    const current = sessions[i]
+    const next = i + 1 < sessions.length ? sessions[i + 1] : null
+    const newParentId = next ? next.id : null
+
+    if (current.parentNoteId !== newParentId) {
+      current.parentNoteId = newParentId
+      await current.save()
+    }
+  }
+}
+
+/**
  * Webhook flow (parent-child method):
  * 1. Use ClientId to resolve patient (find or create).
- * 2. If this NoteId already exists in DB: update session; compare with latest version,
- *    and create new version only if content is different.
- * 3. If this NoteId does not exist: create new note (session). This new note is the
- *    latest for the client (parent_note_id = null). Update this client's previous
- *    "latest" note: set its parent_note_id = this new note's id.
+ * 2. Compute sessionTime from payload.Date / EventTime.
+ * 3. If this NoteId already exists in DB: update session (session, sessionTime, practitioner/patient).
+ * 4. If this NoteId does not exist: create new note (session).
+ * 5. After save, for this patient, sort ALL sessions by sessionTime ascending and
+ *    rebuild the parent-child chain:
+ *      - For each note, parent_note_id = next newer note's id
+ *      - Latest note has parent_note_id = null
  */
 export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
   const noteId = payload.NoteId
@@ -184,7 +212,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
     let session: Session
 
     if (existingSession) {
-      // Update existing session (parent-child: do not change parentNoteId)
+      // Update existing session; parent-child chain will be recomputed below
       existingSession.session = sessionString
       existingSession.sessionTime = sessionTime.isValid ? sessionTime : DateTime.now()
       existingSession.practitionerId = practitionerId
@@ -192,7 +220,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       await existingSession.save()
       session = existingSession
     } else {
-      // Create new session with parent_note_id = null (this note is latest for chain)
+      // Create new session
       session = await Session.create({
         noteId: payload.NoteId,
         sessionId,
@@ -212,19 +240,6 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         parentNoteId: null,
       })
 
-      // Parent-child: link previous "latest" note for this patient to this new note
-      if (patientId !== null) {
-        const previousLatest = await Session.query()
-          .where('patient_id', patientId)
-          .whereNull('parent_note_id')
-          .whereNot('id', session.id)
-          .first()
-        if (previousLatest) {
-          previousLatest.parentNoteId = session.id
-          await previousLatest.save()
-        }
-      }
-
       // Ensure at least one webhook version exists for this note (same as MORF sync)
       const hasVersion = await WebhookSessionVersion.query()
         .where('note_id', session.noteId)
@@ -235,6 +250,11 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
           sessionJson: session.session || '{}',
         })
       }
+    }
+
+    // Rebuild parent-child chain for this patient's sessions based on sessionTime
+    if (session.patientId !== null) {
+      await relinkPatientSessions(session.patientId)
     }
 
     // Automatically create chat with default prompt for AI evaluation

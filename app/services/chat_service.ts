@@ -11,6 +11,9 @@ import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
 import { aiScoreThresholds, aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
+import { createAuditLog } from '#services/audit_log_service'
+import type { HttpContext } from '@adonisjs/core/http'
+import { AuditActionEnum } from '#enums/audit_log_enum'
 import type {
   createChatValidatorInterface,
   updateChatValidatorInterface,
@@ -19,7 +22,8 @@ import type {
 export const createChat = async (
   reqData: createChatValidatorInterface,
   userId: number,
-  sessionInstance?: Session
+  sessionInstance?: Session,
+  ctx?: HttpContext
 ) => {
   try {
     // Use provided session instance or query for it
@@ -60,9 +64,7 @@ export const createChat = async (
 
     // Get previous note from chain (same as webhook/note API: note whose parent_note_id = current)
     let previousNote: string | undefined
-    const previousSession = await Session.query()
-      .where('parent_note_id', session.id)
-      .first()
+    const previousSession = await Session.query().where('parent_note_id', session.id).first()
     previousNote = previousSession?.session || undefined
 
     // Use session.session as current note and agent.prompt as prompt
@@ -143,6 +145,23 @@ export const createChat = async (
     }
 
     const chat = await Chat.create(chatData)
+
+    // Audit log: chat created
+    await createAuditLog({
+      ctx,
+      userId,
+      description: `Chat created for note ${reqData.note_id}`,
+      action: AuditActionEnum.chatCreated,
+      modelType: 'Chat',
+      modelId: chat.id,
+      noteId: reqData.note_id,
+      status: true,
+      metadata: {
+        note_id: reqData.note_id,
+        chat_id: chat.id,
+        agent_id: reqData.prompt_id,
+      },
+    })
 
     // Update session with AI score and status
     const aiScore = evaluation.score
@@ -422,9 +441,7 @@ export const reevaluateChat = async (chatId: number) => {
 
     // Get previous note from chain (same as webhook/note API: note whose parent_note_id = current)
     let previousNote: string | undefined
-    const previousSession = await Session.query()
-      .where('parent_note_id', session.id)
-      .first()
+    const previousSession = await Session.query().where('parent_note_id', session.id).first()
     previousNote = previousSession?.session || undefined
 
     if (!chat.prompt) {

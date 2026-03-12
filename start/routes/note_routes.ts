@@ -8,6 +8,7 @@ router
     router.post('/listing', [NotesController, 'listing'])
     router.get('/queue-statistics', [NotesController, 'queueStatistics'])
     router.get('/workload-statistics', [NotesController, 'workloadStatistics'])
+    router.get('/activity/:noteId', [NotesController, 'activity'])
     router.patch('/:noteId', [NotesController, 'update'])
     router.get('/:noteId', [NotesController, 'getWithChats'])
   })

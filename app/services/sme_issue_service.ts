@@ -580,6 +580,10 @@ export const assignSmeIssueToManager = async (
           practitionerId: reqData.practitioner_id,
           reviewerId: reqData.reviewer_id,
           versionId: reqData.version_id ?? null,
+          versionLabel:
+            reqData.version_label !== undefined && reqData.version_label !== null
+              ? reqData.version_label
+              : managerReview.versionLabel,
           aiScore: reqData.ai_score ?? note.aiScore ?? null,
           humanDecision: reqData.human_decision,
           disagreement: reqData.disagreement,
@@ -596,6 +600,7 @@ export const assignSmeIssueToManager = async (
         practitionerId: reqData.practitioner_id,
         reviewerId: reqData.reviewer_id,
         versionId: reqData.version_id ?? null,
+        versionLabel: reqData.version_label ?? null,
         aiScore: reqData.ai_score ?? note.aiScore ?? null,
         humanDecision: reqData.human_decision,
         disagreement: reqData.disagreement,

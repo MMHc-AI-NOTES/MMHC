@@ -69,3 +69,11 @@ export const notifyPractitionerValidator = vine.compile(
 )
 
 export type notifyPractitionerValidatorInterface = Infer<typeof notifyPractitionerValidator>
+
+export const bulkNotifyPractitionerValidator = vine.compile(
+  vine.object({
+    manager_review_ids: vine.array(vine.number().withoutDecimals()).minLength(1),
+  })
+)
+
+export type bulkNotifyPractitionerValidatorInterface = Infer<typeof bulkNotifyPractitionerValidator>

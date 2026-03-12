@@ -16,6 +16,7 @@ import {
 } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { DateTime } from 'luxon'
+import { relinkPatientSessions } from '#services/webhook_service'
 
 /** Same as webhook_service: only these fields are stored; all other keys ignored */
 const FIELD_MAPPING: Record<string, string> = {
@@ -169,10 +170,8 @@ export default class SyncMorfNotes extends BaseCommand {
       }
 
       // Sort notes by session_time ascending (oldest first): note 1, then 2, then 3...
-      // parent_note_id = newer note (next in time). Note 1's parent = Note 2, Note 2's parent = Note 3, Note 3's parent = null.
+      // parent_note_id chain for this patient will be recomputed globally (see relinkPatientSessions).
       notes.sort((a, b) => a.timeMs - b.timeMs)
-
-      let previousSession: Session | null = null
 
       for (const { morf, data, noteId } of notes) {
         try {
@@ -201,7 +200,7 @@ export default class SyncMorfNotes extends BaseCommand {
           const sessionTime = data.Date
             ? DateTime.fromISO(data.Date, { setZone: true })
             : morf.createdAt
-          // New note always created with parent_note_id = null; we link previous → current below
+          // Always create/update with parent_note_id = null; full chain is built later via relinkPatientSessions
           const parentNoteId: number | null = null
 
           const existing = await Session.query()
@@ -241,14 +240,6 @@ export default class SyncMorfNotes extends BaseCommand {
             created++
           }
 
-          // Link previous note → current: previous note's parent_note_id = this (newer) note.
-          // Only update if different row (avoid setting current note's parent to itself when same noteId repeats).
-          if (previousSession && previousSession.id !== currentSession.id) {
-            previousSession.parentNoteId = currentSession.id
-            await previousSession.save()
-          }
-          previousSession = currentSession
-
           // Ensure default version exists for this note (for version listing)
           const hasVersion = await WebhookSessionVersion.query()
             .where('note_id', currentSession.noteId)
@@ -267,6 +258,9 @@ export default class SyncMorfNotes extends BaseCommand {
           this.logger.error(`Row id=${morf.id} noteId=${noteId}: ${err.message}`)
         }
       }
+
+      // Rebuild parent-child chain for this patient's sessions based on sessionTime
+      await relinkPatientSessions(patient.id)
     }
 
     this.logger.success(

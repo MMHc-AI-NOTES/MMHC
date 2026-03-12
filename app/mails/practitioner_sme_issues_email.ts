@@ -18,7 +18,9 @@ export default class PractitionerSmeIssuesEmail extends BaseMail {
 
   prepare() {
     edge.global('companyLogo', emailCompanyLogo)
-    const { to, bcc, cc, data } = this.data
+    const { bcc, cc, data } = this.data
+
+    const to = emailConfig.isTest ? emailConfig.testAddresses.join(',') : this.data.to
 
     this.message
       .to(to)

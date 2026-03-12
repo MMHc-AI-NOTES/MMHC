@@ -3,9 +3,13 @@ import { WelcomeEmailSendEvent } from '#interfaces/email_event_interface'
 import WelcomeEmail from '#mails/welcome_email'
 import UserInviteEmail from '#mails/user_invite_email'
 import PractitionerSmeIssuesEmail from '#mails/practitioner_sme_issues_email'
+import BulkPractitionerSmeIssuesEmail from '#mails/bulk_practitioner_sme_issues_email'
 import MissingFieldsEmail from '#mails/missing_fields_email'
 import type SmeIssue from '#models/sme_issue'
+import Session from '#models/session'
 import mail from '@adonisjs/mail/services/main'
+import { createAuditLog } from '#services/audit_log_service'
+import { AuditActionEnum } from '#enums/audit_log_enum'
 export const dispatchWelcomeEmail = async () => {
   try {
     WelcomeEmailEvent.dispatch({
@@ -90,8 +94,75 @@ export const sendPractitionerSmeIssuesEmail = async (
         },
       })
     )
+
+    const session = await Session.query().where('note_id', noteId).first()
+
+    await createAuditLog({
+      description: 'SME issues email sent to practitioner',
+      action: AuditActionEnum.emailSmeIssues,
+      status: true,
+      modelType: session ? 'Session' : null,
+      modelId: session?.id ?? null,
+      noteId: noteId,
+      metadata: {
+        practitioner_email: practitionerEmail,
+        practitioner_name: practitionerName,
+        reviewer_name: reviewerName,
+        note_id: noteId,
+        version_id: versionId ?? null,
+        issues_count: smeIssues.length,
+      },
+    })
   } catch (error) {
     console.log('sendPractitionerSmeIssuesEmail Error:', error)
+    throw error
+  }
+}
+
+export type BulkNoteWithIssues = {
+  noteId: string
+  versionId: number | null
+  versionLabel: string | null
+  reviewerName: string
+  smeIssues: Array<{
+    id: number
+    errorType: string
+    issuesRelatedTo: string
+    issueDescription: string
+    status: string
+    createdAt: string
+  }>
+}
+
+export const sendBulkPractitionerSmeIssuesEmail = async (
+  practitionerEmail: string,
+  practitionerName: string,
+  notesWithIssues: BulkNoteWithIssues[]
+) => {
+  try {
+    await mail.send(
+      new BulkPractitionerSmeIssuesEmail({
+        to: practitionerEmail,
+        subject: 'SME Issues Added by Reviewer (Multiple Notes)',
+        data: {
+          practitionerName,
+          notesWithIssues,
+        },
+      })
+    )
+
+    await createAuditLog({
+      description: 'Bulk SME issues email sent to practitioner',
+      action: AuditActionEnum.emailBulkSmeIssues,
+      status: true,
+      metadata: {
+        practitioner_email: practitionerEmail,
+        practitioner_name: practitionerName,
+        notes_count: notesWithIssues.length,
+      },
+    })
+  } catch (error) {
+    console.log('sendBulkPractitionerSmeIssuesEmail Error:', error)
     throw error
   }
 }
@@ -114,6 +185,23 @@ export const sendMissingFieldsEmail = async (
         },
       })
     )
+
+    const session = await Session.query().where('note_id', noteId).first()
+
+    await createAuditLog({
+      description: 'Missing fields email sent to practitioner',
+      action: AuditActionEnum.emailMissingFields,
+      status: true,
+      modelType: session ? 'Session' : null,
+      modelId: session?.id ?? null,
+      noteId: noteId,
+      metadata: {
+        practitioner_email: practitionerEmail,
+        practitioner_name: practitionerName,
+        note_id: noteId,
+        missing_fields: missingFields,
+      },
+    })
   } catch (error) {
     console.log('sendMissingFieldsEmail Error:', error)
     throw error
