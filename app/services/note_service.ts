@@ -129,6 +129,7 @@ export const noteListing = async (
 
     let searchFilter: any = null
     let notReviewedByUserIdFilter: any = null
+    let notReviewedFilter: any = null
     let otherFilters: Array<any> = []
 
     if (filters?.length) {
@@ -137,6 +138,8 @@ export const noteListing = async (
           searchFilter = filter
         } else if (filter.columnName === 'not_reviewed_by_user_id') {
           notReviewedByUserIdFilter = filter
+        } else if (filter.columnName === 'not_reviewed') {
+          notReviewedFilter = filter
         } else {
           otherFilters.push(filter)
         }
@@ -150,11 +153,21 @@ export const noteListing = async (
         noteListings = noteListings.whereNotExists((subQuery: any) => {
           subQuery
             .from('human_reviews')
-            .whereRaw('human_reviews.note_id = session.note_id')
+            .whereRaw('human_reviews.note_id = sessions.note_id')
             .where('human_reviews.reviewer_id', userId)
             .whereNull('human_reviews.deleted_at')
         })
       }
+    }
+
+    // Handle filter for notes not reviewed by any user
+    if (notReviewedFilter && String(notReviewedFilter.value) === 'true') {
+      noteListings = noteListings.whereNotExists((subQuery: any) => {
+        subQuery
+          .from('human_reviews')
+          .whereRaw('human_reviews.note_id = sessions.note_id')
+          .whereNull('human_reviews.deleted_at')
+      })
     }
 
     if (searchFilter && searchFilter.value) {
