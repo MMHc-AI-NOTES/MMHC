@@ -147,6 +147,7 @@ export const noteListing = async (
     }
 
     // Handle filter for notes not reviewed by a specific user
+    // Meaning: notes jinko is user ne review nahi kia (chahe kisi aur ne kia ho ya na ho)
     if (notReviewedByUserIdFilter && notReviewedByUserIdFilter.value) {
       const userId = Number.parseInt(String(notReviewedByUserIdFilter.value))
       if (!Number.isNaN(userId)) {
