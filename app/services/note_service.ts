@@ -153,7 +153,7 @@ export const noteListing = async (
         noteListings = noteListings.whereNotExists((subQuery: any) => {
           subQuery
             .from('human_reviews')
-            .whereRaw('human_reviews.note_id = sessions.note_id')
+            .whereRaw('human_reviews.note_id = session.note_id')
             .where('human_reviews.reviewer_id', userId)
             .whereNull('human_reviews.deleted_at')
         })
@@ -165,7 +165,7 @@ export const noteListing = async (
       noteListings = noteListings.whereNotExists((subQuery: any) => {
         subQuery
           .from('human_reviews')
-          .whereRaw('human_reviews.note_id = sessions.note_id')
+          .whereRaw('human_reviews.note_id = session.note_id')
           .whereNull('human_reviews.deleted_at')
       })
     }
