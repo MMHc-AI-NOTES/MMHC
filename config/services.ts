@@ -30,6 +30,21 @@ export const bedrockConfig = {
   anthropicVersion: env.get('BEDROCK_ANTHROPIC_VERSION', 'bedrock-2023-05-31'),
 }
 
+const normalizeEnvString = (value: string | undefined, fallback: string): string => {
+  if (!value) return fallback
+  // Trim whitespace, quotes, and trailing commas
+  return value
+    .trim()
+    .replace(/^['"]+/, '')
+    .replace(/['",]+$/, '')
+}
+
+export const s3DatasetConfig = {
+  region: String(bedrockConfig.region).trim() || 'us-east-1',
+  bucket: normalizeEnvString(env.get('S3_DATA_BUCKET'), 'mmh-custom-fine-tuning-data'),
+  prefix: normalizeEnvString(env.get('S3_DATA_PREFIX'), 'colab_fine_tuning_data/'),
+}
+
 export const smtpConfig = {
   host: env.get('SMTP_HOST', ''),
   port: env.get('SMTP_PORT', '587'),
