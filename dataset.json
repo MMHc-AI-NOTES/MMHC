@@ -12,7 +12,7 @@
       "session": "{\"Session Duration\":\"5:00 to 5:56\",\"Mental Status (optional)\":\"\",\"Suicidality\":\"Not Present\",\"Homicidality\":\"Not Present\",\"Subjective\":\"Client's anxiety took a physical toll on her this past week due to the busy schedule and high stress she endured. She reports trouble falling asleep.\\nClient had dreams about her friend who became close with her ex. Sometimes the client is able to brush off the situation, but other times she feels she deserves an apology.\",\"Objective\":\"Client reported being exhausted from her work week. She came across as fatigued, and it took a moment to center herself into the therapy session.\",\"Assessment & Therapeutic Intervention\":\"Clinician utilized psychoanalysis to analyze the client's dream surrounding her friend and her ex. The client had been thinking about the situation for a while lately and finds herself ruminating on these issues before bed.\\nIntroduced the five senses technique through mindfulness psychology to allow the client to center herself in the present moment before bedtime.\",\"Reaction to Intervention\":\"The client was reluctant to test out the grounding exercises before bedtime - she feels it would take too long or she would forget to do it before bedtime each night.\",\"Plan and Collaboration\":\"Engage in weekly therapeutic sessions.\",\"Therapist Reflection and Insight (optional)\":\"\",\"Progress\":\"\",\"Therapist Initials\":\"\"}"
     },
     "output": {
-      "score": 0,
+      "score": 5,
       "pass": false,
       "issues": [
         {
@@ -86,8 +86,8 @@
       "session": "{\"Session Duration\":\"5:00 to 5:56\",\"Mental Status (optional)\":\"\",\"Suicidality\":\"Not Present\",\"Homicidality\":\"Not Present\",\"Subjective\":\"Client's anxiety took a physical toll on her this past week due to the busy schedule and high stress she endured. She reports trouble falling asleep.\\nClient had dreams about her friend who became close with her ex. Sometimes the client is able to brush off the situation, but other times she feels she deserves an apology.\",\"Objective\":\"Client reported being exhausted from her work week. She came across as fatigued, and it took a moment to center herself into the therapy session.\",\"Assessment & Therapeutic Intervention\":\"Clinician utilized psychoanalysis to analyze the client's dream surrounding her friend and her ex. The client had been thinking about the situation for a while lately and finds herself ruminating on these issues before bed.\\nIntroduced the five senses technique through mindfulness psychology to allow the client to center herself in the present moment before bedtime.\",\"Reaction to Intervention\":\"The client was reluctant to test out the grounding exercises before bedtime - she feels it would take too long or she would forget to do it before bedtime each night.\",\"Plan and Collaboration\":\"Engage in weekly therapeutic sessions.\",\"Therapist Reflection and Insight (optional)\":\"\",\"Progress\":\"\",\"Therapist Initials\":\"\"}"
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -104,8 +104,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -122,8 +122,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -140,8 +140,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -158,8 +158,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -176,8 +176,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -194,8 +194,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -212,8 +212,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   },
@@ -230,8 +230,8 @@
       "session": ""
     },
     "output": {
-      "score": 0,
-      "pass": false,
+      "score": 100,
+      "pass": true,
       "issues": []
     }
   }

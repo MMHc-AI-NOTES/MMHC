@@ -561,8 +561,20 @@ export const buildTestDataset = async () => {
         return String(aCreated).localeCompare(String(bCreated))
       })
 
-      const score = typeof currentSerialized.ai_score === 'number' ? currentSerialized.ai_score : 0
-      const pass = score >= 80
+      const getIssueDeduction = (issueType: string | null): number => {
+        const normalized = (issueType || '').toLowerCase().trim()
+        if (normalized === 'critical') return 25
+        if (normalized === 'moderate') return 15
+        if (normalized === 'minor') return 5
+        return 0
+      }
+
+      const totalDeduction = issues.reduce((sum, issue) => {
+        return sum + getIssueDeduction(issue.issue_type)
+      }, 0)
+
+      const score = Math.max(0, 100 - totalDeduction)
+      const pass = score > 70
 
       return {
         instruction: `You are a licensed clinical documentation compliance reviewer evaluating mental health Progress Notes for clinical quality, billing integrity, and legal risk.
