@@ -464,7 +464,7 @@ export const getWorkloadStatistics = async (userId: number) => {
  * Build a small JSON dataset from 10 real notes
  * and write it to dataset.json at the project root.
  */
-export const buildTestDataset = async () => {
+export const buildTestDataset = async (fileName = 'dataset.json') => {
   try {
     const notes = await Session.query()
       .whereIn('note_id', (subQuery) => {
@@ -775,7 +775,7 @@ Now evaluate the following Progress Note:`,
       }
     })
 
-    const filePath = app.makePath('dataset.json')
+    const filePath = app.makePath(fileName)
     await fs.writeFile(filePath, JSON.stringify(dataset, null, 2), 'utf8')
 
     return dataset

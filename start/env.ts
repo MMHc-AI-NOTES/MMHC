@@ -58,6 +58,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   */
   S3_DATA_BUCKET: Env.schema.string.optional(),
   S3_DATA_PREFIX: Env.schema.string.optional(),
+  S3_DATA_BASE_PATH: Env.schema.string.optional(),
 
   /*
   |----------------------------------------------------------

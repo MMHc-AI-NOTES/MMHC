@@ -1,4 +1,4 @@
-import { BaseCommand } from '@adonisjs/core/ace'
+import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { buildTestDataset } from '#services/note_service'
 import app from '@adonisjs/core/services/app'
@@ -9,33 +9,54 @@ import { s3DatasetConfig } from '#config/services'
 export default class BuildDataset extends BaseCommand {
   static commandName = 'notes:build-dataset'
 
-  static description =
-    'Build dataset.json from 10 real notes using CURRENT_SESSION/PREVIOUS_SESSION and issues'
+  static description = 'Build and upload dataset file for target env (dev/stag)'
 
   static options: CommandOptions = {
     startApp: true,
   }
 
+  @args.string({
+    description: 'Target key (dev or stag)',
+    required: false,
+  })
+  declare target?: string
+
+  @flags.string({
+    alias: 'e',
+    description: 'Target key (dev or stag). Example: --env=dev',
+  })
+  declare env?: string
+
   async run() {
-    this.logger.info('Building dataset.json from latest notes...')
+    const rawTarget = (this.target || this.env || 'dev').toLowerCase()
+    const targetEnv = rawTarget === 'stage' ? 'stag' : rawTarget
+    if (!['dev', 'stag'].includes(targetEnv)) {
+      this.logger.error('Invalid target value. Allowed: dev, stag/stage')
+      process.exit(1)
+    }
+
+    const fileName = targetEnv === 'stag' ? 'dataset-stag.json' : 'dataset-dev.json'
+
+    this.logger.info(`Building ${fileName} from latest notes...`)
 
     try {
-      const dataset = await buildTestDataset()
-      this.logger.success(`dataset.json written with ${dataset.length} records`)
+      const dataset = await buildTestDataset(fileName)
+      this.logger.success(`${fileName} written with ${dataset.length} records`)
 
       // Upload to S3
-      const filePath = app.makePath('dataset.json')
+      const filePath = app.makePath(fileName)
       const body = await fs.readFile(filePath)
 
       const bucket = s3DatasetConfig.bucket
-      const prefix = s3DatasetConfig.prefix || ''
-      const key = `${prefix.replace(/^\/*/, '').replace(/\/+$/, '')}/dataset.json`
+      const basePath = s3DatasetConfig.basePath || ''
+      const normalizedBasePath = basePath.replace(/^\/*/, '').replace(/\/+$/, '')
+      const key = `${normalizedBasePath}/${fileName}`
 
       const client = new S3Client({
         region: s3DatasetConfig.region,
       })
 
-      this.logger.info(`Uploading dataset.json to s3://${bucket}/${key} ...`)
+      this.logger.info(`Uploading ${fileName} to s3://${bucket}/${key} ...`)
       await client.send(
         new PutObjectCommand({
           Bucket: bucket,
