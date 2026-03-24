@@ -122,9 +122,11 @@ jobs:
 
           nvm use v22.21
 
+          pm2 list
           npm ci --omit=dev --ignore-scripts
-
+          echo "Running migrations..."
           node ace migration:run --force
+          echo "Done Migration..."
 
 
           node ace db:seed -f "./database/seeders/1_user_seeder"
