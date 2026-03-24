@@ -11,7 +11,7 @@ import Session from '#models/session'
 import mail from '@adonisjs/mail/services/main'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
-import { addDispatchEmailJob, type DispatchEmailJobData } from '#jobs/queues/dispatch_email_queue'
+import type { DispatchEmailJobData } from '#jobs/queues/dispatch_email_queue'
 export const dispatchWelcomeEmail = async () => {
   try {
     WelcomeEmailEvent.dispatch({
@@ -162,6 +162,8 @@ export const sendBulkPractitionerSmeIssuesEmail = async (
   notesWithIssues: BulkNoteWithIssues[]
 ) => {
   try {
+    const { addDispatchEmailJob } = await import('#jobs/queues/dispatch_email_queue')
+
     await addDispatchEmailJob({
       practitionerEmail,
       practitionerName,
