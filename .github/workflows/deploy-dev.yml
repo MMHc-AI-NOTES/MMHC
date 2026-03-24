@@ -44,7 +44,7 @@ jobs:
           cat .env > ./build/.env  # Copy .env to the build directory
 
       - name: Configure AWS Credentials using OIDC
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           # The ARN of the IAM role to assume.
           # This role MUST be configured in your AWS account to trust the GitHub OIDC provider.
@@ -122,7 +122,7 @@ jobs:
 
           nvm use v22.21
 
-          npm ci --omit=dev
+          npm ci --omit=dev --ignore-scripts
 
           node ace migration:run --force
 
