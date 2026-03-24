@@ -467,8 +467,14 @@ export const getWorkloadStatistics = async (userId: number) => {
 export const buildTestDataset = async () => {
   try {
     const notes = await Session.query()
-      // Current notes only (parent_note_id === null)
-      .whereNull('parent_note_id')
+      // Include only notes that are marked as reviewed in note_review_marks
+      .whereIn('note_id', (subQuery) => {
+        subQuery
+          .from('note_review_marks')
+          .select('note_id')
+          .where('marked_as_reviewed', true)
+          .groupBy('note_id')
+      })
       .preload('childNotes', (childQuery) => {
         childQuery.preload('practitioner').preload('patient')
       })
@@ -483,7 +489,6 @@ export const buildTestDataset = async () => {
         })
       })
       .orderBy('id', 'desc')
-      .limit(10)
 
     const dataset = notes.map((note: any) => {
       const currentSerialized = note.serialize()
