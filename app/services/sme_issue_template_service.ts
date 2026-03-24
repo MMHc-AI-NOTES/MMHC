@@ -11,7 +11,6 @@ import type {
 
 export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateValidatorInterface) => {
   try {
-    // Verify referenced records exist
     const errorType = await ErrorType.find(reqData.error_type_id)
     if (!errorType) {
       return sendError('Error type not found for the provided error_type_id')
