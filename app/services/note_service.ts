@@ -467,7 +467,6 @@ export const getWorkloadStatistics = async (userId: number) => {
 export const buildTestDataset = async () => {
   try {
     const notes = await Session.query()
-      // Include only notes that are marked as reviewed in note_review_marks
       .whereIn('note_id', (subQuery) => {
         subQuery
           .from('note_review_marks')
