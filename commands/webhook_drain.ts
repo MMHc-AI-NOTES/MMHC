@@ -1,6 +1,5 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import { webhookQueue } from '#jobs/queues/webhook_queue'
 
 export default class WebhookDrain extends BaseCommand {
   static commandName = 'webhook:drain'
@@ -18,6 +17,8 @@ export default class WebhookDrain extends BaseCommand {
   declare obliterate: boolean
 
   async run() {
+    const { webhookQueue } = await import('#jobs/queues/webhook_queue')
+
     if (this.obliterate) {
       this.logger.info('Obliterating webhook queue...')
       await webhookQueue.obliterate({ force: true })

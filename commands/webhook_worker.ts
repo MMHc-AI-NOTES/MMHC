@@ -1,6 +1,5 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import { startWebhookWorker, stopWebhookWorker } from '#jobs/workers/webhook_worker'
 
 export default class WebhookWorker extends BaseCommand {
   static commandName = 'webhook:worker'
@@ -14,6 +13,7 @@ export default class WebhookWorker extends BaseCommand {
   declare stop: boolean
 
   async run() {
+    const { startWebhookWorker, stopWebhookWorker } = await import('#jobs/workers/webhook_worker')
     if (this.stop) {
       this.logger.info('Stopping webhook worker...')
       await stopWebhookWorker()

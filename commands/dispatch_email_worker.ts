@@ -1,9 +1,5 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import {
-  startDispatchEmailWorker,
-  stopDispatchEmailWorker,
-} from '#jobs/workers/dispatch_email_worker'
 
 export default class DispatchEmailWorker extends BaseCommand {
   static commandName = 'dispatch_email_worker'
@@ -17,6 +13,9 @@ export default class DispatchEmailWorker extends BaseCommand {
   declare stop: boolean
 
   async run() {
+    const { startDispatchEmailWorker, stopDispatchEmailWorker } = await import(
+      '#jobs/workers/dispatch_email_worker'
+    )
     if (this.stop) {
       this.logger.info('Stopping dispatch email worker...')
       await stopDispatchEmailWorker()

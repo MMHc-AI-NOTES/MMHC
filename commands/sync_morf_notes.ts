@@ -16,7 +16,6 @@ import {
 } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { DateTime } from 'luxon'
-import { relinkPatientSessions } from '#services/webhook_service'
 
 /** Same as webhook_service: only these fields are stored; all other keys ignored */
 const FIELD_MAPPING: Record<string, string> = {
@@ -89,22 +88,20 @@ export default class SyncMorfNotes extends BaseCommand {
   }
 
   async run() {
+    const { relinkPatientSessions } = await import('#services/webhook_service')
     const rows = await Morf.query().where('is_processed', false).orderBy('id', 'asc')
     this.logger.info(`Found ${rows.length} unprocessed rows in morf_data`)
-
     const cptCode = await CptCode.findBy('code', '90791')
     if (!cptCode) {
       this.logger.error('CPT code 90791 not found. Run CPT code seeder first.')
       process.exit(1)
     }
-
     // Group by patient; preserve order of first occurrence (first client in data = first processed)
     const byPatient = new Map<
       string,
       { morf: Morf; data: any; noteId: string; timeMs: number; patientId: number | null }[]
     >()
     const patientOrder: string[] = []
-
     for (const row of rows) {
       const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
       if (!data || typeof data !== 'object') {
@@ -113,7 +110,6 @@ export default class SyncMorfNotes extends BaseCommand {
       }
       const patientIdRaw = data.PatientId ?? data.patient_id ?? data.patientId ?? null
       const clientId = data.ClientId ?? data.client_id ?? data.clientId ?? data.ClientID ?? null
-
       let patientId: number | null = null
       if (
         patientIdRaw !== null &&
@@ -149,17 +145,13 @@ export default class SyncMorfNotes extends BaseCommand {
       }
       byPatient.get(key)!.push({ morf: row, data, noteId, timeMs, patientId })
     }
-
     this.logger.info(`Grouped into ${byPatient.size} patients`)
-
     // Process in order of first occurrence: first client's notes get ids 1,2,3… then next client
     const sortedPatients = patientOrder.map((key) => [key, byPatient.get(key)!] as const)
-
     let created = 0
     let updated = 0
     let skipped = 0
     let errors = 0
-
     for (const [pidStr, notes] of sortedPatients) {
       const patientId = Number(pidStr)
       const patient = await Patient.find(patientId)
@@ -168,11 +160,9 @@ export default class SyncMorfNotes extends BaseCommand {
         skipped += notes.length
         continue
       }
-
       // Sort notes by session_time ascending (oldest first): note 1, then 2, then 3...
       // parent_note_id chain for this patient will be recomputed globally (see relinkPatientSessions).
       notes.sort((a, b) => a.timeMs - b.timeMs)
-
       for (const { morf, data, noteId } of notes) {
         try {
           const practitionerIdRaw =
@@ -194,7 +184,6 @@ export default class SyncMorfNotes extends BaseCommand {
             }
           }
           if (practitionerId === null) practitionerId = 1
-
           const sessionString = buildSessionStringFromQuestions(data)
           const sessionId = `session-${noteId.substring(0, 8)}`
           const sessionTime = data.Date
@@ -202,12 +191,10 @@ export default class SyncMorfNotes extends BaseCommand {
             : morf.createdAt
           // Always create/update with parent_note_id = null; full chain is built later via relinkPatientSessions
           const parentNoteId: number | null = null
-
           const existing = await Session.query()
             .where('note_id', noteId)
             .orWhere('session_id', sessionId)
             .first()
-
           let currentSession: Session
           if (existing) {
             existing.session = sessionString
@@ -239,7 +226,6 @@ export default class SyncMorfNotes extends BaseCommand {
             })
             created++
           }
-
           // Ensure default version exists for this note (for version listing)
           const hasVersion = await WebhookSessionVersion.query()
             .where('note_id', currentSession.noteId)
@@ -250,7 +236,6 @@ export default class SyncMorfNotes extends BaseCommand {
               sessionJson: currentSession.session || '{}',
             })
           }
-
           morf.isProcessed = true
           await morf.save()
         } catch (err: any) {
@@ -258,11 +243,9 @@ export default class SyncMorfNotes extends BaseCommand {
           this.logger.error(`Row id=${morf.id} noteId=${noteId}: ${err.message}`)
         }
       }
-
       // Rebuild parent-child chain for this patient's sessions based on sessionTime
       await relinkPatientSessions(patient.id)
     }
-
     this.logger.success(
       `Done. Created: ${created}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`
     )
