@@ -44,8 +44,14 @@ export const invokeBedrockModel = async (
     // Use modelId as-is (no conversion)
     const actualModelId = modelId
 
-    // Non-Anthropic models (Llama, Nova, GPT OSS) use Converse API
+    const isAnthropicModel =
+      actualModelId.includes('anthropic.') || actualModelId.includes('claude')
+    const isCustomDeployment = actualModelId.startsWith('arn:aws:bedrock:')
+
+    // Non-Anthropic models and custom deployments (Llama, Nova, GPT OSS, custom) use Converse API
     const isConverseModel =
+      isCustomDeployment ||
+      !isAnthropicModel ||
       actualModelId === agentModelKeys.LLAMA_4_SCOUT_17B ||
       actualModelId === agentModelKeys.GPT_OSS_SAFEGUARD_120B ||
       actualModelId === agentModelKeys.NOVA_PREMIER
