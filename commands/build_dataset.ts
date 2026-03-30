@@ -85,6 +85,10 @@ export default class BuildDataset extends BaseCommand {
         })
       )
 
+      // Remove local generated files after successful uploads
+      await fs.unlink(jsonPath)
+      await fs.unlink(jsonlPath)
+
       this.logger.success('JSON and JSONL uploads to S3 completed')
     } catch (error: any) {
       this.logger.error('Failed to build/upload dataset files')
