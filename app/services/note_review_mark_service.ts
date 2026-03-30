@@ -10,7 +10,6 @@ import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
-import db from '@adonisjs/lucid/services/db'
 import { UserTypeEnum } from '#enums/user_type_enum'
 
 export const markNoteReviewed = async (
@@ -156,28 +155,26 @@ export const getSmeReviewersNoteCounts = async () => {
       .where('is_active', true)
       .select('id', 'full_name', 'email')
 
-    const countsRaw = await db.rawQuery(`
-      SELECT
-        reviewer_id,
-        COUNT(DISTINCT note_id) as reviewed_notes_count
-      FROM note_review_marks
-      WHERE marked_as_reviewed = 1
-      GROUP BY reviewer_id
-    `)
+    const countsRaw = await NoteReviewMark.query()
+      .where('marked_as_reviewed', true)
+      .select('reviewer_id')
+      .countDistinct('note_id as reviewed_notes_count')
+      .groupBy('reviewer_id')
 
     const countMap = new Map<number, number>()
     ;(countsRaw as any[]).forEach((r) => {
-      countMap.set(Number(r.reviewer_id), Number(r.reviewed_notes_count))
+      countMap.set(Number(r.reviewerId), Number(r.$extras.reviewed_notes_count))
     })
 
-    return sendSuccess('Sme reviewers review counts retrieved successfully', {
-      reviewers: smeReviewers.map((u: any) => ({
+    return sendSuccess(
+      'Sme reviewers review counts retrieved successfully',
+      smeReviewers.map((u: any) => ({
         reviewer_id: u.id,
-        reviewer_full_name: u.full_name ?? null,
+        reviewer_full_name: u.fullName ?? null,
         reviewer_email: u.email ?? null,
         reviewed_notes_count: countMap.get(u.id) ?? 0,
-      })),
-    })
+      }))
+    )
   } catch (error: any) {
     console.log('getSmeReviewersNoteCounts error', error.message)
     return sendError('Failed to retrieve sme reviewers note counts')
