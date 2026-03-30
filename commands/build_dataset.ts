@@ -36,6 +36,7 @@ export default class BuildDataset extends BaseCommand {
     }
 
     const fileName = targetEnv === 'stag' ? 'dataset-stag.json' : 'dataset-dev.json'
+    const jsonlFileName = fileName.replace(/\.json$/, '.jsonl')
 
     this.logger.info(`Building ${fileName} from latest notes...`)
 
@@ -43,31 +44,50 @@ export default class BuildDataset extends BaseCommand {
       const dataset = await buildTestDataset(fileName)
       this.logger.success(`${fileName} written with ${dataset.length} records`)
 
-      // Upload to S3
-      const filePath = app.makePath(fileName)
-      const body = await fs.readFile(filePath)
+      // Build JSONL file (one JSON object per line)
+      const jsonlContent = dataset.map((row: any) => JSON.stringify(row)).join('\n')
+      const jsonlPath = app.makePath(jsonlFileName)
+      await fs.writeFile(jsonlPath, jsonlContent, 'utf8')
+      this.logger.success(`${jsonlFileName} written with ${dataset.length} lines`)
 
       const bucket = s3DatasetConfig.bucket
       const basePath = s3DatasetConfig.basePath || ''
       const normalizedBasePath = basePath.replace(/^\/*/, '').replace(/\/+$/, '')
-      const key = `${normalizedBasePath}/${fileName}`
-
       const client = new S3Client({
         region: s3DatasetConfig.region,
       })
 
-      this.logger.info(`Uploading ${fileName} to s3://${bucket}/${key} ...`)
+      // Upload JSON
+      const jsonPath = app.makePath(fileName)
+      const jsonBody = await fs.readFile(jsonPath)
+      const jsonKey = `${normalizedBasePath}/${fileName}`
+
+      this.logger.info(`Uploading ${fileName} to s3://${bucket}/${jsonKey} ...`)
       await client.send(
         new PutObjectCommand({
           Bucket: bucket,
-          Key: key,
-          Body: body,
+          Key: jsonKey,
+          Body: jsonBody,
           ContentType: 'application/json',
         })
       )
-      this.logger.success('Upload to S3 completed')
+
+      // Upload JSONL
+      const jsonlBody = await fs.readFile(jsonlPath)
+      const jsonlKey = `${normalizedBasePath}/${jsonlFileName}`
+      this.logger.info(`Uploading ${jsonlFileName} to s3://${bucket}/${jsonlKey} ...`)
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: jsonlKey,
+          Body: jsonlBody,
+          ContentType: 'application/jsonlines',
+        })
+      )
+
+      this.logger.success('JSON and JSONL uploads to S3 completed')
     } catch (error: any) {
-      this.logger.error('Failed to build dataset.json')
+      this.logger.error('Failed to build/upload dataset files')
       this.logger.fatal(error?.message || String(error))
       process.exit(1)
     }
