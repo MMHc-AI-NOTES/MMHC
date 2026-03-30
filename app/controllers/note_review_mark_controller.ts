@@ -3,6 +3,7 @@ import { markNoteReviewedValidator } from '#validators/note_review_mark_validato
 import { markNoteReviewed, getNoteReviewMark } from '#services/note_review_mark_service'
 import ErrorService from '#services/error_service'
 import vine from '@vinejs/vine'
+import { getSmeReviewersNoteCounts } from '#services/note_review_mark_service'
 
 const paramsValidator = vine.compile(
   vine.object({
@@ -36,6 +37,16 @@ export default class NoteReviewMarkController {
       return response
     } catch (error) {
       console.log('Note review mark get error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async smeReviewersNoteCounts(ctx: HttpContext) {
+    try {
+      const response = await getSmeReviewersNoteCounts()
+      return response
+    } catch (error) {
+      console.log('Sme reviewers note counts error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

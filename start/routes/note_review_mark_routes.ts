@@ -8,6 +8,7 @@ const NoteReviewMarkController = (): Promise<
 router
   .group(() => {
     router.patch('/mark', [NoteReviewMarkController, 'update'])
+    router.get('/sme-reviewers', [NoteReviewMarkController, 'smeReviewersNoteCounts'])
     router.get('/:note_id/:reviewer_id/:note_version_id', [NoteReviewMarkController, 'show'])
   })
   .prefix('api/note-review-marks')
