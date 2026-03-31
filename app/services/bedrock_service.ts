@@ -3,7 +3,7 @@ import {
   ConverseCommand,
   InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime'
-import { invokeSageMakerEndpoint } from './sagemaker_service.js'
+import { invokeSageMakerEndpoint } from '#services/sagemaker_service'
 import { bedrockConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import { agentModelKeys } from '#enums/agent_enum'
