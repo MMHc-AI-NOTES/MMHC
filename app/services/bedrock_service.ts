@@ -3,6 +3,7 @@ import {
   ConverseCommand,
   InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime'
+import { invokeSageMakerEndpoint } from './sagemaker_service.js'
 import { bedrockConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import { agentModelKeys } from '#enums/agent_enum'
@@ -41,8 +42,30 @@ export const invokeBedrockModel = async (
   topK?: number | null
 ): Promise<BedrockEvaluationResponse> => {
   try {
-    // Use modelId as-is (no conversion)
     const actualModelId = modelId
+
+    // If SageMaker endpoint ARN, use SageMaker Runtime
+    if (actualModelId.startsWith('arn:aws:sagemaker:')) {
+      const endpointName = actualModelId.split('endpoint/')[1]
+      if (!endpointName) throw new Error('Invalid SageMaker endpoint ARN')
+      const mergedPrompt = `${systemPrompt}\n\n${userPrompt}`
+      const input = {
+        inputs: mergedPrompt,
+        parameters: {
+          temperature: temperature,
+          top_p: typeof topP === 'number' ? { topP } : 0.1,
+          top_k: typeof topK === 'number' ? { topK } : 1,
+        },
+      }
+      const smResponse = await invokeSageMakerEndpoint(endpointName, input)
+      if (!smResponse || typeof smResponse !== 'object') {
+        throw new Error('SageMaker response is undefined or invalid')
+      }
+      if (!('output_text' in smResponse)) {
+        throw new Error('SageMaker response missing output_text field')
+      }
+      return smResponse
+    }
 
     const isAnthropicModel =
       actualModelId.includes('anthropic.') || actualModelId.includes('claude')
