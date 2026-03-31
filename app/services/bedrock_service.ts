@@ -20,6 +20,7 @@ export interface BedrockEvaluationResponse {
   pass?: boolean
   issues?: Array<{
     severity: string
+    description_id?: string | null
     points_deducted: number
     section_id?: string
     section: string
@@ -233,6 +234,7 @@ function buildEvaluationResult(params: {
   evaluation: string | null
   issues: Array<{
     severity: string
+    description_id?: string | null
     severity_details?: string
     points_deducted: number
     section_id?: string | null
@@ -290,6 +292,7 @@ export const evaluateChatWithBedrock = async (
   'pass': boolean
   'issues': Array<{
     severity: string
+    description_id?: string | null
     severity_details?: string
     points_deducted: number
     section_id?: string | null
@@ -474,6 +477,7 @@ No previous sessions available for this patient`
         }
         return {
           severity: severityNormalized || 'minor',
+          description_id: issue.description_id ?? null,
           severity_details: severityDetails || (issue.severity_details ?? ''),
           points_deducted: pointsDeducted,
           section_id: issue.section_id ?? null,

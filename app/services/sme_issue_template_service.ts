@@ -9,6 +9,33 @@ import type {
   updateSmeIssueTemplateValidatorInterface,
 } from '#validators/sme_issue_template_validator'
 
+const buildDescriptionPrefix = (displayName: string): string => {
+  const firstWord = displayName.trim().split(/\s+/)[0] || 'tmp'
+  const normalized = firstWord.toLowerCase().replace(/[^a-z]/g, '')
+  return (normalized.slice(0, 3) || 'tmp').padEnd(3, 'x')
+}
+
+const getNextDescriptionId = async (issuesRelatedToDisplayName: string): Promise<string> => {
+  const prefix = buildDescriptionPrefix(issuesRelatedToDisplayName)
+  const existingTemplates = await SmeIssuesTamplate.query()
+    .where('description_id', 'like', `${prefix}_%`)
+    .select('description_id')
+
+  let maxNumber = 0
+  existingTemplates.forEach((template: any) => {
+    const value = template.descriptionId
+    if (!value) return
+
+    const suffix = String(value).split('_')[1]
+    const parsed = Number.parseInt(suffix, 10)
+    if (!Number.isNaN(parsed) && parsed > maxNumber) {
+      maxNumber = parsed
+    }
+  })
+
+  return `${prefix}_${maxNumber + 1}`
+}
+
 export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateValidatorInterface) => {
   try {
     const errorType = await ErrorType.find(reqData.error_type_id)
@@ -39,10 +66,13 @@ export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateVali
       return sendError('Template with this combination already exists')
     }
 
+    const descriptionId = await getNextDescriptionId(issuesRelatedTo.displayName)
+
     const template = await SmeIssuesTamplate.create({
       errorTypeId: reqData.error_type_id,
       issuesRelatedToId: reqData.issues_related_to_id,
       issueDescriptionId: reqData.issue_description_id ?? null,
+      descriptionId,
     })
 
     await template.load('errorType')

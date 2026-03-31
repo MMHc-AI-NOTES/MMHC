@@ -27,6 +27,11 @@ export default class SmeIssuesTamplate extends BaseModel {
   })
   declare issueDescriptionId: number | null
 
+  @column({
+    columnName: 'description_id',
+  })
+  declare descriptionId: string | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
