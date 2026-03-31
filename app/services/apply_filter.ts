@@ -24,7 +24,7 @@ export const applyFilters = (
     }
 
     if (filter.type === 'exact') {
-      if (filter.columnName === 'created_at') {
+      if (filter.columnName === 'created_at' || filter.columnName === 'session_time') {
         let startDate: any
         let endDate: any
 

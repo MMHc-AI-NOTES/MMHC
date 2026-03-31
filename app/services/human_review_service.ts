@@ -1,4 +1,5 @@
 import HumanReview, { humanReviewFilterEnum, humanReviewSortEnum } from '#models/human_review'
+import SmeIssue from '#models/sme_issue'
 import ManagerReview from '#models/manager_review'
 import Session from '#models/session'
 import User from '#models/user'
@@ -14,6 +15,7 @@ import { HumanReviewEnum, ManagerEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { UserTypeEnum } from '#enums/user_type_enum'
 import { DisagreementLevelEnum } from '#enums/disagreement_enum'
+import { ErrorTypePoints } from '#enums/manual_issue_enum'
 
 export const createHumanReview = async (reqData: createHumanReviewValidatorInterface) => {
   try {
@@ -134,21 +136,28 @@ export const listHumanReviews = async (
       humanReviewListings = filterData?.query ?? humanReviewListings
     }
 
-    // Apply search filter (note_id contains, practitioner_id exact if numeric)
+    // Apply search filter:
+    // - note_id contains search text
+    // - practitioner_id exact if numeric
+    // - practitioner full_name contains search text
     if (searchFilter && searchFilter.value) {
       const searchValue = String(searchFilter.value).trim()
       if (searchValue) {
         const searchPattern = `%${searchValue}%`
         const searchNumber = Number.parseInt(searchValue)
 
-        humanReviewListings = humanReviewListings.where((subQuery: any) => {
-          subQuery.whereILike('human_reviews.note_id', searchPattern)
+        humanReviewListings = humanReviewListings
+          .where((subQuery: any) => {
+            subQuery.whereILike('human_reviews.note_id', searchPattern)
 
-          // If numeric, search practitioner_id as well
-          if (!Number.isNaN(searchNumber)) {
-            subQuery.orWhere('human_reviews.practitioner_id', searchNumber)
-          }
-        })
+            // If numeric, search practitioner_id as well
+            if (!Number.isNaN(searchNumber)) {
+              subQuery.orWhere('human_reviews.practitioner_id', searchNumber)
+            }
+          })
+          .orWhereHas('practitioner', (practitionerQuery: any) => {
+            practitionerQuery.whereILike('full_name', searchPattern)
+          })
       }
     }
 
@@ -165,15 +174,45 @@ export const listHumanReviews = async (
     let sortQuery = sortHumanReview?.query ?? query
     let humanReviewListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
+    const rows = humanReviewListingPaginated['rows']
+
+    // Compute human_review_score: note + version ke SME issues se score. 1→5, 2→15, 3→25; score = 100 - sum
+    const dataWithScores = []
+    for (const review of rows) {
+      const serialized = review.serialize()
+      let totalPoints = 0
+
+      if (serialized.noteId && serialized.reviewerId) {
+        const issuesQuery = SmeIssue.query()
+          .where('note_id', serialized.noteId)
+          .where('reviewer_id', serialized.reviewerId)
+        if (serialized.versionId !== null && serialized.versionId !== undefined) {
+          issuesQuery.where('version_id', serialized.versionId)
+        } else {
+          issuesQuery.whereNull('version_id')
+        }
+        const issues = await issuesQuery
+        for (const issue of issues) {
+          totalPoints += ErrorTypePoints[issue.errorTypeId] ?? 0
+        }
+      }
+
+      let humanReviewScore = 100 - totalPoints
+      if (humanReviewScore < 0) humanReviewScore = 0
+
+      dataWithScores.push({
+        ...serialized,
+        human_review_score: humanReviewScore,
+      })
+    }
+
     return {
-      count: humanReviewListingPaginated['rows'].length,
+      count: rows.length,
       total_count: humanReviewListingPaginated.total,
       total_page_count: humanReviewListingPaginated.lastPage,
       page: humanReviewListingPaginated.currentPage,
       page_size: humanReviewListingPaginated.perPage,
-      data: humanReviewListingPaginated['rows'].map((review: any) => ({
-        ...review.serialize(),
-      })),
+      data: dataWithScores,
     }
   } catch (error: any) {
     console.log('Error in listHumanReviews:', error.message)
@@ -205,7 +244,32 @@ export const getHumanReview = async (
       return sendError('Human review not found')
     }
 
-    return sendSuccess('Human review retrieved successfully', review)
+    const serialized = review.serialize()
+
+    // Note + version ke SME issues se score: 1→5, 2→15, 3→25; score = 100 - sum
+    let totalPoints = 0
+    if (serialized.noteId && serialized.reviewerId) {
+      const issuesQuery = SmeIssue.query()
+        .where('note_id', serialized.noteId)
+        .where('reviewer_id', serialized.reviewerId)
+      if (serialized.versionId !== null && serialized.versionId !== undefined) {
+        issuesQuery.where('version_id', serialized.versionId)
+      } else {
+        issuesQuery.whereNull('version_id')
+      }
+      const issues = await issuesQuery
+      for (const issue of issues) {
+        totalPoints += ErrorTypePoints[issue.errorTypeId] ?? 0
+      }
+    }
+
+    let humanReviewScore = 100 - totalPoints
+    if (humanReviewScore < 0) humanReviewScore = 0
+
+    return sendSuccess('Human review retrieved successfully', {
+      ...serialized,
+      human_review_score: humanReviewScore,
+    })
   } catch (error: any) {
     return sendError(error.message)
   }

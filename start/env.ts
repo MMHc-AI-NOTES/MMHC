@@ -53,6 +53,15 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |----------------------------------------------------------
+  | Variables for configuring S3 dataset uploads
+  |----------------------------------------------------------
+  */
+  S3_DATA_BUCKET: Env.schema.string.optional(),
+  S3_DATA_PREFIX: Env.schema.string.optional(),
+  S3_DATA_BASE_PATH: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
   | Variables for configuring Redis (BullMQ)
   |----------------------------------------------------------
   */

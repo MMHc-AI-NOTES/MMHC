@@ -11,6 +11,7 @@ import Session from '#models/session'
 import mail from '@adonisjs/mail/services/main'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
+import type { DispatchEmailJobData } from '#jobs/queues/dispatch_email_queue'
 export const dispatchWelcomeEmail = async () => {
   try {
     WelcomeEmailEvent.dispatch({
@@ -161,31 +162,42 @@ export const sendBulkPractitionerSmeIssuesEmail = async (
   notesWithIssues: BulkNoteWithIssues[]
 ) => {
   try {
-    await mail.send(
-      new BulkPractitionerSmeIssuesEmail({
-        to: practitionerEmail,
-        subject: 'SME Issues Added by Reviewer (Multiple Notes)',
-        data: {
-          practitionerName,
-          notesWithIssues,
-        },
-      })
-    )
+    const { addDispatchEmailJob } = await import('#jobs/queues/dispatch_email_queue')
 
-    await createAuditLog({
-      description: 'Bulk SME issues email sent to practitioner',
-      action: AuditActionEnum.emailBulkSmeIssues,
-      status: true,
-      metadata: {
-        practitioner_email: practitionerEmail,
-        practitioner_name: practitionerName,
-        notes_count: notesWithIssues.length,
-      },
+    await addDispatchEmailJob({
+      practitionerEmail,
+      practitionerName,
+      notesWithIssues,
     })
   } catch (error) {
-    console.log('sendBulkPractitionerSmeIssuesEmail Error:', error)
     throw error
   }
+}
+
+export const performBulkPractitionerSmeIssuesEmail = async (payload: DispatchEmailJobData) => {
+  const { practitionerEmail, practitionerName, notesWithIssues } = payload
+
+  await mail.send(
+    new BulkPractitionerSmeIssuesEmail({
+      to: practitionerEmail,
+      subject: 'SME Issues Added by Reviewer (Multiple Notes)',
+      data: {
+        practitionerName,
+        notesWithIssues,
+      },
+    })
+  )
+
+  await createAuditLog({
+    description: 'Bulk SME issues email sent to practitioner',
+    action: AuditActionEnum.emailBulkSmeIssues,
+    status: true,
+    metadata: {
+      practitioner_email: practitionerEmail,
+      practitioner_name: practitionerName,
+      notes_count: notesWithIssues.length,
+    },
+  })
 }
 
 export const sendMissingFieldsEmail = async (

@@ -124,7 +124,9 @@ jobs:
 
           npm ci --omit=dev --ignore-scripts
 
+          echo "Running migrations..."
           node ace migration:run --force
+          echo "Done Migration..."
 
 
           node ace db:seed -f "./database/seeders/1_user_seeder"
@@ -136,14 +138,17 @@ jobs:
           node ace db:seed -f "./database/seeders/7_issues_related_to_seeder"
 
           # restart PM2
-          pm2 stop $_pm2_server_ref --silent
-          pm2 delete $_pm2_server_ref --silent
+          pm2 list
+          pm2 stop $_pm2_server_ref
+          pm2 delete $_pm2_server_ref
           pm2 start bin/server.js --name $_pm2_server_ref --time
 
           ## Webhook Queue Worker Job
           pm2 stop $_pm2_webhook_webhook_worker_ref --silent
           pm2 delete $_pm2_webhook_webhook_worker_ref --silent
           pm2 start --name $_pm2_webhook_webhook_worker_ref --time $NODE_INTERPRETER -- ace webhook:worker
+          pm2 list
+
 
           echo "Deployment Ended Local system name: $HOSTNAME"
           echo "Deployment Ended Local date and time: $(date)"

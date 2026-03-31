@@ -1,5 +1,5 @@
 import Agent, { FILTER_AGENT_ENUM, SORT_AGENT_ENUM } from '#models/agent'
-import { agentModelKeys } from '#enums/agent_enum'
+import { customChatDeploymentModels, agentModelKeys } from '#enums/agent_enum'
 import { aiDefaultConfig } from '#helpers/gemini_safety_config'
 import { applyFilters } from '#services/apply_filter'
 import { paginateQuery } from '#services/apply_pagination'
@@ -275,8 +275,8 @@ export const getagentDefaultSettings = async (model: string) => {
         top_k: aiDefaultConfig.top_k ?? null,
       }
     }
-    // Custom model deployment (chat)
-    if (model === agentModelKeys.CUSTOM_DEPLOYMENT_Y5K4) {
+    // Custom model deployments (chat) - apply same default generation settings
+    if ((customChatDeploymentModels as readonly string[]).includes(model)) {
       return {
         temperature: aiDefaultConfig.temperature,
         top_p: aiDefaultConfig.top_p ?? null,

@@ -14,7 +14,7 @@ export default class extends BaseSchema {
         .onDelete('CASCADE')
         .notNullable()
       table.string('token', 255).notNullable().unique()
-      table.boolean('is_used').notNullable().defaultTo(false)
+      table.boolean('is_used').notNullable().defaultTo(true)
       table.timestamp('created_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
       table
         .timestamp('updated_at')

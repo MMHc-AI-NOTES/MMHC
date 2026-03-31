@@ -23,6 +23,7 @@ import { ReviewCycleEnum, ReviewCycleDisplayNames } from '#enums/review_cycle_en
 export const sessionFilterEnum = [
   'id',
   'note_id',
+  'session_time',
   'session_id',
   'practitioner_id',
   'patient_id',

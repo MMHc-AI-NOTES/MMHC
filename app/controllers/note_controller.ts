@@ -6,6 +6,7 @@ import {
   getQueueStatistics,
   getWorkloadStatistics,
   updateNote,
+  buildTestDataset,
 } from '#services/note_service'
 import { getNoteActivity } from '#services/note_activity_service'
 import { paginationValidator } from '#validators/pagination_validator'
@@ -74,6 +75,16 @@ export default class NotesController {
       return sendSuccess('Workload statistics retrieved successfully', statistics)
     } catch (error) {
       console.log('Workload statistics error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async testDataset(ctx: HttpContext) {
+    try {
+      const data = await buildTestDataset()
+      return sendSuccess('Test dataset built successfully', data)
+    } catch (error) {
+      console.log('Test dataset error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

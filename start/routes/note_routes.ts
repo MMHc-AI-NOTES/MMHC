@@ -9,6 +9,7 @@ router
     router.get('/queue-statistics', [NotesController, 'queueStatistics'])
     router.get('/workload-statistics', [NotesController, 'workloadStatistics'])
     router.get('/activity/:noteId', [NotesController, 'activity'])
+    router.get('/test', [NotesController, 'testDataset'])
     router.patch('/:noteId', [NotesController, 'update'])
     router.get('/:noteId', [NotesController, 'getWithChats'])
   })

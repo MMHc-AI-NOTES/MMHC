@@ -18,6 +18,7 @@ import type {
   notifyPractitionerValidatorInterface,
 } from '#validators/manager_review_validator'
 import { ManagerEnum } from '#enums/session_enum'
+import { ErrorTypePoints } from '#enums/manual_issue_enum'
 import {
   sendPractitionerSmeIssuesEmail,
   sendBulkPractitionerSmeIssuesEmail,
@@ -108,8 +109,9 @@ export const listManagerReviews = async (
     let sortQuery = sortManagerReview?.query ?? query
     let managerReviewListingPaginated = await paginateQuery(sortQuery, pageSize, page)
 
-    // Load SME issues for each manager review based on reviewer_id, note_id, and version_id
+    // Load SME issues per manager review (reviewer+note+version) for display; score = note ke tamam issues se
     const managerReviews = managerReviewListingPaginated['rows']
+    const dataWithScores = []
     for (const review of managerReviews) {
       if (review.reviewerId !== null && review.reviewerId !== undefined && review.noteId) {
         const smeIssuesQuery = SmeIssue.query()
@@ -132,6 +134,29 @@ export const listManagerReviews = async (
       } else {
         review.$setRelated('smeIssues', [])
       }
+
+      // human_review_score: current reviewer ke note + version SME issues se; 1→5, 2→15, 3→25; score = 100 - sum
+      let totalPoints = 0
+      if (review.noteId && review.reviewerId !== null && review.reviewerId !== undefined) {
+        const issuesQuery = SmeIssue.query()
+          .where('note_id', review.noteId)
+          .where('reviewer_id', review.reviewerId)
+        if (review.versionId !== null && review.versionId !== undefined) {
+          issuesQuery.where('version_id', review.versionId)
+        } else {
+          issuesQuery.whereNull('version_id')
+        }
+        const allNoteIssues = await issuesQuery
+        for (const issue of allNoteIssues) {
+          totalPoints += ErrorTypePoints[issue.errorTypeId] ?? 0
+        }
+      }
+      let humanReviewScore = 100 - totalPoints
+      if (humanReviewScore < 0) humanReviewScore = 0
+      dataWithScores.push({
+        ...review.serialize(),
+        human_review_score: humanReviewScore,
+      })
     }
 
     return {
@@ -140,9 +165,7 @@ export const listManagerReviews = async (
       total_page_count: managerReviewListingPaginated.lastPage,
       page: managerReviewListingPaginated.currentPage,
       page_size: managerReviewListingPaginated.perPage,
-      data: managerReviewListingPaginated['rows'].map((review: any) => ({
-        ...review.serialize(),
-      })),
+      data: dataWithScores,
     }
   } catch (error: any) {
     console.log('Error in listManagerReviews:', error.message)
@@ -196,12 +219,34 @@ export const getManagerReview = async (id: number) => {
     const chatCount = await Chat.query().where('note_id', review.noteId).count('* as count')
     const count = Number(chatCount[0].$extras.count) || 0
 
-    const reviewWithCount = {
-      ...review.serialize(),
-      chat_count: count,
+    // Compute human_review_score for this manager review:
+    // sirf current reviewer ke note + version SME issues se score. 1→5, 2→15, 3→25; score = 100 - sum
+    let totalPoints = 0
+    if (review.noteId && review.reviewerId !== null && review.reviewerId !== undefined) {
+      const issuesQuery = SmeIssue.query()
+        .where('note_id', review.noteId)
+        .where('reviewer_id', review.reviewerId)
+      if (review.versionId !== null && review.versionId !== undefined) {
+        issuesQuery.where('version_id', review.versionId)
+      } else {
+        issuesQuery.whereNull('version_id')
+      }
+      const issues = await issuesQuery
+      for (const issue of issues) {
+        totalPoints += ErrorTypePoints[issue.errorTypeId] ?? 0
+      }
     }
 
-    return sendSuccess('Manager review retrieved successfully', reviewWithCount)
+    let humanReviewScore = 100 - totalPoints
+    if (humanReviewScore < 0) humanReviewScore = 0
+
+    const reviewWithExtras = {
+      ...review.serialize(),
+      chat_count: count,
+      human_review_score: humanReviewScore,
+    }
+
+    return sendSuccess('Manager review retrieved successfully', reviewWithExtras)
   } catch (error: any) {
     return sendError(error.message)
   }
