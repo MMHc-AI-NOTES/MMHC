@@ -1,8 +1,6 @@
 import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { listSmeIssueTemplates } from '#services/sme_issue_template_service'
-import app from '@adonisjs/core/services/app'
-import fs from 'node:fs/promises'
 import IssuesRelatedTo from '#models/issues_related_to'
 
 const severityOrder = ['minor', 'moderate', 'critical'] as const
@@ -79,10 +77,6 @@ export default class SmeIssueTemplatesCsv extends BaseCommand {
       })
 
       const csv = outputChunks.join('\n\n')
-      const filePath = app.makePath('sme-issue-templates.csv')
-      await fs.writeFile(filePath, csv, 'utf8')
-
-      this.logger.success(`CSV file created: ${filePath}`)
       this.logger.log(csv)
     } catch (error: any) {
       this.logger.error('Failed to generate SME issue templates CSV')
