@@ -10,7 +10,8 @@ export const modelAgents = [
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/y5k4mxdxqxbx',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/sugrzn0ke8p6',
   'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-fixed-CORRECT',
-'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5'
+'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5',
+  'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
 ] as const
 
 export const agentModelKeys = {
@@ -29,12 +30,15 @@ export const agentModelKeys = {
   SAGEMAKER_ENDPOINT:
     'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-fixed-CORRECT',
   SAGEMAKER_ENDPOINT_V2:
-'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5'
+'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5',
+  CUSTOM_DEPLOYMENT_V3_02042026:
+    'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
 } as const
 
 export const customChatDeploymentModels = [
   agentModelKeys.CUSTOM_DEPLOYMENT_V1_15032026,
   agentModelKeys.CUSTOM_DEPLOYMENT_V2_28032026,
   agentModelKeys.SAGEMAKER_ENDPOINT,
-  agentModelKeys.SAGEMAKER_ENDPOINT_V2
+  agentModelKeys.SAGEMAKER_ENDPOINT_V2,
+  agentModelKeys.CUSTOM_DEPLOYMENT_V3_02042026,
 ] as const

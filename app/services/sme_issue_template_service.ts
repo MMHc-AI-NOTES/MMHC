@@ -8,6 +8,10 @@ import type {
   createSmeIssueTemplateValidatorInterface,
   updateSmeIssueTemplateValidatorInterface,
 } from '#validators/sme_issue_template_validator'
+import {
+  getNextDescriptionId,
+  resequenceDescriptionIds,
+} from '#helpers/sme_issue_template_description_id_helper'
 
 export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateValidatorInterface) => {
   try {
@@ -39,10 +43,13 @@ export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateVali
       return sendError('Template with this combination already exists')
     }
 
+    const descriptionId = await getNextDescriptionId(issuesRelatedTo.displayName)
+
     const template = await SmeIssuesTamplate.create({
       errorTypeId: reqData.error_type_id,
       issuesRelatedToId: reqData.issues_related_to_id,
       issueDescriptionId: reqData.issue_description_id ?? null,
+      descriptionId,
     })
 
     await template.load('errorType')
@@ -114,6 +121,8 @@ export const updateSmeIssueTemplate = async (
       return sendError('SME issue template not found')
     }
 
+    const oldIssuesRelatedToId = template.issuesRelatedToId
+
     // Verify referenced records exist if being updated
     if (reqData.error_type_id !== undefined) {
       const errorType = await ErrorType.find(reqData.error_type_id)
@@ -123,10 +132,14 @@ export const updateSmeIssueTemplate = async (
       template.errorTypeId = reqData.error_type_id
     }
 
+    let nextDescriptionId: string | null = null
     if (reqData.issues_related_to_id !== undefined) {
       const issuesRelatedTo = await IssuesRelatedTo.find(reqData.issues_related_to_id)
       if (!issuesRelatedTo) {
         return sendError('Issues related to not found for the provided issues_related_to_id')
+      }
+      if (reqData.issues_related_to_id !== oldIssuesRelatedToId) {
+        nextDescriptionId = await getNextDescriptionId(issuesRelatedTo.displayName)
       }
       template.issuesRelatedToId = reqData.issues_related_to_id
     }
@@ -167,7 +180,18 @@ export const updateSmeIssueTemplate = async (
       return sendError('Template with this combination already exists')
     }
 
+    if (nextDescriptionId) {
+      template.descriptionId = nextDescriptionId
+    }
+
     await template.save()
+
+    if (oldIssuesRelatedToId !== template.issuesRelatedToId) {
+      await resequenceDescriptionIds(oldIssuesRelatedToId)
+      await resequenceDescriptionIds(template.issuesRelatedToId)
+    } else {
+      await resequenceDescriptionIds(template.issuesRelatedToId)
+    }
 
     await template.load('errorType')
     await template.load('issuesRelatedTo')
@@ -189,7 +213,9 @@ export const deleteSmeIssueTemplate = async (id: number) => {
       return sendError('SME issue template not found')
     }
 
+    const issuesRelatedToId = template.issuesRelatedToId
     await template.delete()
+    await resequenceDescriptionIds(issuesRelatedToId)
     return sendSuccess('SME issue template deleted successfully')
   } catch (error: any) {
     console.log('Error in deleteSmeIssueTemplate:', error.message)
