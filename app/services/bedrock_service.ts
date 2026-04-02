@@ -6,6 +6,7 @@ import {
 import { bedrockConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import { agentModelKeys } from '#enums/agent_enum'
+import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 
 const client = new BedrockRuntimeClient({
   region: bedrockConfig.region,
@@ -20,6 +21,8 @@ export interface BedrockEvaluationResponse {
   pass?: boolean
   issues?: Array<{
     severity: string
+    description_id?: string | null
+    description?: string | null
     points_deducted: number
     section_id?: string
     section: string
@@ -233,6 +236,8 @@ function buildEvaluationResult(params: {
   evaluation: string | null
   issues: Array<{
     severity: string
+    description_id?: string | null
+    description?: string | null
     severity_details?: string
     points_deducted: number
     section_id?: string | null
@@ -290,6 +295,8 @@ export const evaluateChatWithBedrock = async (
   'pass': boolean
   'issues': Array<{
     severity: string
+    description_id?: string | null
+    description?: string | null
     severity_details?: string
     points_deducted: number
     section_id?: string | null
@@ -444,7 +451,26 @@ No previous sessions available for this patient`
         return Math.round(num / 5) * 5
       }
 
-      const issues = (parsed.issues || []).map((issue: any) => {
+      const parsedIssues = parsed.issues || []
+      const descriptionIds = parsedIssues
+        .map((issue: any) => issue.description_id)
+        .filter((value: any) => typeof value === 'string' && value.trim().length > 0)
+
+      const templates = descriptionIds.length
+        ? await SmeIssuesTamplate.query()
+            .whereIn('description_id', descriptionIds)
+            .preload('issueDescription')
+        : []
+
+      const templateDescriptionMap = new Map<string, string | null>()
+      templates.forEach((template: any) => {
+        templateDescriptionMap.set(
+          template.descriptionId,
+          template.issueDescription?.description ?? null
+        )
+      })
+
+      const issues = parsedIssues.map((issue: any) => {
         let severity = issue.severity as string | undefined
         let pointsDeducted = typeof issue.points_deducted === 'number' ? issue.points_deducted : 0
 
@@ -474,6 +500,11 @@ No previous sessions available for this patient`
         }
         return {
           severity: severityNormalized || 'minor',
+          description_id: issue.description_id ?? null,
+          description:
+            templateDescriptionMap.get(String(issue.description_id ?? '')) ??
+            issue.severity_details ??
+            null,
           severity_details: severityDetails || (issue.severity_details ?? ''),
           points_deducted: pointsDeducted,
           section_id: issue.section_id ?? null,

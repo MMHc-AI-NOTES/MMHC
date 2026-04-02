@@ -1,4 +1,4 @@
-import { BaseCommand, args, flags } from '@adonisjs/core/ace'
+import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { buildTestDataset } from '#services/note_service'
 import app from '@adonisjs/core/services/app'
@@ -9,33 +9,14 @@ import { s3DatasetConfig } from '#config/services'
 export default class BuildDataset extends BaseCommand {
   static commandName = 'notes:build-dataset'
 
-  static description = 'Build and upload dataset file for target env (dev/stag)'
+  static description = 'Build and upload dataset files using env-based S3 path'
 
   static options: CommandOptions = {
     startApp: true,
   }
 
-  @args.string({
-    description: 'Target key (dev or stag)',
-    required: false,
-  })
-  declare target?: string
-
-  @flags.string({
-    alias: 'e',
-    description: 'Target key (dev or stag). Example: --env=dev',
-  })
-  declare env?: string
-
   async run() {
-    const rawTarget = (this.target || this.env || 'dev').toLowerCase()
-    const targetEnv = rawTarget === 'stage' ? 'stag' : rawTarget
-    if (!['dev', 'stag'].includes(targetEnv)) {
-      this.logger.error('Invalid target value. Allowed: dev, stag/stage')
-      process.exit(1)
-    }
-
-    const fileName = targetEnv === 'stag' ? 'dataset-stag.json' : 'dataset-dev.json'
+    const fileName = 'dataset.json'
     const jsonlFileName = fileName.replace(/\.json$/, '.jsonl')
 
     this.logger.info(`Building ${fileName} from latest notes...`)
