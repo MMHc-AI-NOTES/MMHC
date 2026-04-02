@@ -188,13 +188,7 @@ const validateBedrockResponse = (
 
   // Check issues array subfields (Prompt V4: severity_details = exact matched violation wording)
   if (Array.isArray(parsed.issues)) {
-    const requiredIssueFields = [
-      'severity',
-      'severity_details',
-      'points_deducted',
-      'section',
-      'justification',
-    ]
+    const requiredIssueFields = ['description_id', 'justification']
     const issuesWithMissingFields: number[] = []
 
     parsed.issues.forEach((issue: any, index: number) => {
@@ -460,19 +454,39 @@ No previous sessions available for this patient`
         ? await SmeIssuesTamplate.query()
             .whereIn('description_id', descriptionIds)
             .preload('issueDescription')
+            .preload('errorType')
+            .preload('issuesRelatedTo')
         : []
 
-      const templateDescriptionMap = new Map<string, string | null>()
+      const templateMetadataMap = new Map<
+        string,
+        {
+          description: string | null
+          severity: string | null
+          points: number | null
+          sectionId: string | null
+          section: string | null
+        }
+      >()
       templates.forEach((template: any) => {
-        templateDescriptionMap.set(
-          template.descriptionId,
-          template.issueDescription?.description ?? null
-        )
+        templateMetadataMap.set(template.descriptionId, {
+          description: template.issueDescription?.description ?? null,
+          severity: template.errorType?.name ?? null,
+          points: template.errorType?.points ?? null,
+          sectionId: template.issuesRelatedTo?.fieldId ?? null,
+          section: template.issuesRelatedTo?.displayName ?? null,
+        })
       })
 
       const issues = parsedIssues.map((issue: any) => {
-        let severity = issue.severity as string | undefined
-        let pointsDeducted = typeof issue.points_deducted === 'number' ? issue.points_deducted : 0
+        const templateMeta = templateMetadataMap.get(String(issue.description_id ?? ''))
+        let severity = (templateMeta?.severity ?? issue.severity) as string | undefined
+        let pointsDeducted =
+          typeof templateMeta?.points === 'number'
+            ? templateMeta.points
+            : typeof issue.points_deducted === 'number'
+              ? issue.points_deducted
+              : 0
 
         // Round points_deducted to nearest multiple of 5 (5, 10, 15, 20, 25, etc.)
         pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
@@ -502,13 +516,14 @@ No previous sessions available for this patient`
           severity: severityNormalized || 'minor',
           description_id: issue.description_id ?? null,
           description:
-            templateDescriptionMap.get(String(issue.description_id ?? '')) ??
-            issue.severity_details ??
-            null,
-          severity_details: severityDetails || (issue.severity_details ?? ''),
+            templateMeta?.description ?? issue.description ?? issue.severity_details ?? null,
+          severity_details:
+            templateMeta?.description ??
+            (severityDetails || issue.description || issue.severity_details) ??
+            '',
           points_deducted: pointsDeducted,
-          section_id: issue.section_id ?? null,
-          section: issue.section || '',
+          section_id: templateMeta?.sectionId ?? issue.section_id ?? null,
+          section: templateMeta?.section ?? (issue.section || ''),
           justification: issue.justification || '',
         }
       })

@@ -2,8 +2,6 @@ import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { listSmeIssueTemplates } from '#services/sme_issue_template_service'
 import IssuesRelatedTo from '#models/issues_related_to'
-
-const severityOrder = ['minor', 'moderate', 'critical'] as const
 const includedSectionNames = [
   'Subjective',
   'Objective',
@@ -47,33 +45,17 @@ export default class SmeIssueTemplatesCsv extends BaseCommand {
           return sectionHeader
         }
 
-        const severityChunks = severityOrder
-          .map((severity) => {
-            const severityRows = sectionRows.filter(
-              (row: any) => String(row.errorType?.name || '').toLowerCase() === severity
-            )
+        sectionRows.sort((a: any, b: any) => {
+          return getDescriptionIdOrder(a.descriptionId) - getDescriptionIdOrder(b.descriptionId)
+        })
 
-            if (severityRows.length === 0) {
-              return null
-            }
+        const issueLines = sectionRows.map((row: any) => {
+          const description = row.issueDescription?.description || ''
+          const descriptionId = row.descriptionId || ''
+          return `- ${description}${descriptionId ? ` (${descriptionId})` : ''}`
+        })
 
-            severityRows.sort((a: any, b: any) => {
-              return getDescriptionIdOrder(a.descriptionId) - getDescriptionIdOrder(b.descriptionId)
-            })
-
-            const severityTitle = severityRows[0].errorType?.displayName || severity
-            const normalizedSeverityTitle = String(severityTitle).replace(/\)$/, ' each)')
-            const issueLines = severityRows.map((row: any) => {
-              const description = row.issueDescription?.description || ''
-              const descriptionId = row.descriptionId || ''
-              return `- ${description}${descriptionId ? ` (${descriptionId})` : ''}`
-            })
-
-            return [`${normalizedSeverityTitle}:`, ...issueLines].join('\n')
-          })
-          .filter(Boolean)
-
-        return [sectionHeader, ...severityChunks].join('\n')
+        return [sectionHeader, ...issueLines].join('\n')
       })
 
       const csv = outputChunks.join('\n\n')
