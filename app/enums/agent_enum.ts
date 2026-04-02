@@ -10,7 +10,7 @@ export const modelAgents = [
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/y5k4mxdxqxbx',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/sugrzn0ke8p6',
   'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-fixed-CORRECT',
-'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5',
+  'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
 ] as const
 
@@ -29,8 +29,7 @@ export const agentModelKeys = {
     'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/sugrzn0ke8p6',
   SAGEMAKER_ENDPOINT:
     'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-fixed-CORRECT',
-  SAGEMAKER_ENDPOINT_V2:
-'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5',
+  SAGEMAKER_ENDPOINT_V2: 'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-compliance-V5',
   CUSTOM_DEPLOYMENT_V3_02042026:
     'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
 } as const

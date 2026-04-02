@@ -50,22 +50,23 @@ export const invokeBedrockModel = async (
     // If SageMaker endpoint ARN, use SageMaker Runtime
     if (actualModelId.startsWith('arn:aws:sagemaker:')) {
       const endpointName = actualModelId.split('endpoint/')[1]
+      console.log('🚀 ~ invokeBedrockModel ~ endpointName:', endpointName)
       if (!endpointName) throw new Error('Invalid SageMaker endpoint ARN')
       const mergedPrompt = `${systemPrompt}\n\n${userPrompt}`
       // Build parameters for SageMaker: only include top_p and top_k if valid numbers
       const params: any = {
         temperature: typeof temperature === 'number' && temperature > 0 ? temperature : 1e-5,
-      };
+      }
       if (typeof topP === 'number' && topP > 0 && topP < 1) {
-        params.top_p = topP;
+        params.top_p = topP
       }
       if (typeof topK === 'number' && Number.isInteger(topK) && topK > 0) {
-        params.top_k = topK;
+        params.top_k = topK
       }
       const input = {
         inputs: mergedPrompt,
         parameters: params,
-      };
+      }
       const smResponse = await invokeSageMakerEndpoint(endpointName, input)
       if (!smResponse || typeof smResponse !== 'object') {
         throw new Error('SageMaker response is undefined or invalid')
