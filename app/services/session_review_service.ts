@@ -10,21 +10,15 @@ export const invokeSessionReview = async (payload: invokeSessionReviewValidatorI
   try {
     const session = await Session.query().where('note_id', payload.note_id).first()
     if (!session) {
-      console.log('Error in invokeSessionReview: Session not found for note_id:', payload.note_id)
       throw new Error('Session not found for the provided note')
     }
 
     const agent = await Agent.find(payload.prompt_id)
     if (!agent) {
-      console.log('Error in invokeSessionReview: Agent not found for prompt_id:', payload.prompt_id)
       throw new Error('Agent not found for the provided prompt')
     }
 
     if (!agent.prompt) {
-      console.log(
-        'Error in invokeSessionReview: Agent prompt is not configured for agent_id:',
-        payload.prompt_id
-      )
       throw new Error('Agent prompt is not configured')
     }
 
@@ -98,7 +92,6 @@ export const invokeSessionReview = async (payload: invokeSessionReviewValidatorI
 
     return sendSuccess('Session review response (playground, not saved)', previewData)
   } catch (error: any) {
-    console.log('Error in invokeSessionReview:', error?.message || error)
     throw error
   }
 }
