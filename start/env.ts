@@ -48,6 +48,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   AWS_REGION: Env.schema.string.optional(),
   AWS_ACCESS_KEY_ID: Env.schema.string.optional(),
   AWS_SECRET_ACCESS_KEY: Env.schema.string.optional(),
+  /** Optional. Required for some SageMaker endpoints that host inference components. */
+  SAGEMAKER_INFERENCE_COMPONENT_NAME: Env.schema.string.optional(),
   BEDROCK_MAX_TOKENS: Env.schema.number.optional(),
   BEDROCK_ANTHROPIC_VERSION: Env.schema.string.optional(),
 

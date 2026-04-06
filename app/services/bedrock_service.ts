@@ -3,7 +3,8 @@ import {
   ConverseCommand,
   InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime'
-import { bedrockConfig } from '#config/services'
+import { invokeSageMakerEndpoint } from '#services/sagemaker_service'
+import { bedrockConfig, sagemakerConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import { agentModelKeys } from '#enums/agent_enum'
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
@@ -46,6 +47,49 @@ export const invokeBedrockModel = async (
   try {
     // Use modelId as-is (no conversion)
     const actualModelId = modelId
+
+    // SageMaker hosted endpoint (separate from Bedrock ARN shape)
+    if (actualModelId.startsWith('arn:aws:sagemaker:')) {
+      const arnSegments = actualModelId.split(':')
+      const regionFromArn =
+        arnSegments.length >= 4
+          ? String(arnSegments[3]).trim()
+          : String(bedrockConfig.region).trim()
+      const endpointSuffix = actualModelId.split('endpoint/')[1]
+      if (!endpointSuffix) {
+        throw new Error('Invalid SageMaker endpoint ARN')
+      }
+      const endpointName = endpointSuffix.split('/')[0]?.trim() ?? ''
+      if (!endpointName) {
+        throw new Error('Invalid SageMaker endpoint ARN: empty endpoint name')
+      }
+      const mergedPrompt = `${systemPrompt}\n\n${userPrompt}`
+      const parameters: Record<string, number> = {
+        temperature: typeof temperature === 'number' && temperature > 0 ? temperature : 1e-5,
+      }
+      if (typeof topP === 'number' && topP > 0 && topP < 1) {
+        parameters.top_p = topP
+      }
+      if (typeof topK === 'number' && Number.isInteger(topK) && topK > 0) {
+        parameters.top_k = topK
+      }
+      const smResponse = await invokeSageMakerEndpoint(
+        endpointName,
+        {
+          inputs: mergedPrompt,
+          parameters,
+        },
+        {
+          region: regionFromArn,
+          ...(sagemakerConfig.inferenceComponentName
+            ? { inferenceComponentName: sagemakerConfig.inferenceComponentName }
+            : {}),
+        }
+      )
+      return {
+        output_text: smResponse.output_text,
+      }
+    }
 
     const isAnthropicModel =
       actualModelId.includes('anthropic.') || actualModelId.includes('claude')
@@ -145,7 +189,11 @@ export const invokeBedrockModel = async (
       ...output,
     }
   } catch (error: any) {
-    console.log('Bedrock API Error:', error.message)
+    const msg = error?.message ?? String(error)
+    console.log('Bedrock API Error:', msg)
+    if (typeof msg === 'string' && msg.startsWith('SageMaker invoke failed')) {
+      throw error
+    }
     throw new Error('Failed to communicate with AI service. Please try again later.')
   }
 }

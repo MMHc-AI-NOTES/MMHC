@@ -5,7 +5,8 @@ export const invokeSessionReviewValidator = vine.compile(
   vine.object({
     note_id: vine.string().trim().minLength(1),
     prompt_id: vine.number().withoutDecimals(),
-    model_id: vine.string().trim(),
+    /** Optional; same as chat create — falls back to agent.model when omitted. */
+    model_id: vine.string().trim().optional(),
     temperature: vine.number().optional(),
     top_p: vine.number().nullable().optional(),
     top_k: vine.number().withoutDecimals().nullable().optional(),

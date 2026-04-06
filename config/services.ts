@@ -30,6 +30,16 @@ export const bedrockConfig = {
   anthropicVersion: env.get('BEDROCK_ANTHROPIC_VERSION', 'bedrock-2023-05-31'),
 }
 
+const smInferenceComponentRaw = env.get('SAGEMAKER_INFERENCE_COMPONENT_NAME')
+export const sagemakerConfig = {
+  inferenceComponentName:
+    smInferenceComponentRaw !== undefined &&
+    smInferenceComponentRaw !== null &&
+    String(smInferenceComponentRaw).trim().length > 0
+      ? String(smInferenceComponentRaw).trim().replace(/['"]/g, '').replace(/,+$/, '')
+      : undefined,
+}
+
 const normalizeEnvString = (value: string | undefined, fallback: string): string => {
   if (!value) return fallback
   // Trim whitespace, quotes, and trailing commas

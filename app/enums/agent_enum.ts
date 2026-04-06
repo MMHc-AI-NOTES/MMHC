@@ -10,6 +10,7 @@ export const modelAgents = [
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/y5k4mxdxqxbx',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/sugrzn0ke8p6',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
+  'arn:aws:sagemaker:us-east-1:199990519622:endpoint/Sagemaker-V3-2-April-2026',
 ] as const
 
 export const agentModelKeys = {
@@ -27,10 +28,13 @@ export const agentModelKeys = {
     'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/sugrzn0ke8p6',
   CUSTOM_DEPLOYMENT_V3_02042026:
     'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
+  SAGEMAKER_ENDPOINT_V3_2_APRIL_2026:
+    'arn:aws:sagemaker:us-east-1:199990519622:endpoint/Sagemaker-V3-2-April-2026',
 } as const
 
 export const customChatDeploymentModels = [
   agentModelKeys.CUSTOM_DEPLOYMENT_V1_15032026,
   agentModelKeys.CUSTOM_DEPLOYMENT_V2_28032026,
   agentModelKeys.CUSTOM_DEPLOYMENT_V3_02042026,
+  agentModelKeys.SAGEMAKER_ENDPOINT_V3_2_APRIL_2026,
 ] as const

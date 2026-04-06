@@ -74,6 +74,8 @@ export const invokeSessionReview = async (payload: invokeSessionReviewValidatorI
       prompt,
       userNote: currentNote,
       userInput: evaluation.user_input,
+      /** Unmodified model text output (same as bedrockResponse.raw_response). */
+      raw_model_output: evaluation.raw_response,
       modelId,
       noteId: payload.note_id,
       agentId: payload.prompt_id,
