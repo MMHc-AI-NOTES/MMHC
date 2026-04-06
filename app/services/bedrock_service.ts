@@ -90,7 +90,8 @@ export const invokeBedrockModel = async (
     const isClaude45Or46 =
       actualModelId === agentModelKeys.CLAUDE_4_5_HAIKU_V1 ||
       actualModelId === agentModelKeys.CLAUDE_4_5_SONNET_V1 ||
-      actualModelId === agentModelKeys.CLAUDE_4_6_SONNET
+      actualModelId === agentModelKeys.CLAUDE_4_6_SONNET ||
+      actualModelId === agentModelKeys.CLAUDE_4_6_OPUS
 
     const body: any = {
       anthropic_version: bedrockConfig.anthropicVersion,
