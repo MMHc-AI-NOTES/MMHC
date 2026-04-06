@@ -503,24 +503,28 @@ No previous sessions available for this patient`
         }
         // Normalise severity to lowercase; Prompt V4: severity_details = exact matched violation wording
         const severityNormalized = (severity || '').toLowerCase()
-        // When model leaves severity_details empty but puts criterion in justification (e.g. "Vague or non-specific language: ..."), derive it
-        let severityDetails = (issue.severity_details ?? '').trim()
-        if (!severityDetails && issue.justification) {
+        // Model's criterion text (what the model put in severity_details, or derived from justification)
+        let modelCriterionText = (issue.severity_details ?? '').trim()
+        if (!modelCriterionText && issue.justification) {
           const justificationStr = String(issue.justification).trim()
           const colonIndex = justificationStr.indexOf(':')
           if (colonIndex > 0) {
-            severityDetails = justificationStr.slice(0, colonIndex).trim()
+            modelCriterionText = justificationStr.slice(0, colonIndex).trim()
           }
         }
+        const dbDescription = templateMeta?.description ?? null
         return {
           severity: severityNormalized || 'minor',
           description_id: issue.description_id ?? null,
-          description:
-            templateMeta?.description ?? issue.description ?? issue.severity_details ?? null,
+          // Model wording from severity_details (not DB)
+          description: modelCriterionText || issue.description || null,
+          // Authoritative wording from DB template when present
           severity_details:
-            templateMeta?.description ??
-            (severityDetails || issue.description || issue.severity_details) ??
-            '',
+            dbDescription ??
+            (modelCriterionText ||
+              issue.description ||
+              (issue.severity_details ?? '').trim() ||
+              ''),
           points_deducted: pointsDeducted,
           section_id: templateMeta?.sectionId ?? issue.section_id ?? null,
           section: templateMeta?.section ?? (issue.section || ''),
