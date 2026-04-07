@@ -53,14 +53,38 @@ export const invokeBedrockModel = async (
       console.log('invokeBedrockModel endpointName:', endpointName)
       if (!endpointName) throw new Error('Invalid SageMaker endpoint ARN')
 
-      const mergedPrompt = `${systemPrompt}\n\n${userPrompt}`
+      const sagemakerJsonStrictInstruction = `
+
+    CRITICAL OUTPUT RULES:
+    - Return ONLY valid JSON.
+    - Do NOT add markdown/code fences.
+    - Do NOT add commentary before or after JSON.
+    - Follow the schema specified in the system prompt exactly.
+    `
+
+      const sagemakerSystemPrompt = `${systemPrompt}${sagemakerJsonStrictInstruction}`
+
+      // Fine-tuned Llama endpoints expect chat-template headers rather than plain merged text.
+      const formattedPrompt =
+        '<|begin_of_text|>' +
+        '<|start_header_id|>system<|end_header_id|>\n\n' +
+        `${sagemakerSystemPrompt}\n` +
+        '<|eot_id|>' +
+        '<|start_header_id|>user<|end_header_id|>\n\n' +
+        `${userPrompt}\n` +
+        '<|eot_id|>' +
+        '<|start_header_id|>assistant<|end_header_id|>\n\n'
 
       const input = {
-        inputs: mergedPrompt,
+        inputs: formattedPrompt,
         parameters: {
-          temperature: typeof temperature === 'number' && temperature > 0 ? temperature : 0.1,
-          top_p: typeof topP === 'number' && topP > 0 ? topP : 0.1,
-          top_k: typeof topK === 'number' && topK > 0 ? topK : 40,
+          max_new_tokens: 1000,
+          // Keep evaluation decoding close to direct endpoint tests for deterministic structure.
+          temperature: 0.1,
+          top_p: 0.95,
+          do_sample: true,
+          repetition_penalty: 1.2,
+          return_full_text: false,
         },
       }
 
@@ -459,21 +483,24 @@ No previous sessions available for this patient`
       .replace(/\s*```$/i, '')
       .trim()
 
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0])
-
-      // Validate response structure
-      const validation = validateBedrockResponse(parsed)
-
-      // Normalise issues and compute numeric score based on deductions
-      // Helper function to round points to nearest multiple of 5
+    const normaliseModelIssues = async (issuesInput: any[]): Promise<{
+      issues: Array<{
+        severity: string
+        description_id?: string | null
+        description?: string | null
+        severity_details?: string
+        points_deducted: number
+        section_id?: string | null
+        section: string
+        justification: string
+      }>
+      score: number
+    }> => {
       const roundToNearestFive = (num: number): number => {
         return Math.round(num / 5) * 5
       }
 
-      const parsedIssues = parsed.issues || []
+      const parsedIssues = Array.isArray(issuesInput) ? issuesInput : []
       const descriptionIds = parsedIssues
         .map((issue: any) => issue.description_id)
         .filter((value: any) => typeof value === 'string' && value.trim().length > 0)
@@ -516,10 +543,8 @@ No previous sessions available for this patient`
               ? issue.points_deducted
               : 0
 
-        // Round points_deducted to nearest multiple of 5 (5, 10, 15, 20, 25, etc.)
         pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
 
-        // If severity not provided, derive from points_deducted
         if (!severity) {
           if (pointsDeducted >= 25) {
             severity = 'critical'
@@ -529,9 +554,8 @@ No previous sessions available for this patient`
             severity = 'minor'
           }
         }
-        // Normalise severity to lowercase; Prompt V4: severity_details = exact matched violation wording
+
         const severityNormalized = (severity || '').toLowerCase()
-        // Model's criterion text (what the model put in severity_details, or derived from justification)
         let modelCriterionText = (issue.severity_details ?? '').trim()
         if (!modelCriterionText && issue.justification) {
           const justificationStr = String(issue.justification).trim()
@@ -540,13 +564,12 @@ No previous sessions available for this patient`
             modelCriterionText = justificationStr.slice(0, colonIndex).trim()
           }
         }
+
         const dbDescription = templateMeta?.description ?? null
         return {
           severity: severityNormalized || 'minor',
           description_id: issue.description_id ?? null,
-          // Model wording from severity_details (not DB)
           description: modelCriterionText || issue.description || null,
-          // Authoritative wording from DB template when present
           severity_details:
             dbDescription ??
             (modelCriterionText ||
@@ -560,10 +583,8 @@ No previous sessions available for this patient`
         }
       })
 
-      // Start from 100 and subtract the absolute value of each issue's deduction
-      // Score can go negative if there are many issues (e.g., -20 for severe problems)
       let score = 100
-      if (Array.isArray(issues) && issues.length > 0) {
+      if (issues.length > 0) {
         const totalDeduction = issues.reduce((sum: number, item: any) => {
           const penalty =
             typeof item.points_deducted === 'number' ? Math.abs(item.points_deducted) : 0
@@ -571,6 +592,45 @@ No previous sessions available for this patient`
         }, 0)
         score = 100 - totalDeduction
       }
+
+      return { issues, score }
+    }
+
+    // Fine-tuned SageMaker endpoint may return a raw JSON array of issues.
+    try {
+      const parsedWholeResponse = JSON.parse(responseText)
+      if (Array.isArray(parsedWholeResponse)) {
+        const { issues, score } = await normaliseModelIssues(parsedWholeResponse)
+        return buildEvaluationResult({
+          score,
+          pass: score >= 75,
+          sentiment: null,
+          summary: null,
+          evaluation: null,
+          issues,
+          raw_response: responseText,
+          user_input: evaluationUserPrompt,
+          validation_result: {
+            isValid: true,
+            status: 'pass',
+            message: 'Array response parsed successfully',
+          },
+        })
+      }
+    } catch {
+      // Continue with object extraction path below.
+    }
+
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+
+      // Validate response structure
+      const validation = validateBedrockResponse(parsed)
+
+      // Normalise issues and compute numeric score based on deductions
+      const { issues, score } = await normaliseModelIssues(parsed.issues || [])
 
       return buildEvaluationResult({
         score,
