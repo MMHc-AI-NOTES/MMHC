@@ -4,12 +4,14 @@ export const modelAgents = [
   'us.anthropic.claude-haiku-4-5-20251001-v1:0',
   'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
   'us.anthropic.claude-sonnet-4-6',
+  'us.anthropic.claude-opus-4-6-v1',
   'meta.llama4-scout-17b-instruct-v1:0',
   'openai.gpt-oss-safeguard-120b',
   'us.amazon.nova-premier-v1:0',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/y5k4mxdxqxbx',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/sugrzn0ke8p6',
   'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
+  'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-SageMaker-v6'
 ] as const
 
 export const agentModelKeys = {
@@ -18,6 +20,7 @@ export const agentModelKeys = {
   CLAUDE_4_5_HAIKU_V1: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
   CLAUDE_4_5_SONNET_V1: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
   CLAUDE_4_6_SONNET: 'us.anthropic.claude-sonnet-4-6',
+  CLAUDE_4_6_OPUS: 'us.anthropic.claude-opus-4-6-v1',
   LLAMA_4_SCOUT_17B: 'meta.llama4-scout-17b-instruct-v1:0',
   GPT_OSS_SAFEGUARD_120B: 'openai.gpt-oss-safeguard-120b',
   NOVA_PREMIER: 'us.amazon.nova-premier-v1:0',
@@ -27,6 +30,7 @@ export const agentModelKeys = {
     'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/sugrzn0ke8p6',
   CUSTOM_DEPLOYMENT_V3_02042026:
     'arn:aws:bedrock:us-east-1:199990519622:custom-model-deployment/cxwsnnx1qsw8',
+  SAGEMAKER_DEPLOYMENT_V5: 'arn:aws:sagemaker:us-east-1:199990519622:endpoint/mmh-SageMaker-v6',
 } as const
 
 export const customChatDeploymentModels = [

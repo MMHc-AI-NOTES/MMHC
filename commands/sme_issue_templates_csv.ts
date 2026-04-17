@@ -2,15 +2,22 @@ import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { listSmeIssueTemplates } from '#services/sme_issue_template_service'
 import IssuesRelatedTo from '#models/issues_related_to'
-const includedSectionNames = [
-  'Subjective',
-  'Objective',
-  'Assessment & Therapeutic Intervention',
-  'Reaction to Intervention',
-  'Plan and Collaboration',
-  'Progress',
-  'Therapist Initials',
-]
+const sectionRules = [
+  { name: 'Assessment & Therapeutic Intervention', required: true },
+  { name: 'Homicidality', required: false },
+  { name: 'Mental Status', required: false },
+  { name: 'Objective', required: true },
+  { name: 'Overall note issue', required: true },
+  { name: 'Plan and Collaboration', required: true },
+  { name: 'Progress', required: true },
+  { name: 'Reaction to Intervention', required: true },
+  { name: 'Session Duration', required: true },
+  { name: 'Subjective', required: true },
+  { name: 'Suicidality', required: false },
+  { name: 'Therapist Initials', required: true },
+] as const
+
+const sectionRuleMap = new Map(sectionRules.map((rule) => [rule.name, rule.required]))
 
 const getDescriptionIdOrder = (value: string | null | undefined): number => {
   if (!value) return Number.MAX_SAFE_INTEGER
@@ -33,13 +40,16 @@ export default class SmeIssueTemplatesCsv extends BaseCommand {
       const response = await listSmeIssueTemplates(1, 10000)
       const rows = response.data || []
       const issuesRelatedTo = await IssuesRelatedTo.query().orderBy('id', 'asc')
-      const filteredSections = issuesRelatedTo.filter((section: any) =>
-        includedSectionNames.includes(section.displayName)
-      )
+      const filteredSections = issuesRelatedTo
+        .filter((section: any) => sectionRuleMap.has(section.displayName))
+        .sort((a: any, b: any) => a.displayName.localeCompare(b.displayName))
 
       const outputChunks = filteredSections.map((section: any, index: number) => {
         const sectionRows = rows.filter((row: any) => row.issuesRelatedToId === section.id)
-        const sectionHeader = `${index + 1}. ${section.displayName} (Required)`
+        const isRequired = sectionRuleMap.get(section.displayName) === true
+        const sectionHeader = isRequired
+          ? `${index + 1}. ${section.displayName} (Required)`
+          : `${index + 1}. ${section.displayName}`
 
         if (sectionRows.length === 0) {
           return sectionHeader
