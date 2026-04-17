@@ -7,6 +7,8 @@ import db from '@adonisjs/lucid/services/db'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { s3DatasetConfig } from '#config/services'
 
+const REVIEW_CHUNK_DELAY_MS = 10 * 1000
+
 interface Issue {
   error_type: string
   section: string
@@ -81,8 +83,10 @@ export default class ReviewSessionNotes extends BaseCommand {
 
       this.logger.info(`Fetched ${notesToReview.length} notes`)
 
-      const concurrency = 100
-      this.logger.info(`Reviewing up to ${concurrency} notes in parallel`)
+      const concurrency = 30
+      this.logger.info(
+        `Reviewing up to ${concurrency} notes in parallel with a ${REVIEW_CHUNK_DELAY_MS / 1000}s delay between chunks`
+      )
 
       const reviewResults = await this.mapWithConcurrency(
         notesToReview,
@@ -212,21 +216,27 @@ export default class ReviewSessionNotes extends BaseCommand {
     mapper: (item: T, index: number) => Promise<R>
   ): Promise<R[]> {
     const results = new Array<R>(items.length)
-    let nextIndex = 0
-    const workerCount = Math.min(concurrency, items.length)
 
-    const workers = Array.from({ length: workerCount }, async () => {
-      while (true) {
-        const currentIndex = nextIndex++
-        if (currentIndex >= items.length) return
+    for (let chunkStart = 0; chunkStart < items.length; chunkStart += concurrency) {
+      const chunk = items.slice(chunkStart, chunkStart + concurrency)
 
-        results[currentIndex] = await mapper(items[currentIndex], currentIndex)
+      await Promise.all(
+        chunk.map(async (item, chunkIndex) => {
+          const currentIndex = chunkStart + chunkIndex
+          results[currentIndex] = await mapper(item, currentIndex)
+        })
+      )
+
+      if (chunkStart + concurrency < items.length) {
+        await this.sleep(REVIEW_CHUNK_DELAY_MS)
       }
-    })
-
-    await Promise.all(workers)
+    }
 
     return results
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   private extractAiIssues(aiReview: any): Issue[] {
