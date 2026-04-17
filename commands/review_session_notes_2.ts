@@ -115,7 +115,7 @@ export default class ReviewSessionNotes extends BaseCommand {
               note_id: note.note_id,
               prompt_id: agentResult.id,
               model_id: agentResult.model,
-              temperature: 0.1,
+              temperature: 0.5,
               top_p: 0.9,
               top_k: 40,
             })
