@@ -48,7 +48,8 @@ export default class ReviewSessionNotes extends BaseCommand {
       const from = this.from || 0
       const to = this.to || 60
       const issuesOnly = this.issuesOnly !== false
-      const outputFile = this.output || 'session_review_output.json'
+      const today = new Date().toISOString().slice(0, 10)
+      const outputFile = this.output || `AIReview-${today}.json`
 
       if (from >= to) {
         this.logger.error(`Invalid range: --from (${from}) must be less than --to (${to})`)
