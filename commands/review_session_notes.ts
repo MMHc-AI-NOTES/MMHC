@@ -4,6 +4,8 @@ import { invokeSessionReview } from '#services/session_review_service'
 import fs from 'node:fs/promises'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { s3DatasetConfig } from '#config/services'
 
 interface Issue {
   error_type: string
@@ -24,21 +26,17 @@ interface ReviewOutput {
 export default class ReviewSessionNotes extends BaseCommand {
   static commandName = 'session:review-notes'
 
-  static description =
-    'Review session notes from database via AI - supports range-based indexing'
+  static description = 'Review session notes from database via AI - supports range-based indexing'
 
   static options: CommandOptions = {
     startApp: true,
   }
 
-  @flags.number({ description: 'Start index (0-based, default: 0)' })
+  @flags.number({ description: 'Start ID (inclusive, default: 0)' })
   declare from?: number
 
-  @flags.number({ description: 'End index (exclusive, default: 60)' })
+  @flags.number({ description: 'End ID (inclusive, default: 60)' })
   declare to?: number
-
-  @flags.boolean({ description: 'Only fetch notes that have SME issues (default: true)' })
-  declare issuesOnly?: boolean
 
   @flags.string({ description: 'Output file (default: session_review_output.json)' })
   declare output?: string
@@ -47,14 +45,15 @@ export default class ReviewSessionNotes extends BaseCommand {
     try {
       const from = this.from || 0
       const to = this.to || 60
-      const issuesOnly = this.issuesOnly !== false
       const now = new Date()
       const date = now.toISOString().slice(0, 10)
       const epoch = Math.floor(now.getTime() / 1000)
       const outputFile = this.output || `AIReview-${date}-${epoch}.json`
 
-      if (from >= to) {
-        this.logger.error(`Invalid range: --from (${from}) must be less than --to (${to})`)
+      if (from > to) {
+        this.logger.error(
+          `Invalid range: --from (${from}) must be less than or equal to --to (${to})`
+        )
         return
       }
 
@@ -64,28 +63,13 @@ export default class ReviewSessionNotes extends BaseCommand {
         return
       }
 
-      const count = to - from
-      this.logger.info(`Range: ${from} to ${to} (${count} notes), Issues only: ${issuesOnly}`)
+      this.logger.info(`Range: ID BETWEEN ${from} AND ${to}`)
 
-      const baseQuery = db
+      const notesToReview = await db
         .from('session as s')
         .leftJoin('patients as p', 's.patient_id', 'p.id')
         .whereNull('s.deleted_at')
-
-      if (issuesOnly) {
-        baseQuery.whereExists((sub) => {
-          sub
-            .from('sme_issues as si')
-            .whereRaw('si.note_id = s.note_id')
-            .whereNull('si.deleted_at')
-            .select(db.raw('1'))
-        })
-      }
-
-      const notesToReview = await baseQuery
-        .offset(from)
-        .limit(count)
-        .orderBy('s.id', 'desc')
+        .whereBetween('s.id', [from, to])
         .select(
           's.note_id',
           's.session',
@@ -99,7 +83,6 @@ export default class ReviewSessionNotes extends BaseCommand {
 
       const results: ReviewOutput[] = []
       let reviewed = 0
-      let skipped = 0
 
       for (let i = 0; i < notesToReview.length; i++) {
         const note = notesToReview[i]
@@ -107,12 +90,9 @@ export default class ReviewSessionNotes extends BaseCommand {
         try {
           const smeIssues = await this.fetchSmeIssues(note.note_id)
 
-          if (smeIssues.length === 0) {
-            skipped++
-            continue
-          }
-
-          this.logger.info(`[${i + 1}/${notesToReview.length}] ${note.note_id} (${smeIssues.length} SME issues)`)
+          this.logger.info(
+            `[${i + 1}/${notesToReview.length}] ${note.note_id} (${smeIssues.length} SME issues)`
+          )
 
           let previousSession: string | null = null
           let previousNoteId: string | null = null
@@ -162,8 +142,39 @@ export default class ReviewSessionNotes extends BaseCommand {
       await fs.writeFile(filePath, JSON.stringify(results, null, 2))
 
       this.logger.info('')
-      this.logger.info(`Reviewed: ${reviewed}, Skipped: ${skipped}`)
+      this.logger.info(`Reviewed: ${reviewed}`)
       this.logger.info(`Output: ${filePath}`)
+
+      // Upload to S3
+      try {
+        const bucket = s3DatasetConfig.bucket
+        const basePath = s3DatasetConfig.basePath || ''
+        const normalizedBasePath = basePath.replace(/^\/+/, '').replace(/\/+$/, '')
+        const client = new S3Client({
+          region: s3DatasetConfig.region,
+        })
+
+        const fileBody = await fs.readFile(filePath)
+        const s3Key = `${normalizedBasePath}/${outputFile}`
+
+        this.logger.info(`Uploading to s3://${bucket}/${s3Key} ...`)
+        await client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: s3Key,
+            Body: fileBody,
+            ContentType: 'application/json',
+          })
+        )
+
+        this.logger.success(`Upload successful: s3://${bucket}/${s3Key}`)
+
+        // Remove local file after successful upload
+        await fs.unlink(filePath)
+        this.logger.info(`Removed local file: ${filePath}`)
+      } catch (s3Error: any) {
+        this.logger.error(`S3 upload failed: ${s3Error?.message || String(s3Error)}`)
+      }
     } catch (error: any) {
       this.logger.error(`Fatal: ${error.message}`)
     }
@@ -192,18 +203,13 @@ export default class ReviewSessionNotes extends BaseCommand {
 
   private extractAiIssues(aiReview: any): Issue[] {
     try {
-      const directIssues =
-        aiReview?.data?.bedrockResponse?.issues ||
-        aiReview?.data?.issues
+      const directIssues = aiReview?.data?.bedrockResponse?.issues || aiReview?.data?.issues
       if (Array.isArray(directIssues)) {
         return directIssues.map((issue: any) => ({
           error_type: (issue?.severity || 'unknown').toLowerCase(),
           section: issue?.section?.trim() || 'unknown',
           description:
-            issue?.description ||
-            issue?.severity_details ||
-            issue?.justification ||
-            'unknown',
+            issue?.description || issue?.severity_details || issue?.justification || 'unknown',
         }))
       }
 
@@ -228,10 +234,7 @@ export default class ReviewSessionNotes extends BaseCommand {
         error_type: (issue?.severity || 'unknown').toLowerCase(),
         section: issue?.section?.trim() || 'unknown',
         description:
-          issue?.description ||
-          issue?.severity_details ||
-          issue?.justification ||
-          'unknown',
+          issue?.description || issue?.severity_details || issue?.justification || 'unknown',
       }))
     } catch {
       return []
