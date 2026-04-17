@@ -255,7 +255,8 @@ export const getagentDefaultSettings = async (model: string) => {
     if (
       model === agentModelKeys.CLAUDE_4_5_HAIKU_V1 ||
       model === agentModelKeys.CLAUDE_4_5_SONNET_V1 ||
-      model === agentModelKeys.CLAUDE_4_6_SONNET
+      model === agentModelKeys.CLAUDE_4_6_SONNET ||
+      model === agentModelKeys.CLAUDE_4_6_OPUS
     ) {
       return {
         temperature: aiDefaultConfig.temperature,
