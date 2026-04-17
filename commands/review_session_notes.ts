@@ -1,0 +1,244 @@
+import { BaseCommand, flags } from '@adonisjs/core/ace'
+import type { CommandOptions } from '@adonisjs/core/types/ace'
+import { invokeSessionReview } from '#services/session_review_service'
+import fs from 'node:fs/promises'
+import app from '@adonisjs/core/services/app'
+import db from '@adonisjs/lucid/services/db'
+
+interface Issue {
+  error_type: string
+  section: string
+  description: string
+}
+
+interface ReviewOutput {
+  client_id: string | null
+  current_session_note_id: string
+  previous_session_note_id: string | null
+  current_session: string
+  previous_session: string | null
+  sme_issues: Issue[]
+  ai_issues: Issue[]
+}
+
+export default class ReviewSessionNotes extends BaseCommand {
+  static commandName = 'session:review-notes'
+
+  static description =
+    'Review session notes from database via AI - supports range-based indexing'
+
+  static options: CommandOptions = {
+    startApp: true,
+  }
+
+  @flags.number({ description: 'Start index (0-based, default: 0)' })
+  declare from?: number
+
+  @flags.number({ description: 'End index (exclusive, default: 60)' })
+  declare to?: number
+
+  @flags.boolean({ description: 'Only fetch notes that have SME issues (default: true)' })
+  declare issuesOnly?: boolean
+
+  @flags.string({ description: 'Output file (default: session_review_output.json)' })
+  declare output?: string
+
+  async run() {
+    try {
+      const from = this.from || 0
+      const to = this.to || 60
+      const issuesOnly = this.issuesOnly !== false
+      const outputFile = this.output || 'session_review_output.json'
+
+      if (from >= to) {
+        this.logger.error(`Invalid range: --from (${from}) must be less than --to (${to})`)
+        return
+      }
+
+      const [agentResult] = await db.from('agents').where('is_default', true).select('id', 'prompt')
+      if (!agentResult?.prompt) {
+        this.logger.error('No default agent found or agent has no prompt')
+        return
+      }
+
+      const count = to - from
+      this.logger.info(`Range: ${from} to ${to} (${count} notes), Issues only: ${issuesOnly}`)
+
+      const baseQuery = db
+        .from('session as s')
+        .leftJoin('patients as p', 's.patient_id', 'p.id')
+        .whereNull('s.deleted_at')
+
+      if (issuesOnly) {
+        baseQuery.whereExists((sub) => {
+          sub
+            .from('sme_issues as si')
+            .whereRaw('si.note_id = s.note_id')
+            .whereNull('si.deleted_at')
+            .select(db.raw('1'))
+        })
+      }
+
+      const notesToReview = await baseQuery
+        .offset(from)
+        .limit(count)
+        .orderBy('s.id', 'desc')
+        .select(
+          's.note_id',
+          's.session',
+          's.session_time',
+          's.patient_id',
+          's.parent_note_id',
+          'p.client_id'
+        )
+
+      this.logger.info(`Fetched ${notesToReview.length} notes`)
+
+      const results: ReviewOutput[] = []
+      let reviewed = 0
+      let skipped = 0
+
+      for (let i = 0; i < notesToReview.length; i++) {
+        const note = notesToReview[i]
+
+        try {
+          const smeIssues = await this.fetchSmeIssues(note.note_id)
+
+          if (smeIssues.length === 0) {
+            skipped++
+            continue
+          }
+
+          this.logger.info(`[${i + 1}/${notesToReview.length}] ${note.note_id} (${smeIssues.length} SME issues)`)
+
+          let previousSession: string | null = null
+          let previousNoteId: string | null = null
+          if (note.parent_note_id) {
+            const parent = await db
+              .from('session')
+              .where('id', note.parent_note_id)
+              .whereNull('deleted_at')
+              .select('note_id', 'session')
+              .first()
+
+            if (parent) {
+              previousNoteId = parent.note_id
+              previousSession = parent.session
+            }
+          }
+
+          const aiReview = await invokeSessionReview({
+            model_id: 'us.anthropic.claude-sonnet-4-6',
+            prompt: agentResult.prompt,
+            current_note: JSON.stringify({
+              noteId: note.note_id,
+              session: note.session,
+              sessionTime: note.session_time,
+              patientId: note.patient_id,
+              smeIssues,
+            }),
+            previous_note: previousSession
+              ? JSON.stringify({ session: previousSession })
+              : null,
+            temperature: 0.7,
+            top_p: 0.9,
+            top_k: 40,
+          })
+
+          const aiIssues = this.extractAiIssues(aiReview)
+
+          results.push({
+            client_id: note.client_id || null,
+            current_session_note_id: note.note_id,
+            previous_session_note_id: previousNoteId,
+            current_session: note.session,
+            previous_session: previousSession,
+            sme_issues: smeIssues,
+            ai_issues: aiIssues,
+          })
+
+          reviewed++
+          this.logger.info(`  Done (${aiIssues.length} AI issues)`)
+        } catch (error: any) {
+          this.logger.error(`  Failed: ${error.message}`)
+        }
+      }
+
+      const filePath = app.makePath(outputFile)
+      await fs.writeFile(filePath, JSON.stringify(results, null, 2))
+
+      this.logger.info('')
+      this.logger.info(`Reviewed: ${reviewed}, Skipped: ${skipped}`)
+      this.logger.info(`Output: ${filePath}`)
+    } catch (error: any) {
+      this.logger.error(`Fatal: ${error.message}`)
+    }
+  }
+
+  private async fetchSmeIssues(noteId: string): Promise<Issue[]> {
+    const rows = await db
+      .from('sme_issues')
+      .where('note_id', noteId)
+      .whereNull('sme_issues.deleted_at')
+      .leftJoin('issues_related_to', 'sme_issues.issues_related_to_id', 'issues_related_to.id')
+      .leftJoin('issue_descriptions', 'sme_issues.issue_description_id', 'issue_descriptions.id')
+      .leftJoin('error_types', 'sme_issues.error_type_id', 'error_types.id')
+      .select(
+        'error_types.name as error_type',
+        'issues_related_to.display_name as section',
+        'issue_descriptions.description'
+      )
+
+    return rows.map((row) => ({
+      error_type: row.error_type || 'unknown',
+      section: row.section || 'unknown',
+      description: row.description || 'unknown',
+    }))
+  }
+
+  private extractAiIssues(aiReview: any): Issue[] {
+    try {
+      const directIssues = aiReview?.data?.issues
+      if (Array.isArray(directIssues)) {
+        return directIssues.map((issue: any) => ({
+          error_type: (issue?.severity || 'unknown').toLowerCase(),
+          section: issue?.section?.trim() || 'unknown',
+          description:
+            issue?.description ||
+            issue?.severity_details ||
+            issue?.justification ||
+            'unknown',
+        }))
+      }
+
+      const rawText = String(
+        aiReview?.data?.output_text || aiReview?.data?.content?.[0]?.text || ''
+      ).trim()
+      if (!rawText) return []
+
+      const cleaned = rawText
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim()
+
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) return []
+
+      const parsed = JSON.parse(jsonMatch[0])
+      const parsedIssues = Array.isArray(parsed?.issues) ? parsed.issues : []
+
+      return parsedIssues.map((issue: any) => ({
+        error_type: (issue?.severity || 'unknown').toLowerCase(),
+        section: issue?.section?.trim() || 'unknown',
+        description:
+          issue?.description ||
+          issue?.severity_details ||
+          issue?.justification ||
+          'unknown',
+      }))
+    } catch {
+      return []
+    }
+  }
+}
