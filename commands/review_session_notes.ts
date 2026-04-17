@@ -58,9 +58,9 @@ export default class ReviewSessionNotes extends BaseCommand {
         return
       }
 
-      const [agentResult] = await db.from('agents').where('is_default', true).select('id', 'prompt')
-      if (!agentResult?.prompt) {
-        this.logger.error('No default agent found or agent has no prompt')
+      const [agentResult] = await db.from('agents').where('is_default', true).select('id', 'model')
+      if (!agentResult?.id) {
+        this.logger.error('No default agent found')
         return
       }
 
@@ -131,18 +131,9 @@ export default class ReviewSessionNotes extends BaseCommand {
           }
 
           const aiReview = await invokeSessionReview({
-            model_id: 'us.anthropic.claude-sonnet-4-6',
-            prompt: agentResult.prompt,
-            current_note: JSON.stringify({
-              noteId: note.note_id,
-              session: note.session,
-              sessionTime: note.session_time,
-              patientId: note.patient_id,
-              smeIssues,
-            }),
-            previous_note: previousSession
-              ? JSON.stringify({ session: previousSession })
-              : null,
+            note_id: note.note_id,
+            prompt_id: agentResult.id,
+            model_id: agentResult.model,
             temperature: 0.7,
             top_p: 0.9,
             top_k: 40,
@@ -201,7 +192,9 @@ export default class ReviewSessionNotes extends BaseCommand {
 
   private extractAiIssues(aiReview: any): Issue[] {
     try {
-      const directIssues = aiReview?.data?.issues
+      const directIssues =
+        aiReview?.data?.bedrockResponse?.issues ||
+        aiReview?.data?.issues
       if (Array.isArray(directIssues)) {
         return directIssues.map((issue: any) => ({
           error_type: (issue?.severity || 'unknown').toLowerCase(),
