@@ -242,37 +242,15 @@ export default class ReviewSessionNotes extends BaseCommand {
   private extractAiIssues(aiReview: any): Issue[] {
     try {
       const directIssues = aiReview?.data?.bedrockResponse?.issues || aiReview?.data?.issues
-      if (Array.isArray(directIssues)) {
-        return directIssues.map((issue: any) => ({
-          error_type: (issue?.severity || 'unknown').toLowerCase(),
-          section: issue?.section?.trim() || 'unknown',
-          description:
-            issue?.description || issue?.severity_details || issue?.justification || 'unknown',
-        }))
+      if (!Array.isArray(directIssues)) {
+        return []
       }
 
-      const rawText = String(
-        aiReview?.data?.output_text || aiReview?.data?.content?.[0]?.text || ''
-      ).trim()
-      if (!rawText) return []
-
-      const cleaned = rawText
-        .replace(/^```json\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim()
-
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) return []
-
-      const parsed = JSON.parse(jsonMatch[0])
-      const parsedIssues = Array.isArray(parsed?.issues) ? parsed.issues : []
-
-      return parsedIssues.map((issue: any) => ({
+      return directIssues.map((issue: any) => ({
         error_type: (issue?.severity || 'unknown').toLowerCase(),
         section: issue?.section?.trim() || 'unknown',
         description:
-          issue?.description || issue?.severity_details || issue?.justification || 'unknown',
+          issue?.severity_details || issue?.description || issue?.justification || 'unknown',
       }))
     } catch {
       return []
