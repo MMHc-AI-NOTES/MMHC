@@ -537,57 +537,62 @@ No previous sessions available for this patient`
         })
       })
 
-      const issues = parsedIssues.map((issue: any) => {
-        const templateMeta = templateMetadataMap.get(String(issue.description_id ?? ''))
-        const templateMatched = Boolean(templateMeta)
-        let severity = (templateMeta?.severity ?? issue.severity) as string | undefined
-        let pointsDeducted =
-          typeof templateMeta?.points === 'number'
-            ? templateMeta.points
-            : typeof issue.points_deducted === 'number'
-              ? issue.points_deducted
-              : 0
-
-        pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
-
-        if (!severity) {
-          if (pointsDeducted >= 25) {
-            severity = 'critical'
-          } else if (pointsDeducted >= 15) {
-            severity = 'moderate'
-          } else {
-            severity = 'minor'
+      const issues = parsedIssues.reduce<
+        Array<{
+          severity: string
+          description_id?: string | null
+          description?: string | null
+          severity_details?: string
+          template_matched?: boolean
+          points_deducted: number
+          section_id?: string | null
+          section: string
+          justification: string
+        }>
+      >((acc, issue: any) => {
+          const templateMeta = templateMetadataMap.get(String(issue.description_id ?? ''))
+          const templateMatched = Boolean(templateMeta)
+          if (!templateMatched) {
+            return acc
           }
-        }
 
-        const severityNormalized = (severity || '').toLowerCase()
-        let modelCriterionText = (issue.severity_details ?? '').trim()
-        if (!modelCriterionText && issue.justification) {
-          const justificationStr = String(issue.justification).trim()
-          const colonIndex = justificationStr.indexOf(':')
-          if (colonIndex > 0) {
-            modelCriterionText = justificationStr.slice(0, colonIndex).trim()
+          let severity = (templateMeta?.severity ?? issue.severity) as string | undefined
+          let pointsDeducted =
+            typeof templateMeta?.points === 'number'
+              ? templateMeta.points
+              : typeof issue.points_deducted === 'number'
+                ? issue.points_deducted
+                : 0
+
+          pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
+
+          if (!severity) {
+            if (pointsDeducted >= 25) {
+              severity = 'critical'
+            } else if (pointsDeducted >= 15) {
+              severity = 'moderate'
+            } else {
+              severity = 'minor'
+            }
           }
-        }
 
-        const dbDescription = templateMeta?.description ?? null
-        return {
-          severity: severityNormalized || 'minor',
-          description_id: issue.description_id ?? null,
-          description: modelCriterionText || issue.description || null,
-          severity_details:
-            dbDescription ??
-            (modelCriterionText ||
-              issue.description ||
-              (issue.severity_details ?? '').trim() ||
-              ''),
-          template_matched: templateMatched,
-          points_deducted: pointsDeducted,
-          section_id: templateMeta?.sectionId ?? issue.section_id ?? null,
-          section: templateMeta?.section ?? (issue.section || ''),
-          justification: issue.justification || '',
-        }
-      })
+          const severityNormalized = (severity || '').toLowerCase()
+          const dbDescription = templateMeta?.description ?? null
+
+          acc.push({
+            severity: severityNormalized || 'minor',
+            description_id: issue.description_id ?? null,
+            description: dbDescription ?? null,
+            severity_details: dbDescription ?? '',
+            template_matched: templateMatched,
+            points_deducted: pointsDeducted,
+            section_id: templateMeta?.sectionId ?? null,
+            section: templateMeta?.section ?? '',
+            justification: issue.justification || '',
+          })
+
+          return acc
+        }, [])
 
       let score = 100
       if (issues.length > 0) {

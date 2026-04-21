@@ -210,7 +210,6 @@ export default class ReviewSessionNotes extends BaseCommand {
 
       return directIssues
         .map((issue: any) => {
-          const templateMatched = issue?.template_matched === true
           const errorType = String(issue?.severity || '')
             .trim()
             .toLowerCase()
@@ -220,7 +219,6 @@ export default class ReviewSessionNotes extends BaseCommand {
           ).trim()
 
           if (
-            !templateMatched ||
             !errorType ||
             !section ||
             !description ||
