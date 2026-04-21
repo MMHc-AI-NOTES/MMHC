@@ -208,12 +208,36 @@ export default class ReviewSessionNotes extends BaseCommand {
         return []
       }
 
-      return directIssues.map((issue: any) => ({
-        error_type: (issue?.severity || 'unknown').toLowerCase(),
-        section: issue?.section?.trim() || 'unknown',
-        description:
-          issue?.severity_details || issue?.description || issue?.justification || 'unknown',
-      }))
+      return directIssues
+        .map((issue: any) => {
+          const templateMatched = issue?.template_matched === true
+          const errorType = String(issue?.severity || '')
+            .trim()
+            .toLowerCase()
+          const section = String(issue?.section || '').trim()
+          const description = String(
+            issue?.severity_details || issue?.description || issue?.justification || ''
+          ).trim()
+
+          if (
+            !templateMatched ||
+            !errorType ||
+            !section ||
+            !description ||
+            errorType === 'unknown' ||
+            section === 'unknown' ||
+            description === 'unknown'
+          ) {
+            return null
+          }
+
+          return {
+            error_type: errorType,
+            section,
+            description,
+          }
+        })
+        .filter((issue): issue is Issue => issue !== null)
     } catch {
       return []
     }

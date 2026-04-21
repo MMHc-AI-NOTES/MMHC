@@ -24,6 +24,7 @@ export interface BedrockEvaluationResponse {
     severity: string
     description_id?: string | null
     description?: string | null
+    template_matched?: boolean
     points_deducted: number
     section_id?: string
     section: string
@@ -285,6 +286,7 @@ function buildEvaluationResult(params: {
     description_id?: string | null
     description?: string | null
     severity_details?: string
+    template_matched?: boolean
     points_deducted: number
     section_id?: string | null
     section: string
@@ -344,6 +346,7 @@ export const evaluateChatWithBedrock = async (
     description_id?: string | null
     description?: string | null
     severity_details?: string
+    template_matched?: boolean
     points_deducted: number
     section_id?: string | null
     section: string
@@ -489,6 +492,7 @@ No previous sessions available for this patient`
         description_id?: string | null
         description?: string | null
         severity_details?: string
+        template_matched?: boolean
         points_deducted: number
         section_id?: string | null
         section: string
@@ -535,6 +539,7 @@ No previous sessions available for this patient`
 
       const issues = parsedIssues.map((issue: any) => {
         const templateMeta = templateMetadataMap.get(String(issue.description_id ?? ''))
+        const templateMatched = Boolean(templateMeta)
         let severity = (templateMeta?.severity ?? issue.severity) as string | undefined
         let pointsDeducted =
           typeof templateMeta?.points === 'number'
@@ -576,6 +581,7 @@ No previous sessions available for this patient`
               issue.description ||
               (issue.severity_details ?? '').trim() ||
               ''),
+          template_matched: templateMatched,
           points_deducted: pointsDeducted,
           section_id: templateMeta?.sectionId ?? issue.section_id ?? null,
           section: templateMeta?.section ?? (issue.section || ''),
