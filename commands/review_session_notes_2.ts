@@ -40,11 +40,16 @@ export default class ReviewSessionNotes extends BaseCommand {
   @flags.number({ description: 'End ID (inclusive, default: 60)' })
   declare to?: number
 
+  @flags.string({ description: 'Comma-separated session IDs, e.g. 1,2,3,100,200' })
+  declare ids?: string
+
   @flags.string({ description: 'Output file (default: session_review_output.json)' })
   declare output?: string
 
   async run() {
     try {
+      const selectedIds = this.parseIds(this.ids)
+      const hasExplicitIds = selectedIds.length > 0
       const from = this.from || 0
       const to = this.to || 60
       const now = new Date()
@@ -52,7 +57,12 @@ export default class ReviewSessionNotes extends BaseCommand {
       const epoch = Math.floor(now.getTime() / 1000)
       const outputFile = this.output || `AIReview-2-${date}-${epoch}.json`
 
-      if (from > to) {
+      if (this.ids && !hasExplicitIds) {
+        this.logger.error('Invalid --ids value. Use comma-separated numeric IDs, e.g. 1,2,3 or [1,2,3]')
+        return
+      }
+
+      if (!hasExplicitIds && from > to) {
         this.logger.error(
           `Invalid range: --from (${from}) must be less than or equal to --to (${to})`
         )
@@ -65,14 +75,24 @@ export default class ReviewSessionNotes extends BaseCommand {
         return
       }
 
-      this.logger.info(`Range: ID BETWEEN ${from} AND ${to}`)
+      this.logger.info(
+        hasExplicitIds
+          ? `Selected IDs: ${selectedIds.join(', ')}`
+          : `Range: ID BETWEEN ${from} AND ${to}`
+      )
 
-      const notesToReview = await db
+      let notesToReview = await db
         .from('session as s')
         .leftJoin('patients as p', 's.patient_id', 'p.id')
         .whereNull('s.deleted_at')
-        .whereBetween('s.id', [from, to])
+        .if(hasExplicitIds, (query) => {
+          query.whereIn('s.id', selectedIds)
+        })
+        .if(!hasExplicitIds, (query) => {
+          query.whereBetween('s.id', [from, to])
+        })
         .select(
+          's.id',
           's.note_id',
           's.session',
           's.session_time',
@@ -80,6 +100,21 @@ export default class ReviewSessionNotes extends BaseCommand {
           's.parent_note_id',
           'p.client_id'
         )
+
+      if (hasExplicitIds) {
+        const orderMap = new Map(selectedIds.map((id, index) => [id, index]))
+        notesToReview = notesToReview.sort(
+          (a, b) =>
+            (orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+        )
+
+        const foundIds = new Set(notesToReview.map((note) => note.id))
+        const missingIds = selectedIds.filter((id) => !foundIds.has(id))
+        if (missingIds.length > 0) {
+          this.logger.warning(`Missing session IDs: ${missingIds.join(', ')}`)
+        }
+      }
 
       this.logger.info(`Fetched ${notesToReview.length} notes`)
 
@@ -237,6 +272,23 @@ export default class ReviewSessionNotes extends BaseCommand {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private parseIds(rawIds?: string): number[] {
+    if (!rawIds) {
+      return []
+    }
+
+    const normalizedIds = rawIds.trim().replace(/^\[/, '').replace(/\]$/, '')
+
+    return Array.from(
+      new Set(
+        normalizedIds
+          .split(',')
+          .map((value) => Number(value.trim()))
+          .filter((value) => Number.isInteger(value) && value > 0)
+      )
+    )
   }
 
   private extractAiIssues(aiReview: any): Issue[] {
