@@ -11,6 +11,7 @@ interface Issue {
   error_type: string
   section: string
   description: string
+  comment: string | null
 }
 
 interface SmeReviewerIssues {
@@ -24,6 +25,7 @@ interface SmeIssueRow {
   error_type: string | null
   section: string | null
   description: string | null
+  comment: string | null
 }
 
 interface ReviewOutput {
@@ -242,7 +244,8 @@ export default class ReviewSessionNotes extends BaseCommand {
         'users.full_name as sme_reviewer',
         'error_types.name as error_type',
         'issues_related_to.display_name as section',
-        'issue_descriptions.description'
+        'issue_descriptions.description',
+        'sme_issues.comment'
       )) as SmeIssueRow[]
 
     const groupedIssues = new Map<number | string, SmeReviewerIssues>()
@@ -259,6 +262,7 @@ export default class ReviewSessionNotes extends BaseCommand {
         error_type: row.error_type || 'unknown',
         section: row.section || 'unknown',
         description: row.description || 'unknown',
+        comment: row.comment || null,
       })
 
       groupedIssues.set(reviewerKey, existingGroup)
@@ -275,7 +279,7 @@ export default class ReviewSessionNotes extends BaseCommand {
       }
 
       return directIssues
-        .map((issue: any) => {
+        .map((issue: any): Issue | null => {
           const errorType = String(issue?.severity || '')
             .trim()
             .toLowerCase()
@@ -299,6 +303,7 @@ export default class ReviewSessionNotes extends BaseCommand {
             error_type: errorType,
             section,
             description,
+            comment: null,
           }
         })
         .filter((issue): issue is Issue => issue !== null)
