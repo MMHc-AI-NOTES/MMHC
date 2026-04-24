@@ -50,10 +50,7 @@ const prepareSageMakerPayload = (input: any) => {
   return payload
 }
 
-export const invokeSageMakerEndpoint = async (
-  endpointName: string,
-  input: any
-): Promise<any> => {
+export const invokeSageMakerEndpoint = async (endpointName: string, input: any): Promise<any> => {
   try {
     const payload = prepareSageMakerPayload(input)
 

@@ -483,7 +483,9 @@ No previous sessions available for this patient`
       .replace(/\s*```$/i, '')
       .trim()
 
-    const normaliseModelIssues = async (issuesInput: any[]): Promise<{
+    const normaliseModelIssues = async (
+      issuesInput: any[]
+    ): Promise<{
       issues: Array<{
         severity: string
         description_id?: string | null
