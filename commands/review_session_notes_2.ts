@@ -15,13 +15,26 @@ interface Issue {
   description: string
 }
 
+interface SmeReviewerIssues {
+  sme_reviewer: string
+  issues: Issue[]
+}
+
+interface SmeIssueRow {
+  reviewer_id: number | null
+  sme_reviewer: string | null
+  error_type: string | null
+  section: string | null
+  description: string | null
+}
+
 interface ReviewOutput {
   client_id: string | null
   current_session_note_id: string
   previous_session_note_id: string | null
   current_session: string
   previous_session: string | null
-  sme_issues: Issue[]
+  sme_issues: SmeReviewerIssues[]
   ai_issues: Issue[]
 }
 
@@ -224,25 +237,43 @@ export default class ReviewSessionNotes extends BaseCommand {
     }
   }
 
-  private async fetchSmeIssues(noteId: string): Promise<Issue[]> {
-    const rows = await db
+  private async fetchSmeIssues(noteId: string): Promise<SmeReviewerIssues[]> {
+    const rows = (await db
       .from('sme_issues')
       .where('note_id', noteId)
       .whereNull('sme_issues.deleted_at')
       .leftJoin('issues_related_to', 'sme_issues.issues_related_to_id', 'issues_related_to.id')
       .leftJoin('issue_descriptions', 'sme_issues.issue_description_id', 'issue_descriptions.id')
       .leftJoin('error_types', 'sme_issues.error_type_id', 'error_types.id')
+      .leftJoin('users', 'sme_issues.reviewer_id', 'users.id')
       .select(
+        'sme_issues.reviewer_id',
+        'users.full_name as sme_reviewer',
         'error_types.name as error_type',
         'issues_related_to.display_name as section',
         'issue_descriptions.description'
-      )
+      )) as SmeIssueRow[]
 
-    return rows.map((row) => ({
-      error_type: row.error_type || 'unknown',
-      section: row.section || 'unknown',
-      description: row.description || 'unknown',
-    }))
+    const groupedIssues = new Map<number | string, SmeReviewerIssues>()
+
+    for (const row of rows) {
+      const reviewerName = row.sme_reviewer || 'unknown'
+      const reviewerKey = row.reviewer_id ?? `unknown:${reviewerName}`
+      const existingGroup = groupedIssues.get(reviewerKey) || {
+        sme_reviewer: reviewerName,
+        issues: [],
+      }
+
+      existingGroup.issues.push({
+        error_type: row.error_type || 'unknown',
+        section: row.section || 'unknown',
+        description: row.description || 'unknown',
+      })
+
+      groupedIssues.set(reviewerKey, existingGroup)
+    }
+
+    return Array.from(groupedIssues.values())
   }
 
   private async mapWithConcurrency<T, R>(
