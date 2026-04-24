@@ -7,7 +7,7 @@ import db from '@adonisjs/lucid/services/db'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { s3DatasetConfig } from '#config/services'
 
-const REVIEW_CHUNK_DELAY_MS = 10 * 1000
+const REVIEW_CHUNK_DELAY_MS = 5 * 1000
 
 interface Issue {
   error_type: string
@@ -83,7 +83,7 @@ export default class ReviewSessionNotes extends BaseCommand {
 
       this.logger.info(`Fetched ${notesToReview.length} notes`)
 
-      const concurrency = 30
+      const concurrency = 50
       this.logger.info(
         `Reviewing up to ${concurrency} notes in parallel with a ${REVIEW_CHUNK_DELAY_MS / 1000}s delay between chunks`
       )
