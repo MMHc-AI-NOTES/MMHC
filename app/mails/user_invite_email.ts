@@ -18,11 +18,11 @@ export default class UserInviteEmail extends BaseMail {
 
   prepare() {
     edge.global('companyLogo', emailCompanyLogo)
-    const { bcc, cc, data } = this.data
+    const { bcc, cc, data ,to} = this.data
 
 
     this.message
-      .to(this.data.to)
+      .to(to)
       .bcc(bcc || [])
       .cc(cc || [])
       .htmlView('emails/user_invite_email_mjml', {
