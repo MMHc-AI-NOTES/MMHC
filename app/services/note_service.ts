@@ -72,7 +72,8 @@ const extractReviewers = (serialized: any): any[] => {
   // From SME Issues through webhookVersions
   serialized.webhook_versions?.forEach((version: any) => {
     version.sme_issues?.forEach((issue: any) => {
-      addReviewer(issue.reviewer_id, issue.reviewer)
+      const reviewerId = issue.reviewer_id ?? issue.reviewerId
+      addReviewer(reviewerId, issue.reviewer)
     })
   })
 
@@ -90,7 +91,9 @@ const filterSmeIssuesInVersion = (version: any, user: User | null) => {
   }
 
   const smeIssues = version.sme_issues ?? version.smeIssues ?? []
-  const filteredIssues = smeIssues.filter((issue: any) => issue.reviewer_id === user.id)
+  const filteredIssues = smeIssues.filter(
+    (issue: any) => (issue.reviewer_id ?? issue.reviewerId) === user.id
+  )
 
   if (version.sme_issues) {
     return { ...version, sme_issues: filteredIssues }
