@@ -80,8 +80,9 @@ const extractReviewers = (serialized: any): any[] => {
     })
   })
 
-  // From SME Issues through webhookVersions
-  serialized.webhook_versions?.forEach((version: any) => {
+  // From SME Issues through webhook versions (camelCase or snake_case)
+  const webhookVersions = serialized.webhookVersions ?? serialized.webhook_versions ?? []
+  webhookVersions.forEach((version: any) => {
     version.sme_issues?.forEach((issue: any) => {
       addReviewer(issue.reviewer_id, issue.reviewer)
     })
