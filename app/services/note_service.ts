@@ -84,11 +84,31 @@ const extractReviewers = (serialized: any): any[] => {
   return Array.from(reviewersMap.values())
 }
 
+const filterSmeIssuesInVersion = (version: any, user: User | null) => {
+  if (!user || user.type === UserTypeEnum.superAdmin) {
+    return version
+  }
+
+  const smeIssues = version.sme_issues ?? version.smeIssues ?? []
+  const filteredIssues = smeIssues.filter((issue: any) => issue.reviewer_id === user.id)
+
+  if (version.sme_issues) {
+    return { ...version, sme_issues: filteredIssues }
+  }
+
+  if (version.smeIssues) {
+    return { ...version, smeIssues: filteredIssues }
+  }
+
+  return version
+}
+
 export const noteListing = async (
   page?: number,
   pageSize?: number,
   filters?: Array<any>,
-  sorts?: Array<any>
+  sorts?: Array<any>,
+  user?: User | null
 ) => {
   try {
     let query: any
@@ -242,10 +262,14 @@ export const noteListing = async (
             }
           : null
         const versions = serialized.webhookVersions ?? serialized.webhook_versions ?? []
-        const versionsWithPrev = versions.map((v: any) => ({
-          ...v,
-          previous_note: prev ? prev.serialize() : null,
-        }))
+        const versionsWithPrev = versions.map((v: any) => {
+          const versionWithPrev = {
+            ...v,
+            previous_note: prev ? prev.serialize() : null,
+          }
+
+          return filterSmeIssuesInVersion(versionWithPrev, user ?? null)
+        })
         serialized.webhookVersions = versionsWithPrev
         delete serialized.webhook_versions
         return {

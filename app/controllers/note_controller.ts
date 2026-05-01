@@ -26,7 +26,8 @@ export default class NotesController {
       const { page, pageSize, filters, sorts } = await paginationValidator.validate(
         ctx.request.body()
       )
-      const noteResponse = await noteListing(page, pageSize, filters, sorts)
+      const user = ctx.auth.getUserOrFail()
+      const noteResponse = await noteListing(page, pageSize, filters, sorts, user)
       return sendSuccess('Notes listed successfully', noteResponse)
     } catch (error) {
       console.log('Note listing error', error)
