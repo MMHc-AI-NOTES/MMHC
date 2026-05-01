@@ -31,7 +31,12 @@
                         <mj-section background-color="#E8F4EF" border-radius="8px" padding="24px" margin-bottom="24px">
                             <mj-column>
                                 <mj-text font-size="18px" line-height="1.4" padding="0px" color="#1a5f3f" font-weight="600">
-                                    Note ID: <a href="{{ intakeqFormNoteUrlBase }}{{ noteCard.clientId }}?type=2&itemId={{ noteCard.noteId }}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">{{ noteCard.noteId }}</a><span style="color:#2563eb;font-size:14px;margin-left:2px;">&#8599;</span>
+                                    Note ID: <a
+                                        href="{{ intakeqFormNoteUrlBase }}{{ noteCard.clientId }}?type=2&itemId={{ noteCard.noteId }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        style="color:#2563eb;text-decoration:none;"
+                                    >{{ noteCard.noteId }}</a>                                    <span style="color:#2563eb;font-size:14px;margin-left:2px;">&#8599;</span>
                                 </mj-text>
                                 <mj-text font-size="14px" line-height="1.6" padding="0px" color="#4A4A4A">
                                     Reviewer: <strong>{{ noteCard.reviewerName }}</strong>
@@ -62,7 +67,7 @@
                         </mj-section>
                     @endeach
                 @endif
-
+                
                 <mj-spacer height="24px">
                 </mj-spacer>
                 <mj-text font-size="14px" line-height="1.6" padding="0px" color="#6B6B6B">
@@ -71,5 +76,5 @@
             </mj-column>
         </mj-section>
     @endslot
-
+    
 @end
