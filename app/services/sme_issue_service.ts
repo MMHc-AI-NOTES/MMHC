@@ -24,7 +24,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { UserTypeEnum } from '#enums/user_type_enum'
 
 const shouldScopeToOwnSmeReviews = (currentUserId?: number, currentUserType?: number) => {
-  return currentUserType !== UserTypeEnum.superAdmin && Boolean(currentUserId)
+  return currentUserType === UserTypeEnum.sme_reviewer && Boolean(currentUserId)
 }
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {

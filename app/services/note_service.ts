@@ -14,7 +14,7 @@ import app from '@adonisjs/core/services/app'
 import fs from 'node:fs/promises'
 
 const shouldScopeToOwnReviews = (currentUserId?: number, currentUserType?: number) => {
-  return currentUserType !== UserTypeEnum.superAdmin && Boolean(currentUserId)
+  return currentUserType === UserTypeEnum.sme_reviewer && Boolean(currentUserId)
 }
 
 const scopeReviewerOwnedQuery = (query: any, currentUserId?: number, currentUserType?: number) => {

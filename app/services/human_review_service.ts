@@ -119,8 +119,8 @@ export const listHumanReviews = async (
       .preload('note')
       .preload('chat')
 
-    // If current user is not super admin, filter by reviewer_id matching current user's ID
-    if (currentUserType !== UserTypeEnum.superAdmin && currentUserId) {
+    // SME reviewers can only see their own reviews; admin roles can see all
+    if (currentUserType === UserTypeEnum.sme_reviewer && currentUserId) {
       humanReviewListings = humanReviewListings.where('reviewer_id', currentUserId)
     }
 
@@ -233,8 +233,8 @@ export const getHumanReview = async (
       .preload('note')
       .preload('chat')
 
-    // If current user is not super admin, filter by reviewer_id matching current user's ID
-    if (currentUserType !== UserTypeEnum.superAdmin && currentUserId) {
+    // SME reviewers can only see their own reviews; admin roles can see all
+    if (currentUserType === UserTypeEnum.sme_reviewer && currentUserId) {
       query = query.where('reviewer_id', currentUserId)
     }
 
