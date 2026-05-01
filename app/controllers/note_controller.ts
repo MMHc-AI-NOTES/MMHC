@@ -38,7 +38,8 @@ export default class NotesController {
   public async getWithChats(ctx: HttpContext) {
     try {
       const { noteId } = await noteIdValidator.validate(ctx.params)
-      const noteResponse = await getNoteWithChats(noteId)
+      const user = ctx.auth.getUserOrFail()
+      const noteResponse = await getNoteWithChats(noteId, user)
       return noteResponse
     } catch (error) {
       console.log('Note with chats getting error', error)

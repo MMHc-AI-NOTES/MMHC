@@ -289,7 +289,7 @@ export const noteListing = async (
   }
 }
 
-export const getNoteWithChats = async (noteId: string) => {
+export const getNoteWithChats = async (noteId: string, user?: User | null) => {
   try {
     const note = await Session.query()
       .where('note_id', noteId)
@@ -348,10 +348,14 @@ export const getNoteWithChats = async (noteId: string) => {
         }
       : null
     const versions = serialized.webhookVersions ?? serialized.webhook_versions ?? []
-    const versionsWithPrev = versions.map((v: any) => ({
-      ...v,
-      previous_note: prev ? prev.serialize() : null,
-    }))
+    const versionsWithPrev = versions.map((v: any) => {
+      const versionWithPrev = {
+        ...v,
+        previous_note: prev ? prev.serialize() : null,
+      }
+
+      return filterSmeIssuesInVersion(versionWithPrev, user ?? null)
+    })
     serialized.webhookVersions = versionsWithPrev
     delete serialized.webhook_versions
     const noteWithCount = {
