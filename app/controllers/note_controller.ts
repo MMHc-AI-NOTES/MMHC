@@ -26,7 +26,15 @@ export default class NotesController {
       const { page, pageSize, filters, sorts } = await paginationValidator.validate(
         ctx.request.body()
       )
-      const noteResponse = await noteListing(page, pageSize, filters, sorts)
+      const currentUser = ctx.auth.getUserOrFail()
+      const noteResponse = await noteListing(
+        page,
+        pageSize,
+        filters,
+        sorts,
+        currentUser.id,
+        currentUser.type
+      )
       return sendSuccess('Notes listed successfully', noteResponse)
     } catch (error) {
       console.log('Note listing error', error)
@@ -37,7 +45,8 @@ export default class NotesController {
   public async getWithChats(ctx: HttpContext) {
     try {
       const { noteId } = await noteIdValidator.validate(ctx.params)
-      const noteResponse = await getNoteWithChats(noteId)
+      const currentUser = ctx.auth.getUserOrFail()
+      const noteResponse = await getNoteWithChats(noteId, currentUser.id, currentUser.type)
       return noteResponse
     } catch (error) {
       console.log('Note with chats getting error', error)

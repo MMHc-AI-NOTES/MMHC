@@ -13,6 +13,17 @@ import type { updateNoteValidatorInterface } from '#validators/note_validator'
 import app from '@adonisjs/core/services/app'
 import fs from 'node:fs/promises'
 
+const shouldScopeToOwnReviews = (currentUserId?: number, currentUserType?: number) => {
+  return currentUserType !== UserTypeEnum.superAdmin && Boolean(currentUserId)
+}
+
+const scopeReviewerOwnedQuery = (query: any, currentUserId?: number, currentUserType?: number) => {
+  if (shouldScopeToOwnReviews(currentUserId, currentUserType)) {
+    query.where('reviewer_id', currentUserId!)
+  }
+  return query
+}
+
 /**
  * Serialize a note with nested children for listing.
  * Child notes don't include previous_note (parent) since parent is already in tree above.
@@ -88,7 +99,9 @@ export const noteListing = async (
   page?: number,
   pageSize?: number,
   filters?: Array<any>,
-  sorts?: Array<any>
+  sorts?: Array<any>,
+  currentUserId?: number,
+  currentUserType?: number
 ) => {
   try {
     let query: any
@@ -104,14 +117,17 @@ export const noteListing = async (
       })
       .preload('chats', (chatsQuery) => {
         chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
+          scopeReviewerOwnedQuery(humanReviewsQuery, currentUserId, currentUserType)
           humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
         })
       })
       .preload('humanReviews', (humanReviewsQuery) => {
+        scopeReviewerOwnedQuery(humanReviewsQuery, currentUserId, currentUserType)
         humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
       })
       .preload('webhookVersions', (versionsQuery) => {
         versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
+          scopeReviewerOwnedQuery(smeIssuesQuery, currentUserId, currentUserType)
           smeIssuesQuery.preload('errorType')
           smeIssuesQuery.preload('issuesRelatedTo')
           smeIssuesQuery.preload('issueDescription')
@@ -120,6 +136,7 @@ export const noteListing = async (
         versionsQuery.orderBy('id', 'desc')
       })
       .preload('noteReviewMarks', (marksQuery) => {
+        scopeReviewerOwnedQuery(marksQuery, currentUserId, currentUserType)
         marksQuery.preload('reviewer')
       })
       .withCount('chats', (countQuery) => {
@@ -265,7 +282,11 @@ export const noteListing = async (
   }
 }
 
-export const getNoteWithChats = async (noteId: string) => {
+export const getNoteWithChats = async (
+  noteId: string,
+  currentUserId?: number,
+  currentUserType?: number
+) => {
   try {
     const note = await Session.query()
       .where('note_id', noteId)
@@ -280,14 +301,17 @@ export const getNoteWithChats = async (noteId: string) => {
           .orderBy('id', 'desc')
           .limit(10)
           .preload('humanReviews', (humanReviewsQuery) => {
+            scopeReviewerOwnedQuery(humanReviewsQuery, currentUserId, currentUserType)
             humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
           })
       })
       .preload('humanReviews', (humanReviewsQuery) => {
+        scopeReviewerOwnedQuery(humanReviewsQuery, currentUserId, currentUserType)
         humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
       })
       .preload('webhookVersions', (versionsQuery) => {
         versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
+          scopeReviewerOwnedQuery(smeIssuesQuery, currentUserId, currentUserType)
           smeIssuesQuery.preload('errorType')
           smeIssuesQuery.preload('issuesRelatedTo')
           smeIssuesQuery.preload('issueDescription')
@@ -296,6 +320,7 @@ export const getNoteWithChats = async (noteId: string) => {
         versionsQuery.orderBy('id', 'desc')
       })
       .preload('noteReviewMarks', (marksQuery) => {
+        scopeReviewerOwnedQuery(marksQuery, currentUserId, currentUserType)
         marksQuery.preload('reviewer')
       })
       .withCount('chats', (countQuery) => {

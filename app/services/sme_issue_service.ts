@@ -21,6 +21,11 @@ import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { HttpContext } from '@adonisjs/core/http'
+import { UserTypeEnum } from '#enums/user_type_enum'
+
+const shouldScopeToOwnSmeReviews = (currentUserId?: number, currentUserType?: number) => {
+  return currentUserType !== UserTypeEnum.superAdmin && Boolean(currentUserId)
+}
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
@@ -152,7 +157,9 @@ export const listSmeIssues = async (
   page?: number,
   pageSize?: number,
   filters?: Array<any>,
-  sorts?: Array<any>
+  sorts?: Array<any>,
+  currentUserId?: number,
+  currentUserType?: number
 ) => {
   try {
     let query: any
@@ -181,6 +188,10 @@ export const listSmeIssues = async (
       .preload('errorType')
       .preload('issuesRelatedTo')
       .preload('issueDescription')
+
+    if (shouldScopeToOwnSmeReviews(currentUserId, currentUserType)) {
+      smeIssueListings = smeIssueListings.where('reviewer_id', currentUserId!)
+    }
 
     // Apply SME issue filters
     if (smeIssueFilters?.length) {
@@ -241,9 +252,9 @@ export const listSmeIssues = async (
   }
 }
 
-export const getSmeIssue = async (id: number) => {
+export const getSmeIssue = async (id: number, currentUserId?: number, currentUserType?: number) => {
   try {
-    const issue = await SmeIssue.query()
+    let query = SmeIssue.query()
       .where('id', id)
       .preload('reviewer')
       .preload('note')
@@ -251,7 +262,12 @@ export const getSmeIssue = async (id: number) => {
       .preload('errorType')
       .preload('issuesRelatedTo')
       .preload('issueDescription')
-      .first()
+
+    if (shouldScopeToOwnSmeReviews(currentUserId, currentUserType)) {
+      query = query.where('reviewer_id', currentUserId!)
+    }
+
+    const issue = await query.first()
 
     if (!issue) {
       return sendError('SME issue not found')

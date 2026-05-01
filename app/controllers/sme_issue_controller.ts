@@ -31,7 +31,15 @@ export default class SmeIssueController {
       const { page, pageSize, filters, sorts } = await paginationValidator.validate(
         ctx.request.body()
       )
-      const smeIssueResponse = await listSmeIssues(page, pageSize, filters, sorts)
+      const currentUser = ctx.auth.getUserOrFail()
+      const smeIssueResponse = await listSmeIssues(
+        page,
+        pageSize,
+        filters,
+        sorts,
+        currentUser.id,
+        currentUser.type
+      )
       return sendSuccess('SME issues listed successfully', smeIssueResponse)
     } catch (error) {
       console.log('SME issue listing error', error)
@@ -42,7 +50,8 @@ export default class SmeIssueController {
   public async show(ctx: HttpContext) {
     try {
       const { id } = await smeIssueIdValidator.validate(ctx.params)
-      const response = await getSmeIssue(id)
+      const currentUser = ctx.auth.getUserOrFail()
+      const response = await getSmeIssue(id, currentUser.id, currentUser.type)
       return response
     } catch (error) {
       console.log('SME issue getting error', error)
