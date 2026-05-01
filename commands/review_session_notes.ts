@@ -11,6 +11,21 @@ interface Issue {
   error_type: string
   section: string
   description: string
+  comment: string | null
+}
+
+interface SmeReviewerIssues {
+  sme_reviewer: string
+  issues: Issue[]
+}
+
+interface SmeIssueRow {
+  reviewer_id: number | null
+  sme_reviewer: string | null
+  error_type: string | null
+  section: string | null
+  description: string | null
+  comment: string | null
 }
 
 interface ReviewOutput {
@@ -19,7 +34,7 @@ interface ReviewOutput {
   previous_session_note_id: string | null
   current_session: string
   previous_session: string | null
-  sme_issues: Issue[]
+  sme_issues: SmeReviewerIssues[]
   ai_issues: Issue[]
 }
 
@@ -38,11 +53,16 @@ export default class ReviewSessionNotes extends BaseCommand {
   @flags.number({ description: 'End ID (inclusive, default: 60)' })
   declare to?: number
 
+  @flags.string({ description: 'Comma-separated session IDs, e.g. 1,2,3,100,200' })
+  declare ids?: string
+
   @flags.string({ description: 'Output file (default: session_review_output.json)' })
   declare output?: string
 
   async run() {
     try {
+      const selectedIds = this.parseIds(this.ids)
+      const hasExplicitIds = selectedIds.length > 0
       const from = this.from || 0
       const to = this.to || 60
       const now = new Date()
@@ -50,7 +70,12 @@ export default class ReviewSessionNotes extends BaseCommand {
       const epoch = Math.floor(now.getTime() / 1000)
       const outputFile = this.output || `AIReview-${date}-${epoch}.json`
 
-      if (from > to) {
+      if (this.ids && !hasExplicitIds) {
+        this.logger.error('Invalid --ids value. Use comma-separated numeric IDs, e.g. 1,2,3 or [1,2,3]')
+        return
+      }
+
+      if (!hasExplicitIds && from > to) {
         this.logger.error(
           `Invalid range: --from (${from}) must be less than or equal to --to (${to})`
         )
@@ -63,14 +88,24 @@ export default class ReviewSessionNotes extends BaseCommand {
         return
       }
 
-      this.logger.info(`Range: ID BETWEEN ${from} AND ${to}`)
+      this.logger.info(
+        hasExplicitIds
+          ? `Selected IDs: ${selectedIds.join(', ')}`
+          : `Range: ID BETWEEN ${from} AND ${to}`
+      )
 
-      const notesToReview = await db
+      let notesToReview = await db
         .from('session as s')
         .leftJoin('patients as p', 's.patient_id', 'p.id')
         .whereNull('s.deleted_at')
-        .whereBetween('s.id', [from, to])
+        .if(hasExplicitIds, (query) => {
+          query.whereIn('s.id', selectedIds)
+        })
+        .if(!hasExplicitIds, (query) => {
+          query.whereBetween('s.id', [from, to])
+        })
         .select(
+          's.id',
           's.note_id',
           's.session',
           's.session_time',
@@ -78,6 +113,21 @@ export default class ReviewSessionNotes extends BaseCommand {
           's.parent_note_id',
           'p.client_id'
         )
+
+      if (hasExplicitIds) {
+        const orderMap = new Map(selectedIds.map((id, index) => [id, index]))
+        notesToReview = notesToReview.sort(
+          (a, b) =>
+            (orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+        )
+
+        const foundIds = new Set(notesToReview.map((note) => note.id))
+        const missingIds = selectedIds.filter((id) => !foundIds.has(id))
+        if (missingIds.length > 0) {
+          this.logger.warning(`Missing session IDs: ${missingIds.join(', ')}`)
+        }
+      }
 
       this.logger.info(`Fetched ${notesToReview.length} notes`)
 
@@ -170,7 +220,7 @@ export default class ReviewSessionNotes extends BaseCommand {
         this.logger.success(`Upload successful: s3://${bucket}/${s3Key}`)
 
         // Remove local file after successful upload
-        // await fs.unlink(filePath)
+        await fs.unlink(filePath)
         this.logger.info(`Removed local file: ${filePath}`)
       } catch (s3Error: any) {
         this.logger.error(`S3 upload failed: ${s3Error?.message || String(s3Error)}`)
@@ -180,25 +230,45 @@ export default class ReviewSessionNotes extends BaseCommand {
     }
   }
 
-  private async fetchSmeIssues(noteId: string): Promise<Issue[]> {
-    const rows = await db
+  private async fetchSmeIssues(noteId: string): Promise<SmeReviewerIssues[]> {
+    const rows = (await db
       .from('sme_issues')
       .where('note_id', noteId)
       .whereNull('sme_issues.deleted_at')
       .leftJoin('issues_related_to', 'sme_issues.issues_related_to_id', 'issues_related_to.id')
       .leftJoin('issue_descriptions', 'sme_issues.issue_description_id', 'issue_descriptions.id')
       .leftJoin('error_types', 'sme_issues.error_type_id', 'error_types.id')
+      .leftJoin('users', 'sme_issues.reviewer_id', 'users.id')
       .select(
+        'sme_issues.reviewer_id',
+        'users.full_name as sme_reviewer',
         'error_types.name as error_type',
         'issues_related_to.display_name as section',
-        'issue_descriptions.description'
-      )
+        'issue_descriptions.description',
+        'sme_issues.comment'
+      )) as SmeIssueRow[]
 
-    return rows.map((row) => ({
-      error_type: row.error_type || 'unknown',
-      section: row.section || 'unknown',
-      description: row.description || 'unknown',
-    }))
+    const groupedIssues = new Map<number | string, SmeReviewerIssues>()
+
+    for (const row of rows) {
+      const reviewerName = row.sme_reviewer || 'unknown'
+      const reviewerKey = row.reviewer_id ?? `unknown:${reviewerName}`
+      const existingGroup = groupedIssues.get(reviewerKey) || {
+        sme_reviewer: reviewerName,
+        issues: [],
+      }
+
+      existingGroup.issues.push({
+        error_type: row.error_type || 'unknown',
+        section: row.section || 'unknown',
+        description: row.description || 'unknown',
+        comment: row.comment || null,
+      })
+
+      groupedIssues.set(reviewerKey, existingGroup)
+    }
+
+    return Array.from(groupedIssues.values())
   }
 
   private extractAiIssues(aiReview: any): Issue[] {
@@ -208,14 +278,54 @@ export default class ReviewSessionNotes extends BaseCommand {
         return []
       }
 
-      return directIssues.map((issue: any) => ({
-        error_type: (issue?.severity || 'unknown').toLowerCase(),
-        section: issue?.section?.trim() || 'unknown',
-        description:
-          issue?.severity_details || issue?.description || issue?.justification || 'unknown',
-      }))
+      return directIssues
+        .map((issue: any): Issue | null => {
+          const errorType = String(issue?.severity || '')
+            .trim()
+            .toLowerCase()
+          const section = String(issue?.section || '').trim()
+          const description = String(
+            issue?.severity_details || issue?.description || issue?.justification || ''
+          ).trim()
+
+          if (
+            !errorType ||
+            !section ||
+            !description ||
+            errorType === 'unknown' ||
+            section === 'unknown' ||
+            description === 'unknown'
+          ) {
+            return null
+          }
+
+          return {
+            error_type: errorType,
+            section,
+            description,
+            comment: null,
+          }
+        })
+        .filter((issue): issue is Issue => issue !== null)
     } catch {
       return []
     }
+  }
+
+  private parseIds(rawIds?: string): number[] {
+    if (!rawIds) {
+      return []
+    }
+
+    const normalizedIds = rawIds.trim().replace(/^\[/, '').replace(/\]$/, '')
+
+    return Array.from(
+      new Set(
+        normalizedIds
+          .split(',')
+          .map((value) => Number(value.trim()))
+          .filter((value) => Number.isInteger(value) && value > 0)
+      )
+    )
   }
 }
