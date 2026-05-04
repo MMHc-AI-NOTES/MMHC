@@ -18,6 +18,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
 import vine from '@vinejs/vine'
+import { UserTypeEnum } from '#enums/user_type_enum'
 
 const smeIssueIdValidator = vine.compile(
   vine.object({
@@ -53,6 +54,10 @@ export default class SmeIssueController {
   public async create(ctx: HttpContext) {
     try {
       const payload = await createSmeIssueValidator.validate(ctx.request.body())
+      const currentUser = ctx.auth.getUserOrFail()
+      if (currentUser.type !== UserTypeEnum.superAdmin) {
+        payload.reviewer_id = currentUser.id
+      }
       const smeIssueResponse = await createSmeIssue(payload)
       return smeIssueResponse
     } catch (error) {

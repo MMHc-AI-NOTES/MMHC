@@ -18,9 +18,8 @@ export default class UserInviteEmail extends BaseMail {
 
   prepare() {
     edge.global('companyLogo', emailCompanyLogo)
-    const { bcc, cc, data } = this.data
+    const { bcc, cc, data ,to} = this.data
 
-    const to = emailConfig.isTest ? emailConfig.testAddresses.join(',') : this.data.to
 
     this.message
       .to(to)
