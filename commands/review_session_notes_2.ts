@@ -1,6 +1,6 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-// import { invokeSessionReview } from '#services/session_review_service'
+import { invokeSessionReview } from '#services/session_review_service'
 import fs from 'node:fs/promises'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
@@ -39,7 +39,7 @@ interface ReviewOutput {
   cpt_code: string | null
   diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null
   sme_issues: SmeReviewerIssues[]
-  // ai_issues: Issue[]
+  ai_issues: Issue[]
 }
 
 export default class ReviewSessionNotes extends BaseCommand {
@@ -62,6 +62,9 @@ export default class ReviewSessionNotes extends BaseCommand {
 
   @flags.string({ description: 'Output file (default: session_review_output.json)' })
   declare output?: string
+
+  @flags.boolean({ description: 'Run AI review (default: false)' })
+  declare aiReview?: boolean
 
   async run() {
     try {
@@ -190,18 +193,23 @@ export default class ReviewSessionNotes extends BaseCommand {
               diagnosis = Array.isArray(raw) ? raw : null
             }
 
-            // const aiReview = await invokeSessionReview({
-            //   note_id: note.note_id,
-            //   prompt_id: agentResult.id,
-            //   model_id: agentResult.model,
-            //   temperature: 0.5,
-            //   top_p: 0.9,
-            //   top_k: 40,
-            // })
+            let aiIssues: Issue[] = []
 
-            // const aiIssues = this.extractAiIssues(aiReview)
+            if (this.aiReview) {
+              const aiReview = await invokeSessionReview({
+                note_id: note.note_id,
+                prompt_id: agentResult.id,
+                model_id: agentResult.model,
+                temperature: 0.5,
+                top_p: 0.9,
+                top_k: 40,
+              })
 
-            // this.logger.info(`  Done ${note.note_id} (${aiIssues.length} AI issues)`)
+              aiIssues = this.extractAiIssues(aiReview)
+              this.logger.info(`  Done ${note.note_id} (${aiIssues.length} AI issues)`)
+            } else {
+              this.logger.info(`  Done ${note.note_id} (AI review skipped)`)
+            }
 
             return {
               client_id: note.client_id || null,
@@ -210,7 +218,7 @@ export default class ReviewSessionNotes extends BaseCommand {
               current_session: note.session,
               previous_session: previousSession,
               sme_issues: smeIssues,
-              // ai_issues: aiIssues,
+              ai_issues: aiIssues,
               cpt_code: note.cpt_code ?? null,
               diagnosis: diagnosis ?? null,
             }
@@ -230,9 +238,6 @@ export default class ReviewSessionNotes extends BaseCommand {
       this.logger.info('')
       this.logger.info(`Reviewed: ${reviewed}`)
       this.logger.info(`Output: ${filePath}`)
-
-      // console.log(`Total results: ${results.length}`)
-      // console.log('Sample entry:', JSON.stringify(results[0], null, 2))
 
       // Upload to S3
       try {
@@ -356,46 +361,46 @@ export default class ReviewSessionNotes extends BaseCommand {
     )
   }
 
-  //   private extractAiIssues(aiReview: any): Issue[] {
-  //     try {
-  //       const directIssues = aiReview?.data?.bedrockResponse?.issues || aiReview?.data?.issues
-  //       if (!Array.isArray(directIssues)) {
-  //         return []
-  //       }
+  private extractAiIssues(aiReview: any): Issue[] {
+    try {
+      const directIssues = aiReview?.data?.bedrockResponse?.issues || aiReview?.data?.issues
+      if (!Array.isArray(directIssues)) {
+        return []
+      }
 
-  //       return directIssues
-  //         .map((issue: any): Issue | null => {
-  //           const errorType = String(issue?.severity || '')
-  //             .trim()
-  //             .toLowerCase()
-  //           const section = String(issue?.section || '').trim()
-  //           const description = String(
-  //             issue?.severity_details || issue?.description || issue?.justification || ''
-  //           ).trim()
+      return directIssues
+        .map((issue: any): Issue | null => {
+          const errorType = String(issue?.severity || '')
+            .trim()
+            .toLowerCase()
+          const section = String(issue?.section || '').trim()
+          const description = String(
+            issue?.severity_details || issue?.description || issue?.justification || ''
+          ).trim()
 
-  //           if (
-  //             !errorType ||
-  //             !section ||
-  //             !description ||
-  //             errorType === 'unknown' ||
-  //             section === 'unknown' ||
-  //             description === 'unknown'
-  //           ) {
-  //             return null
-  //           }
+          if (
+            !errorType ||
+            !section ||
+            !description ||
+            errorType === 'unknown' ||
+            section === 'unknown' ||
+            description === 'unknown'
+          ) {
+            return null
+          }
 
-  //           return {
-  //             error_type: errorType,
-  //             section,
-  //             description,
-  //             comment: null,
-  //           }
-  //         })
-  //         .filter((issue): issue is Issue => issue !== null)
-  //     } catch {
-  //       return []
-  //     }
-  // //   }
-  // //
-  // }
+          return {
+            error_type: errorType,
+            section,
+            description,
+            comment: null,
+          }
+        })
+        .filter((issue): issue is Issue => issue !== null)
+    } catch {
+      return []
+    }
+    //   }
+    //
+  }
 }
