@@ -1,6 +1,6 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import { invokeSessionReview } from '#services/session_review_service'
+// import { invokeSessionReview } from '#services/session_review_service'
 import fs from 'node:fs/promises'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
@@ -36,8 +36,10 @@ interface ReviewOutput {
   previous_session_note_id: string | null
   current_session: string
   previous_session: string | null
+  cpt_code: string | null
+  diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null
   sme_issues: SmeReviewerIssues[]
-  ai_issues: Issue[]
+  // ai_issues: Issue[]
 }
 
 export default class ReviewSessionNotes extends BaseCommand {
@@ -73,7 +75,9 @@ export default class ReviewSessionNotes extends BaseCommand {
       const outputFile = this.output || `AIReview-2-${date}-${epoch}.json`
 
       if (this.ids && !hasExplicitIds) {
-        this.logger.error('Invalid --ids value. Use comma-separated numeric IDs, e.g. 1,2,3 or [1,2,3]')
+        this.logger.error(
+          'Invalid --ids value. Use comma-separated numeric IDs, e.g. 1,2,3 or [1,2,3]'
+        )
         return
       }
 
@@ -99,6 +103,7 @@ export default class ReviewSessionNotes extends BaseCommand {
       let notesToReview = await db
         .from('session as s')
         .leftJoin('patients as p', 's.patient_id', 'p.id')
+        .leftJoin('cpt_codes as c', 's.cpt_code_id', 'c.id')
         .whereNull('s.deleted_at')
         .if(hasExplicitIds, (query) => {
           query.whereIn('s.id', selectedIds)
@@ -113,7 +118,8 @@ export default class ReviewSessionNotes extends BaseCommand {
           's.session_time',
           's.patient_id',
           's.parent_note_id',
-          'p.client_id'
+          'p.client_id',
+          'c.code as cpt_code'
         )
 
       if (hasExplicitIds) {
@@ -165,18 +171,37 @@ export default class ReviewSessionNotes extends BaseCommand {
               }
             }
 
-            const aiReview = await invokeSessionReview({
-              note_id: note.note_id,
-              prompt_id: agentResult.id,
-              model_id: agentResult.model,
-              temperature: 0.5,
-              top_p: 0.9,
-              top_k: 40,
-            })
+            // Fetch diagnosis from audit_logs metadata
+            let diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null = null
+            const auditLog = await db
+              .from('audit_logs')
+              .where('model_id', note.id)
+              .where('action', 'webhook_session_received')
+              .select('metadata')
+              .first()
 
-            const aiIssues = this.extractAiIssues(aiReview)
+            if (auditLog?.metadata) {
+              const meta =
+                typeof auditLog.metadata === 'string'
+                  ? JSON.parse(auditLog.metadata)
+                  : auditLog.metadata
 
-            this.logger.info(`  Done ${note.note_id} (${aiIssues.length} AI issues)`)
+              const raw = meta?.raw_payload?.Diagnosis
+              diagnosis = Array.isArray(raw) ? raw : null
+            }
+
+            // const aiReview = await invokeSessionReview({
+            //   note_id: note.note_id,
+            //   prompt_id: agentResult.id,
+            //   model_id: agentResult.model,
+            //   temperature: 0.5,
+            //   top_p: 0.9,
+            //   top_k: 40,
+            // })
+
+            // const aiIssues = this.extractAiIssues(aiReview)
+
+            // this.logger.info(`  Done ${note.note_id} (${aiIssues.length} AI issues)`)
 
             return {
               client_id: note.client_id || null,
@@ -185,7 +210,9 @@ export default class ReviewSessionNotes extends BaseCommand {
               current_session: note.session,
               previous_session: previousSession,
               sme_issues: smeIssues,
-              ai_issues: aiIssues,
+              // ai_issues: aiIssues,
+              cpt_code: note.cpt_code ?? null,
+              diagnosis: diagnosis ?? null,
             }
           } catch (error: any) {
             this.logger.error(`  Failed ${note.note_id}: ${error.message}`)
@@ -203,6 +230,9 @@ export default class ReviewSessionNotes extends BaseCommand {
       this.logger.info('')
       this.logger.info(`Reviewed: ${reviewed}`)
       this.logger.info(`Output: ${filePath}`)
+
+      console.log(`Total results: ${results.length}`)
+      console.log('Sample entry:', JSON.stringify(results[0], null, 2))
 
       // Upload to S3
       try {
@@ -326,44 +356,46 @@ export default class ReviewSessionNotes extends BaseCommand {
     )
   }
 
-  private extractAiIssues(aiReview: any): Issue[] {
-    try {
-      const directIssues = aiReview?.data?.bedrockResponse?.issues || aiReview?.data?.issues
-      if (!Array.isArray(directIssues)) {
-        return []
-      }
+  //   private extractAiIssues(aiReview: any): Issue[] {
+  //     try {
+  //       const directIssues = aiReview?.data?.bedrockResponse?.issues || aiReview?.data?.issues
+  //       if (!Array.isArray(directIssues)) {
+  //         return []
+  //       }
 
-      return directIssues
-        .map((issue: any): Issue | null => {
-          const errorType = String(issue?.severity || '')
-            .trim()
-            .toLowerCase()
-          const section = String(issue?.section || '').trim()
-          const description = String(
-            issue?.severity_details || issue?.description || issue?.justification || ''
-          ).trim()
+  //       return directIssues
+  //         .map((issue: any): Issue | null => {
+  //           const errorType = String(issue?.severity || '')
+  //             .trim()
+  //             .toLowerCase()
+  //           const section = String(issue?.section || '').trim()
+  //           const description = String(
+  //             issue?.severity_details || issue?.description || issue?.justification || ''
+  //           ).trim()
 
-          if (
-            !errorType ||
-            !section ||
-            !description ||
-            errorType === 'unknown' ||
-            section === 'unknown' ||
-            description === 'unknown'
-          ) {
-            return null
-          }
+  //           if (
+  //             !errorType ||
+  //             !section ||
+  //             !description ||
+  //             errorType === 'unknown' ||
+  //             section === 'unknown' ||
+  //             description === 'unknown'
+  //           ) {
+  //             return null
+  //           }
 
-          return {
-            error_type: errorType,
-            section,
-            description,
-            comment: null,
-          }
-        })
-        .filter((issue): issue is Issue => issue !== null)
-    } catch {
-      return []
-    }
-  }
+  //           return {
+  //             error_type: errorType,
+  //             section,
+  //             description,
+  //             comment: null,
+  //           }
+  //         })
+  //         .filter((issue): issue is Issue => issue !== null)
+  //     } catch {
+  //       return []
+  //     }
+  // //   }
+  // //
+  // }
 }
