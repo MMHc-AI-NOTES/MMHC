@@ -231,8 +231,8 @@ export default class ReviewSessionNotes extends BaseCommand {
       this.logger.info(`Reviewed: ${reviewed}`)
       this.logger.info(`Output: ${filePath}`)
 
-      console.log(`Total results: ${results.length}`)
-      console.log('Sample entry:', JSON.stringify(results[0], null, 2))
+      // console.log(`Total results: ${results.length}`)
+      // console.log('Sample entry:', JSON.stringify(results[0], null, 2))
 
       // Upload to S3
       try {
