@@ -12,6 +12,7 @@ import Chat from '#models/chat'
 import type { updateNoteValidatorInterface } from '#validators/note_validator'
 import app from '@adonisjs/core/services/app'
 import fs from 'node:fs/promises'
+import db from '@adonisjs/lucid/services/db'
 
 /**
  * Serialize a note with nested children for listing.
@@ -338,6 +339,18 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       throw new Error('Note not found for the provided note ID')
     }
 
+    // Fetch diagnosis from audit_logs
+    let diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null = null
+    const auditLog = await db.from('audit_logs').where('note_id', noteId).select('metadata').first()
+
+    if (auditLog?.metadata) {
+      const meta =
+        typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
+
+      const raw = meta?.raw_payload?.Diagnosis
+      diagnosis = Array.isArray(raw) ? raw : null
+    }
+
     const serialized = note.serialize()
     // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.
     const isCurrentNote = serialized.parent_note_id === null
@@ -369,6 +382,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       chat_count: note.$extras.chat_count || 0,
       version_count: note.$extras.version_count || 0,
       reviewers: extractReviewers(serialized),
+      diagnosis,
     }
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)
