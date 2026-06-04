@@ -340,7 +340,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
     }
 
     // Fetch diagnosis from audit_logs table
-    let diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null = null
+    let diagnosis: Array<any> | [] = [] 
     const auditLog = await db.from('audit_logs').where('note_id', noteId).select('metadata').first()
 
     if (auditLog?.metadata) {
@@ -348,7 +348,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
         typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
 
       const raw = meta?.raw_payload?.Diagnosis
-      diagnosis = Array.isArray(raw) ? raw : null
+      diagnosis = Array.isArray(raw) ? raw : []
     }
 
     const serialized = note.serialize()
