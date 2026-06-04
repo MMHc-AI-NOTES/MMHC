@@ -37,7 +37,7 @@ interface ReviewOutput {
   current_session: string
   previous_session: string | null
   cpt_code: string | null
-  diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null
+  diagnosis: Array<any> | []
   sme_issues: SmeReviewerIssues[]
   ai_issues: Issue[]
 }
@@ -175,7 +175,7 @@ export default class ReviewSessionNotes extends BaseCommand {
             }
 
             // Fetch diagnosis from audit_logs metadata
-            let diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null = null
+            let diagnosis: Array<{ id: string; text: string; office_use: boolean }> = []
             const auditLog = await db
               .from('audit_logs')
               .where('model_id', note.id)
@@ -190,7 +190,7 @@ export default class ReviewSessionNotes extends BaseCommand {
                   : auditLog.metadata
 
               const raw = meta?.raw_payload?.Diagnosis
-              diagnosis = Array.isArray(raw) ? raw : null
+              diagnosis = Array.isArray(raw) ? raw : []
             }
 
             let aiIssues: Issue[] = []
@@ -220,7 +220,7 @@ export default class ReviewSessionNotes extends BaseCommand {
               sme_issues: smeIssues,
               ai_issues: aiIssues,
               cpt_code: note.cpt_code ?? null,
-              diagnosis: diagnosis ?? null,
+              diagnosis: diagnosis ?? [],
             }
           } catch (error: any) {
             this.logger.error(`  Failed ${note.note_id}: ${error.message}`)
