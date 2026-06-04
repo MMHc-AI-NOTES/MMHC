@@ -339,7 +339,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       throw new Error('Note not found for the provided note ID')
     }
 
-    // Fetch diagnosis from audit_logs
+    // Fetch diagnosis from audit_logs table
     let diagnosis: Array<{ id: string; text: string; office_use: boolean }> | null = null
     const auditLog = await db.from('audit_logs').where('note_id', noteId).select('metadata').first()
 
