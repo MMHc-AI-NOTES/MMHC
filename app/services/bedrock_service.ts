@@ -513,10 +513,10 @@ No previous sessions available for this patient`
 
       const templates = descriptionIds.length
         ? await SmeIssuesTamplate.query()
-            .whereIn('description_id', descriptionIds)
-            .preload('issueDescription')
-            .preload('errorType')
-            .preload('issuesRelatedTo')
+          .whereIn('description_id', descriptionIds)
+          .preload('issueDescription')
+          .preload('errorType')
+          .preload('issuesRelatedTo')
         : []
 
       const templateMetadataMap = new Map<
@@ -552,49 +552,49 @@ No previous sessions available for this patient`
           justification: string
         }>
       >((acc, issue: any) => {
-          const templateMeta = templateMetadataMap.get(String(issue.description_id ?? ''))
-          const templateMatched = Boolean(templateMeta)
-          if (!templateMatched) {
-            return acc
-          }
-
-          let severity = (templateMeta?.severity ?? issue.severity) as string | undefined
-          let pointsDeducted =
-            typeof templateMeta?.points === 'number'
-              ? templateMeta.points
-              : typeof issue.points_deducted === 'number'
-                ? issue.points_deducted
-                : 0
-
-          pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
-
-          if (!severity) {
-            if (pointsDeducted >= 25) {
-              severity = 'critical'
-            } else if (pointsDeducted >= 15) {
-              severity = 'moderate'
-            } else {
-              severity = 'minor'
-            }
-          }
-
-          const severityNormalized = (severity || '').toLowerCase()
-          const dbDescription = templateMeta?.description ?? null
-
-          acc.push({
-            severity: severityNormalized || 'minor',
-            description_id: issue.description_id ?? null,
-            description: dbDescription ?? null,
-            severity_details: dbDescription ?? '',
-            template_matched: templateMatched,
-            points_deducted: pointsDeducted,
-            section_id: templateMeta?.sectionId ?? null,
-            section: templateMeta?.section ?? '',
-            justification: issue.justification || '',
-          })
-
+        const templateMeta = templateMetadataMap.get(String(issue.description_id ?? ''))
+        const templateMatched = Boolean(templateMeta)
+        if (!templateMatched) {
           return acc
-        }, [])
+        }
+
+        let severity = (templateMeta?.severity ?? issue.severity) as string | undefined
+        let pointsDeducted =
+          typeof templateMeta?.points === 'number'
+            ? templateMeta.points
+            : typeof issue.points_deducted === 'number'
+              ? issue.points_deducted
+              : 0
+
+        pointsDeducted = roundToNearestFive(Math.abs(pointsDeducted))
+
+        if (!severity) {
+          if (pointsDeducted >= 25) {
+            severity = 'critical'
+          } else if (pointsDeducted >= 15) {
+            severity = 'moderate'
+          } else {
+            severity = 'minor'
+          }
+        }
+
+        const severityNormalized = (severity || '').toLowerCase()
+        const dbDescription = templateMeta?.description ?? null
+
+        acc.push({
+          severity: severityNormalized || 'minor',
+          description_id: issue.description_id ?? null,
+          description: dbDescription ?? null,
+          severity_details: dbDescription ?? '',
+          template_matched: templateMatched,
+          points_deducted: pointsDeducted,
+          section_id: templateMeta?.sectionId ?? null,
+          section: templateMeta?.section ?? '',
+          justification: issue.justification || '',
+        })
+
+        return acc
+      }, [])
 
       let score = 100
       if (issues.length > 0) {
