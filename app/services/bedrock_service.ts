@@ -513,10 +513,10 @@ No previous sessions available for this patient`
 
       const templates = descriptionIds.length
         ? await SmeIssuesTamplate.query()
-          .whereIn('description_id', descriptionIds)
-          .preload('issueDescription')
-          .preload('errorType')
-          .preload('issuesRelatedTo')
+            .whereIn('description_id', descriptionIds)
+            .preload('issueDescription')
+            .preload('errorType')
+            .preload('issuesRelatedTo')
         : []
 
       const templateMetadataMap = new Map<

@@ -1,7 +1,4 @@
-import {
-  createMcpChatValidator,
-  mcpChatIdValidator,
-} from '#validators/mcp_chat_validator'
+import { createMcpChatValidator, mcpChatIdValidator } from '#validators/mcp_chat_validator'
 import { paginationValidator } from '#validators/pagination_validator'
 import {
   createMcpChat,

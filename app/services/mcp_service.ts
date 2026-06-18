@@ -168,11 +168,9 @@ async function loadTemplateLookups(issueTexts: string[]): Promise<{
 
   const templates = await SmeIssuesTamplate.query()
     .where((query) => {
-      query
-        .whereIn('description_id', uniqueTexts)
-        .orWhereHas('issueDescription', (issueQuery) => {
-          issueQuery.whereIn('description', uniqueTexts)
-        })
+      query.whereIn('description_id', uniqueTexts).orWhereHas('issueDescription', (issueQuery) => {
+        issueQuery.whereIn('description', uniqueTexts)
+      })
     })
     .preload('issueDescription')
     .preload('errorType')
@@ -421,7 +419,10 @@ async function normaliseMcpIssues(aiIssues: McpAiIssue[]): Promise<{
 
   let score = 100
   if (issues.length > 0) {
-    const totalDeduction = issues.reduce((sum, item) => sum + Math.abs(item.points_deducted ?? 0), 0)
+    const totalDeduction = issues.reduce(
+      (sum, item) => sum + Math.abs(item.points_deducted ?? 0),
+      0
+    )
     score = Math.max(0, 100 - totalDeduction)
   }
   // console.log('issues', issues)
@@ -562,5 +563,3 @@ export function toMcpApiResponse(evaluation: NormalizedEvaluationResult): McpSco
 
   throw new Error(evaluation.validation_result?.message ?? 'MCP API returned no response')
 }
-
-

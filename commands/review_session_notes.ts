@@ -71,7 +71,9 @@ export default class ReviewSessionNotes extends BaseCommand {
       const outputFile = this.output || `AIReview-${date}-${epoch}.json`
 
       if (this.ids && !hasExplicitIds) {
-        this.logger.error('Invalid --ids value. Use comma-separated numeric IDs, e.g. 1,2,3 or [1,2,3]')
+        this.logger.error(
+          'Invalid --ids value. Use comma-separated numeric IDs, e.g. 1,2,3 or [1,2,3]'
+        )
         return
       }
 

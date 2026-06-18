@@ -85,9 +85,7 @@ export function buildEvaluationParams(data: {
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
-export async function evaluateNote(
-  params: EvaluationParams
-): Promise<NormalizedEvaluationResult> {
+export async function evaluateNote(params: EvaluationParams): Promise<NormalizedEvaluationResult> {
   console.log(`[EvaluationRouter] Provider: ${params.provider}`)
 
   if (params.provider === 'MCP') {
