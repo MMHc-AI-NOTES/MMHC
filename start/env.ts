@@ -51,8 +51,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   BEDROCK_MAX_TOKENS: Env.schema.number.optional(),
   BEDROCK_ANTHROPIC_VERSION: Env.schema.string.optional(),
   AI_REVIEW: Env.schema.enum.optional(['BEDROCK', 'MCP'] as const),
-  MCP_API_URL: Env.schema.string.optional(),
-  MCP_TOKEN: Env.schema.string.optional(),
+  MCP_API_URL: Env.schema.string(),
+  MCP_TOKEN: Env.schema.string(),
 
   /*
   |----------------------------------------------------------
