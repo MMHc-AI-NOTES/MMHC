@@ -2,7 +2,6 @@ import Session from '#models/session'
 import Patient from '#models/patient'
 
 export async function resolvePreviousSessionContent(session: Session): Promise<string | undefined> {
-
   if (!session.patient && session.patientId) {
     await session.load('patient')
   }

@@ -457,7 +457,7 @@ export async function evaluateChatWithMcp(params: {
   }
 
   const userInput = buildUserInput(currentSession, previousSession)
-  logger.info({ requestBody }, "requestBody")
+  logger.info({ requestBody }, 'requestBody')
   let mcpResponse: McpScoreNoteResponse
   let rawResponse: string
 
@@ -477,10 +477,10 @@ export async function evaluateChatWithMcp(params: {
     rawResponse = await res.text()
 
     if (!res.ok) {
-      logger.error({ rawResponse }, "MCP API returned HTTP error response")
+      logger.error({ rawResponse }, 'MCP API returned HTTP error response')
       throw new Error(`MCP API returned HTTP ${res.status}: ${rawResponse}`)
     }
-    logger.info({ rawResponse }, "rawResponse")
+    logger.info({ rawResponse }, 'rawResponse')
     mcpResponse = JSON.parse(rawResponse) as McpScoreNoteResponse
   } catch (error: any) {
     logger.error({ error }, 'MCP API call failed')
@@ -580,7 +580,7 @@ export function toMcpApiResponse(evaluation: NormalizedEvaluationResult): McpSco
     try {
       return JSON.parse(evaluation.raw_response) as McpScoreNoteResponse
     } catch {
-      logger.error({ evaluation }, "MCP API returned no response")
+      logger.error({ evaluation }, 'MCP API returned no response')
     }
   }
 

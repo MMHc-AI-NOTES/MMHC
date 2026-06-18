@@ -72,10 +72,7 @@ export const createMcpChat = async (
   const session = await Session.query().where('note_id', reqData.note_id).preload('patient').first()
 
   if (!session) {
-    ctx?.logger.error(
-      { noteId: reqData.note_id },
-      'Session not found while creating MCP chat'
-    )
+    ctx?.logger.error({ noteId: reqData.note_id }, 'Session not found while creating MCP chat')
     throw new Error('Session not found for the provided note')
   }
 

@@ -31,9 +31,7 @@ type EvaluationParams = BedrockParams | McpParams
 export function getProvider(): ChatAiReview {
   const raw = String(env.get('AI_REVIEW') ?? ChatAiReviewEnum.bedrock).toLowerCase()
 
-  return raw === ChatAiReviewEnum.mcp
-    ? ChatAiReviewEnum.mcp
-    : ChatAiReviewEnum.bedrock
+  return raw === ChatAiReviewEnum.mcp ? ChatAiReviewEnum.mcp : ChatAiReviewEnum.bedrock
 }
 
 export function getChatAiReview(): ChatAiReview {
