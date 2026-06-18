@@ -22,6 +22,7 @@ import { createAuditLog } from '#services/audit_log_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { createMcpChatValidatorInterface } from '#validators/mcp_chat_validator'
+import logger from '@adonisjs/core/services/logger'
 
 export const MCP_MODEL_ID = 'mcp-v13'
 export const MCP_PROMPT_LABEL = 'MCP AI Scorer v13'
@@ -71,7 +72,10 @@ export const createMcpChat = async (
   const session = await Session.query().where('note_id', reqData.note_id).preload('patient').first()
 
   if (!session) {
-    console.log('Error in createMcpChat: Session not found for note_id:', reqData.note_id)
+    ctx?.logger.error(
+      { noteId: reqData.note_id },
+      'Session not found while creating MCP chat'
+    )
     throw new Error('Session not found for the provided note')
   }
 
@@ -145,6 +149,7 @@ export const scoreMcpNote = async (reqData: createMcpChatValidatorInterface) => 
   const session = await Session.query().where('note_id', reqData.note_id).preload('patient').first()
 
   if (!session) {
+    logger.error({ noteId: reqData.note_id }, 'Session not found for the provided note')
     throw new Error('Session not found for the provided note')
   }
 
@@ -164,6 +169,7 @@ export const getMcpChatById = async (chatId: number) => {
     .first()
 
   if (!chat) {
+    logger.error({ chatId }, 'MCP chat not found')
     throw new Error('MCP chat not found')
   }
 
@@ -179,12 +185,14 @@ export const reevaluateMcpChat = async (chatId: number) => {
   const chat = await Chat.find(chatId)
 
   if (!chat || chat.modelId !== MCP_MODEL_ID) {
+    logger.error({ chatId }, 'MCP chat not found')
     throw new Error('MCP chat not found')
   }
 
   const session = await Session.query().where('note_id', chat.noteId).preload('patient').first()
 
   if (!session) {
+    logger.error({ noteId: chat.noteId }, 'Session not found for this chat')
     throw new Error('Session not found for this chat')
   }
 

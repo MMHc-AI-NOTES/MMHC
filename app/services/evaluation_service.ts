@@ -6,7 +6,7 @@ import type { NormalizedEvaluationResult } from '#services/mcp_service'
 // ─── Param Types ──────────────────────────────────────────────────────────────
 
 interface BedrockParams {
-  provider: 'BEDROCK'
+  provider: typeof ChatAiReviewEnum.bedrock
   currentNote: string
   previousNote?: string
   modelId: string
@@ -17,9 +17,9 @@ interface BedrockParams {
 }
 
 interface McpParams {
-  provider: 'MCP'
-  currentNote: unknown
-  previousNote?: unknown
+  provider: typeof ChatAiReviewEnum.mcp
+  currentNote: string
+  previousNote?: string
   noteId: string
   clientId: string
 }
@@ -28,13 +28,16 @@ type EvaluationParams = BedrockParams | McpParams
 
 // ─── Provider helper ──────────────────────────────────────────────────────────
 
-export function getProvider(): 'BEDROCK' | 'MCP' {
-  const raw = String(env.get('AI_REVIEW') ?? 'BEDROCK').toUpperCase()
-  return raw === 'MCP' ? 'MCP' : 'BEDROCK'
+export function getProvider(): ChatAiReview {
+  const raw = String(env.get('AI_REVIEW') ?? ChatAiReviewEnum.bedrock).toLowerCase()
+
+  return raw === ChatAiReviewEnum.mcp
+    ? ChatAiReviewEnum.mcp
+    : ChatAiReviewEnum.bedrock
 }
 
 export function getChatAiReview(): ChatAiReview {
-  return getProvider() === 'MCP' ? ChatAiReviewEnum.mcp : ChatAiReviewEnum.bedrock
+  return getProvider()
 }
 
 // ─── Params builder (use this in chat_service.ts) ─────────────────────────────
@@ -42,24 +45,31 @@ export function getChatAiReview(): ChatAiReview {
 export function buildEvaluationParams(data: {
   currentNote: string
   previousNote?: string
+
   // Bedrock
   modelId?: string
   systemPrompt?: string
   temperature?: number
   topP?: number | null
   topK?: number | null
+
   // MCP
   noteId?: string
   clientId?: string
 }): EvaluationParams {
   const provider = getProvider()
 
-  if (provider === 'MCP') {
-    if (!data.noteId) throw new Error('noteId is required when AI_REVIEW=MCP')
-    if (!data.clientId) throw new Error('clientId is required when AI_REVIEW=MCP')
+  if (provider === ChatAiReviewEnum.mcp) {
+    if (!data.noteId) {
+      throw new Error(`noteId is required when AI_REVIEW=${ChatAiReviewEnum.mcp}`)
+    }
+
+    if (!data.clientId) {
+      throw new Error(`clientId is required when AI_REVIEW=${ChatAiReviewEnum.mcp}`)
+    }
 
     return {
-      provider: 'MCP',
+      provider: ChatAiReviewEnum.mcp,
       currentNote: data.currentNote,
       previousNote: data.previousNote,
       noteId: data.noteId,
@@ -68,11 +78,16 @@ export function buildEvaluationParams(data: {
   }
 
   // BEDROCK
-  if (!data.modelId) throw new Error('modelId is required when AI_REVIEW=BEDROCK')
-  if (!data.systemPrompt) throw new Error('systemPrompt is required when AI_REVIEW=BEDROCK')
+  if (!data.modelId) {
+    throw new Error(`modelId is required when AI_REVIEW=${ChatAiReviewEnum.bedrock}`)
+  }
+
+  if (!data.systemPrompt) {
+    throw new Error(`systemPrompt is required when AI_REVIEW=${ChatAiReviewEnum.bedrock}`)
+  }
 
   return {
-    provider: 'BEDROCK',
+    provider: ChatAiReviewEnum.bedrock,
     currentNote: data.currentNote,
     previousNote: data.previousNote,
     modelId: data.modelId,
@@ -88,7 +103,7 @@ export function buildEvaluationParams(data: {
 export async function evaluateNote(params: EvaluationParams): Promise<NormalizedEvaluationResult> {
   console.log(`[EvaluationRouter] Provider: ${params.provider}`)
 
-  if (params.provider === 'MCP') {
+  if (params.provider === ChatAiReviewEnum.mcp) {
     return evaluateChatWithMcp({
       noteId: params.noteId,
       clientId: params.clientId,
@@ -97,8 +112,8 @@ export async function evaluateNote(params: EvaluationParams): Promise<Normalized
     })
   }
 
-  // BEDROCK — loaded only when AI_REVIEW=BEDROCK
   const { evaluateChatWithBedrock } = await import('#services/bedrock_service')
+
   return evaluateChatWithBedrock(
     params.modelId,
     params.currentNote,

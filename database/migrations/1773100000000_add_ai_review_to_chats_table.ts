@@ -1,3 +1,4 @@
+import { ChatAiReviewEnum } from '#enums/chat_enum'
 import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
@@ -5,7 +6,10 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.alterTable(this.tableName, (table) => {
-      table.enum('ai_review', ['bedrock', 'mcp']).notNullable().defaultTo('bedrock')
+      table
+        .enum('ai_review', Object.values(ChatAiReviewEnum))
+        .notNullable()
+        .defaultTo(ChatAiReviewEnum.bedrock)
     })
   }
 

@@ -1,6 +1,7 @@
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import env from '#start/env'
+import logger from '@adonisjs/core/services/logger'
 
 // ─── Types (MMHC AI Scorer Mock API v13 — POST /score-note) ─────────────────
 
@@ -407,10 +408,10 @@ async function normaliseMcpIssues(aiIssues: McpAiIssue[]): Promise<{
       points_deducted: pointsDeducted,
       section_id: templateMeta?.sectionId ?? null,
       section: templateMeta?.section ?? issue.section ?? '',
-      justification: issue.justification || '',
+      justification: issue.justification || 'empty',
       confidence: issue.confidence ?? null,
       error_type: issue.error_type ?? null,
-      evidence: issue.evidence ?? null,
+      evidence: issue.evidence || 'empty',
       detector_tier: issue.detector_tier ?? null,
     })
 
@@ -425,8 +426,6 @@ async function normaliseMcpIssues(aiIssues: McpAiIssue[]): Promise<{
     )
     score = Math.max(0, 100 - totalDeduction)
   }
-  // console.log('issues', issues)
-  // console.log('score', score)
   return { issues, score }
 }
 
@@ -458,10 +457,7 @@ export async function evaluateChatWithMcp(params: {
   }
 
   const userInput = buildUserInput(currentSession, previousSession)
-
-  // console.log('[MCP] POST /score-note', JSON.stringify(requestBody, null, 2))
-
-  // ── HTTP call ──────────────────────────────────────────────────────────────
+  logger.info({ requestBody }, "requestBody")
   let mcpResponse: McpScoreNoteResponse
   let rawResponse: string
 
@@ -481,13 +477,13 @@ export async function evaluateChatWithMcp(params: {
     rawResponse = await res.text()
 
     if (!res.ok) {
-      // console.error('MCP API error response:', rawResponse)
+      logger.error({ rawResponse }, "MCP API returned HTTP error response")
       throw new Error(`MCP API returned HTTP ${res.status}: ${rawResponse}`)
     }
-    // console.log('rawResponse', rawResponse)
+    logger.info({ rawResponse }, "rawResponse")
     mcpResponse = JSON.parse(rawResponse) as McpScoreNoteResponse
   } catch (error: any) {
-    console.error('MCP API call failed:', error.message)
+    logger.error({ error }, 'MCP API call failed')
     // Return a safe fallback – same pattern as Bedrock error path
     return {
       score: 100,
@@ -506,6 +502,34 @@ export async function evaluateChatWithMcp(params: {
     }
   }
 
+  // ── Sanitise issues ────────────────────────────────────────────────────────
+  if (Array.isArray(mcpResponse.ai_issues)) {
+    for (const issue of mcpResponse.ai_issues) {
+      if (typeof issue.evidence === 'string') {
+        const trimmed = issue.evidence.trim()
+        if (trimmed === "''" || trimmed === '""' || trimmed === '') {
+          issue.evidence = 'empty'
+        }
+      } else if (!issue.evidence) {
+        issue.evidence = 'empty'
+      }
+      if (typeof issue.justification === 'string') {
+        const trimmed = issue.justification.trim()
+        if (trimmed === "''" || trimmed === '""' || trimmed === '') {
+          issue.justification = 'empty'
+        } else {
+          const cleaned = trimmed
+            .replace(/\s*[—–-]\s*['"]{2}$/, '')
+            .replace(/['"]{2}/g, '')
+            .trim()
+          issue.justification = cleaned === '' ? 'empty' : cleaned
+        }
+      } else if (!issue.justification) {
+        issue.justification = 'empty'
+      }
+    }
+  }
+
   // ── Normalise ──────────────────────────────────────────────────────────────
   const issueValidation = validateMcpIssues(mcpResponse.ai_issues ?? [])
   const { issues, score: derivedScore } = await normaliseMcpIssues(mcpResponse.ai_issues ?? [])
@@ -518,7 +542,6 @@ export async function evaluateChatWithMcp(params: {
       ? 'pass'
       : 'fail'
     : 'error'
-
   return {
     'score': finalScore,
     'pass': passed,
@@ -557,7 +580,7 @@ export function toMcpApiResponse(evaluation: NormalizedEvaluationResult): McpSco
     try {
       return JSON.parse(evaluation.raw_response) as McpScoreNoteResponse
     } catch {
-      // fall through
+      logger.error({ evaluation }, "MCP API returned no response")
     }
   }
 
