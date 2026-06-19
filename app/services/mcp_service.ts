@@ -8,13 +8,13 @@ import axios from 'axios'
 // ─── Types (MMHC AI Scorer Mock API v13 — POST /score-note) ─────────────────
 
 export interface Session {
-  Subjective: string
-  Objective: string
-  "Assessment & Therapeutic Intervention": string
-  "Reaction to Intervention": string
-  "Plan and Collaboration": string
-  Suicidality: string
-  Homicidality: string
+  'Subjective': string
+  'Objective': string
+  'Assessment & Therapeutic Intervention': string
+  'Reaction to Intervention': string
+  'Plan and Collaboration': string
+  'Suicidality': string
+  'Homicidality': string
 }
 
 /** Request body for POST /score-note */
@@ -234,10 +234,7 @@ function resolveTemplateMetadata(
   )
 }
 
-function deriveSeverity(
-  severity: string,
-  pointsDeducted: number
-): keyof typeof ErrorTypeEnum {
+function deriveSeverity(severity: string, pointsDeducted: number): keyof typeof ErrorTypeEnum {
   if (severity) {
     return severity.toLowerCase() as keyof typeof ErrorTypeEnum
   }
@@ -302,13 +299,13 @@ export function parseSessionForMcp(sessionContent: unknown): Session {
   }
 
   return {
-    Subjective: getFieldValue('Subjective'),
-    Objective: getFieldValue('Objective'),
+    'Subjective': getFieldValue('Subjective'),
+    'Objective': getFieldValue('Objective'),
     'Assessment & Therapeutic Intervention': getFieldValue('Assessment & Therapeutic Intervention'),
     'Reaction to Intervention': getFieldValue('Reaction to Intervention'),
     'Plan and Collaboration': getFieldValue('Plan and Collaboration'),
-    Suicidality: getFieldValue('Suicidality'),
-    Homicidality: getFieldValue('Homicidality'),
+    'Suicidality': getFieldValue('Suicidality'),
+    'Homicidality': getFieldValue('Homicidality'),
   }
 }
 
@@ -472,9 +469,10 @@ export async function evaluateChatWithMcp(params: {
   } catch (error: any) {
     if (axios.isAxiosError(error) && error.response) {
       const status = error.response.status
-      const rawErrResponse = typeof error.response.data === 'string'
-        ? error.response.data
-        : JSON.stringify(error.response.data)
+      const rawErrResponse =
+        typeof error.response.data === 'string'
+          ? error.response.data
+          : JSON.stringify(error.response.data)
       logger.error({ rawResponse: rawErrResponse }, 'MCP API returned HTTP error response')
       throw new Error(`MCP API returned HTTP ${status}: ${rawErrResponse}`)
     }
