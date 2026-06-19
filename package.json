@@ -67,6 +67,7 @@
     "@aws-sdk/client-s3": "^3.1010.0",
     "@aws-sdk/client-sagemaker-runtime": "^3.1024.0",
     "@vinejs/vine": "^2.1.0",
+    "axios": "^1.18.0",
     "bullmq": "^5.66.5",
     "edge.js": "^6.2.1",
     "ioredis": "^5.9.2",

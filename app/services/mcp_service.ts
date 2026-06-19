@@ -2,15 +2,27 @@ import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import env from '#start/env'
 import logger from '@adonisjs/core/services/logger'
+import { ErrorTypeEnum, ErrorTypePoints } from '#enums/manual_issue_enum'
+import axios from 'axios'
 
 // ─── Types (MMHC AI Scorer Mock API v13 — POST /score-note) ─────────────────
+
+export interface Session {
+  Subjective: string
+  Objective: string
+  "Assessment & Therapeutic Intervention": string
+  "Reaction to Intervention": string
+  "Plan and Collaboration": string
+  Suicidality: string
+  Homicidality: string
+}
 
 /** Request body for POST /score-note */
 export interface McpScoreNoteRequest {
   note_id: string
   client_id: string
-  current_session: Record<string, unknown>
-  previous_session: Record<string, unknown>
+  current_session: Session
+  previous_session?: Session | null
 }
 
 export interface McpAiIssue {
@@ -222,13 +234,22 @@ function resolveTemplateMetadata(
   )
 }
 
-function deriveSeverity(severity: string | null | undefined, pointsDeducted: number): string {
+function deriveSeverity(
+  severity: string,
+  pointsDeducted: number
+): keyof typeof ErrorTypeEnum {
   if (severity) {
-    return severity.toLowerCase()
+    return severity.toLowerCase() as keyof typeof ErrorTypeEnum
   }
 
-  if (pointsDeducted >= 25) return 'critical'
-  if (pointsDeducted >= 15) return 'moderate'
+  if (pointsDeducted >= ErrorTypePoints[ErrorTypeEnum.critical]) {
+    return 'critical'
+  }
+
+  if (pointsDeducted >= ErrorTypePoints[ErrorTypeEnum.moderate]) {
+    return 'moderate'
+  }
+
   return 'minor'
 }
 
@@ -273,19 +294,22 @@ export function parseNoteToSessionObject(note: unknown): Record<string, unknown>
  * Build MCP current_session / previous_session from DB session JSON.
  * Keeps only non-empty clinical fields (same keys as IntakeQ webhook storage).
  */
-export function parseSessionForMcp(sessionContent: unknown): Record<string, string> {
+export function parseSessionForMcp(sessionContent: unknown): Session {
   const parsed = parseNoteToSessionObject(sessionContent)
 
-  if ('text' in parsed && Object.keys(parsed).length === 1) {
-    return {}
+  const getFieldValue = (key: string): string => {
+    return String(parsed[key] ?? '').trim()
   }
 
-  const result: Record<string, string> = {}
-  for (const [key, value] of Object.entries(parsed)) {
-    const strVal = String(value ?? '').trim()
-    if (strVal) result[key] = strVal
+  return {
+    Subjective: getFieldValue('Subjective'),
+    Objective: getFieldValue('Objective'),
+    'Assessment & Therapeutic Intervention': getFieldValue('Assessment & Therapeutic Intervention'),
+    'Reaction to Intervention': getFieldValue('Reaction to Intervention'),
+    'Plan and Collaboration': getFieldValue('Plan and Collaboration'),
+    Suicidality: getFieldValue('Suicidality'),
+    Homicidality: getFieldValue('Homicidality'),
   }
-  return result
 }
 
 /** MCP client_id = PracticeQ patient client_id from DB, not internal session id. */
@@ -310,45 +334,12 @@ function mapErrorTypeToSeverity(errorType: string): string {
 }
 
 /**
- * Convert a plain note value (object or string) into the same flat-text
- * format used by the Bedrock path so prompts look identical.
- */
-function noteToPlainText(note: unknown): string {
-  if (!note) return ''
-
-  // Already a string
-  if (typeof note === 'string') {
-    try {
-      const parsed = JSON.parse(note)
-      return noteToPlainText(parsed)
-    } catch {
-      return note
-    }
-  }
-
-  if (typeof note === 'object' && !Array.isArray(note)) {
-    return Object.entries(note as Record<string, unknown>)
-      .filter(([key, value]) => {
-        const strVal = String(value ?? '').trim()
-        return strVal !== '' || key.toLowerCase().includes('optional')
-      })
-      .map(([key, value]) => {
-        const strVal = String(value ?? '').trim()
-        return strVal ? `${key}: ${strVal}` : `${key}:   `
-      })
-      .join('  \n\n')
-  }
-
-  return String(note)
-}
-
-/**
  * Build a human-readable user_input string (same style as Bedrock path)
  * so logs/audits are comparable.
  */
-function buildUserInput(currentNote: unknown, previousNote: unknown): string {
-  const currentText = noteToPlainText(currentNote)
-  const previousText = noteToPlainText(previousNote)
+function buildUserInput(currentNote: Session, previousNote: Session | null): string {
+  const currentText = JSON.stringify(currentNote)
+  const previousText = JSON.stringify(previousNote)
 
   let prompt = `${EvaluationPromptKeys.currentSession}:\n${currentText}\n\n`
   prompt += `${EvaluationPromptKeys.previousSessions}:\n`
@@ -438,16 +429,17 @@ async function normaliseMcpIssues(aiIssues: McpAiIssue[]): Promise<{
 export async function evaluateChatWithMcp(params: {
   noteId: string
   clientId: string
-  currentNote: unknown
-  previousNote?: unknown
+  currentNote: string
+  previousNote: string | undefined
 }): Promise<NormalizedEvaluationResult> {
   const baseUrl = env.get('MCP_API_URL')
   const token = env.get('MCP_TOKEN')
 
   if (!baseUrl) throw new Error('MCP_API_URL is not configured')
-
+  console.log('params.currentNote', params.currentNote)
+  console.log('params.previousNote', params.previousNote)
   const currentSession = parseSessionForMcp(params.currentNote)
-  const previousSession = parseSessionForMcp(params.previousNote)
+  const previousSession = params.previousNote ? parseSessionForMcp(params.previousNote) : null
 
   const requestBody: McpScoreNoteRequest = {
     note_id: params.noteId,
@@ -468,21 +460,24 @@ export async function evaluateChatWithMcp(params: {
     const authHeader = buildMcpAuthHeader(token)
     if (authHeader) headers['authorization'] = authHeader
 
-    const res = await fetch(`${baseUrl.replace(/\/$/, '')}/score-note`, {
-      method: 'POST',
+    const res = await axios.post(`${baseUrl.replace(/\/$/, '')}/score-note`, requestBody, {
       headers,
-      body: JSON.stringify(requestBody),
+      responseType: 'text',
     })
 
-    rawResponse = await res.text()
+    rawResponse = res.data
 
-    if (!res.ok) {
-      logger.error({ rawResponse }, 'MCP API returned HTTP error response')
-      throw new Error(`MCP API returned HTTP ${res.status}: ${rawResponse}`)
-    }
     logger.info({ rawResponse }, 'rawResponse')
     mcpResponse = JSON.parse(rawResponse) as McpScoreNoteResponse
   } catch (error: any) {
+    if (axios.isAxiosError(error) && error.response) {
+      const status = error.response.status
+      const rawErrResponse = typeof error.response.data === 'string'
+        ? error.response.data
+        : JSON.stringify(error.response.data)
+      logger.error({ rawResponse: rawErrResponse }, 'MCP API returned HTTP error response')
+      throw new Error(`MCP API returned HTTP ${status}: ${rawErrResponse}`)
+    }
     logger.error({ error }, 'MCP API call failed')
     // Return a safe fallback – same pattern as Bedrock error path
     return {
@@ -533,6 +528,7 @@ export async function evaluateChatWithMcp(params: {
   // ── Normalise ──────────────────────────────────────────────────────────────
   const issueValidation = validateMcpIssues(mcpResponse.ai_issues ?? [])
   const { issues, score: derivedScore } = await normaliseMcpIssues(mcpResponse.ai_issues ?? [])
+  console.log('issues', issues)
 
   // Prefer MCP API score; fall back to issue-based calculation
   const finalScore = Math.max(0, Math.min(100, mcpResponse.score ?? derivedScore))
