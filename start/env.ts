@@ -50,6 +50,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   AWS_SECRET_ACCESS_KEY: Env.schema.string.optional(),
   BEDROCK_MAX_TOKENS: Env.schema.number.optional(),
   BEDROCK_ANTHROPIC_VERSION: Env.schema.string.optional(),
+  BEDROCK_CUSTOM_MODEL_ARN: Env.schema.string.optional(),
 
   /*
   |----------------------------------------------------------
@@ -70,4 +71,34 @@ export default await Env.create(new URL('../', import.meta.url), {
   REDIS_PASSWORD: Env.schema.string.optional(),
   REDIS_DB: Env.schema.number.optional(),
   REDIS_PREFIX: Env.schema.string.optional(),
+  REDIS_KEY_PREFIX: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | PracticeQ Configuration
+  |----------------------------------------------------------
+  */
+  PRACTICEQ_API_KEY: Env.schema.string.optional(),
+  PRACTICEQ_BASE_URL: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | SageMaker Configuration
+  |----------------------------------------------------------
+  */
+  SAGEMAKER_INFERENCE_COMPONENT_NAME: Env.schema.string.optional(),
+  SAGEMAKER_INFERENCE_COMPONENT_MAP: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | General Application Variables
+  |----------------------------------------------------------
+  */
+  TZ: Env.schema.string.optional(),
+  APP_NAME: Env.schema.string.optional(),
+  FRONTEND_URL: Env.schema.string.optional(),
+  EMAIL_COMPANY_LOGO: Env.schema.string.optional(),
+  EMAIL_TEST: Env.schema.boolean.optional(),
+  EMAIL_TEST_ADDRESS: Env.schema.string.optional(),
+  INTAKEQ_FORM_NOTE_URL_BASE: Env.schema.string.optional(),
 })
