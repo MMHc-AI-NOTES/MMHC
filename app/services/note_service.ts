@@ -340,7 +340,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
     }
 
     // Fetch diagnosis from audit_logs
-    let diagnosis: Array<any> | [] = [] 
+    let diagnosis: Array<any> | [] = []
     const auditLog = await db.from('audit_logs').where('note_id', noteId).select('metadata').first()
 
     if (auditLog?.metadata) {
