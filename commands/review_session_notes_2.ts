@@ -36,6 +36,8 @@ interface ReviewOutput {
   previous_session_note_id: string | null
   current_session: string
   previous_session: string | null
+  cpt_code: string | null
+  diagnosis: Array<any> | []
   sme_issues: SmeReviewerIssues[]
   ai_issues: Issue[]
 }
@@ -60,6 +62,9 @@ export default class ReviewSessionNotes extends BaseCommand {
 
   @flags.string({ description: 'Output file (default: session_review_output.json)' })
   declare output?: string
+
+  @flags.boolean({ description: 'Run AI review (default: false)' })
+  declare aiReview?: boolean
 
   async run() {
     try {
@@ -101,6 +106,7 @@ export default class ReviewSessionNotes extends BaseCommand {
       let notesToReview = await db
         .from('session as s')
         .leftJoin('patients as p', 's.patient_id', 'p.id')
+        .leftJoin('cpt_codes as c', 's.cpt_code_id', 'c.id')
         .whereNull('s.deleted_at')
         .if(hasExplicitIds, (query) => {
           query.whereIn('s.id', selectedIds)
@@ -115,7 +121,8 @@ export default class ReviewSessionNotes extends BaseCommand {
           's.session_time',
           's.patient_id',
           's.parent_note_id',
-          'p.client_id'
+          'p.client_id',
+          'c.code as cpt_code'
         )
 
       if (hasExplicitIds) {
@@ -167,18 +174,42 @@ export default class ReviewSessionNotes extends BaseCommand {
               }
             }
 
-            const aiReview = await invokeSessionReview({
-              note_id: note.note_id,
-              prompt_id: agentResult.id,
-              model_id: agentResult.model,
-              temperature: 0.5,
-              top_p: 0.9,
-              top_k: 40,
-            })
+            // Fetch diagnosis from audit_logs metadata
+            let diagnosis: Array<{ id: string; text: string; office_use: boolean }> = []
+            const auditLog = await db
+              .from('audit_logs')
+              .where('model_id', note.id)
+              .where('action', 'webhook_session_received')
+              .select('metadata')
+              .first()
 
-            const aiIssues = this.extractAiIssues(aiReview)
+            if (auditLog?.metadata) {
+              const meta =
+                typeof auditLog.metadata === 'string'
+                  ? JSON.parse(auditLog.metadata)
+                  : auditLog.metadata
 
-            this.logger.info(`  Done ${note.note_id} (${aiIssues.length} AI issues)`)
+              const raw = meta?.raw_payload?.Diagnosis
+              diagnosis = Array.isArray(raw) ? raw : []
+            }
+
+            let aiIssues: Issue[] = []
+
+            if (this.aiReview) {
+              const aiReview = await invokeSessionReview({
+                note_id: note.note_id,
+                prompt_id: agentResult.id,
+                model_id: agentResult.model,
+                temperature: 0.5,
+                top_p: 0.9,
+                top_k: 40,
+              })
+
+              aiIssues = this.extractAiIssues(aiReview)
+              this.logger.info(`  Done ${note.note_id} (${aiIssues.length} AI issues)`)
+            } else {
+              this.logger.info(`  Done ${note.note_id} (AI review skipped)`)
+            }
 
             return {
               client_id: note.client_id || null,
@@ -188,6 +219,8 @@ export default class ReviewSessionNotes extends BaseCommand {
               previous_session: previousSession,
               sme_issues: smeIssues,
               ai_issues: aiIssues,
+              cpt_code: note.cpt_code ?? null,
+              diagnosis: diagnosis ?? [],
             }
           } catch (error: any) {
             this.logger.error(`  Failed ${note.note_id}: ${error.message}`)
@@ -367,5 +400,7 @@ export default class ReviewSessionNotes extends BaseCommand {
     } catch {
       return []
     }
+    //   }
+    //
   }
 }
