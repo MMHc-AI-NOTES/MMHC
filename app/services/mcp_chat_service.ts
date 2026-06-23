@@ -8,9 +8,11 @@ import {
   evaluateChatWithMcp,
   resolveMcpClientId,
   toMcpApiResponse,
-  type NormalizedEvaluationResult,
-  type McpScoreNoteResponse,
 } from '#services/mcp_service'
+import type {
+  NormalizedEvaluationResult,
+  McpScoreNoteResponse,
+} from '#interfaces/mcp_interface'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getChatAiReview } from '#services/evaluation_service'
 import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'

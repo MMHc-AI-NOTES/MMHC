@@ -1,102 +1,34 @@
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
-import env from '#start/env'
+import { EvaluationThresholdEnum } from '#enums/evaluation_enum'
+import { mcpConfig } from '#config/services'
 import logger from '@adonisjs/core/services/logger'
 import { ErrorTypeEnum, ErrorTypePoints } from '#enums/manual_issue_enum'
 import axios from 'axios'
 
 // ─── Types (MMHC AI Scorer Mock API v13 — POST /score-note) ─────────────────
 
-export interface Session {
-  'Subjective': string
-  'Objective': string
-  'Assessment & Therapeutic Intervention': string
-  'Reaction to Intervention': string
-  'Plan and Collaboration': string
-  'Suicidality': string
-  'Homicidality': string
-}
+import {
+  Session,
+  McpScoreNoteRequest,
+  McpAiIssue,
+  McpScoreNoteResponse,
+  NormalizedEvaluationIssue,
+  NormalizedEvaluationResult,
+} from '#interfaces/mcp_interface'
 
-/** Request body for POST /score-note */
-export interface McpScoreNoteRequest {
-  note_id: string
-  client_id: string
-  current_session: Session
-  previous_session?: Session | null
-}
-
-export interface McpAiIssue {
-  section: string
-  description: string
-  description_id?: string | null
-  error_type: string
-  confidence: number
-  evidence: string
-  justification: string
-  detector_tier: string
-}
-
-/** Response body from POST /score-note */
-export interface McpScoreNoteResponse {
-  note_id: string
-  model_version: string
-  scored_at: string
-  verdict: string
-  score: number
-  latency_ms: number
-  ai_issues: McpAiIssue[]
-  meta: Record<string, unknown>
-}
-
-/** Shared normalized issue shape (matches Bedrock output). */
-export type NormalizedEvaluationIssue = {
-  severity: string
-  description_id?: string | null
-  description?: string | null
-  severity_details?: string
-  template_matched?: boolean
-  points_deducted: number
-  section_id?: string | null
-  section: string
-  justification: string
-  confidence?: number | null
-  error_type?: string | null
-  evidence?: string | null
-  detector_tier?: string | null
-}
-
-/** Shared evaluation result shape (matches Bedrock output) */
-export interface NormalizedEvaluationResult {
-  'score': number
-  'pass': boolean
-  'issues': NormalizedEvaluationIssue[]
-  'summary': string | null
-  'sentiment': string | null
-  'evaluation': string | null
-  '6tx9-1_subjective'?: string | null
-  'rb2f-1_objective'?: string | null
-  'zad8-1_asment_&_therapeutic_intervention'?: string | null
-  'ugq6-1_reaction_to_intervention'?: string | null
-  'hnfi-1_plan_and_collaboration'?: string | null
-  '9z5t-1_therapist_reflection'?: string | null
-  'gm4p-1_progress'?: string | null
-  'kxgx-7_&_kxgx-8_suicidality/homicidality'?: string | null
-  'raw_response': string
-  'user_input': string
-  'validation_result'?: {
-    isValid: boolean
-    status: 'pass' | 'fail' | 'error'
-    message: string
-  }
-  /** Full MCP /score-note response when AI_REVIEW=MCP */
-  'mcp_response'?: McpScoreNoteResponse
+export type {
+  Session,
+  McpScoreNoteRequest,
+  McpAiIssue,
+  McpScoreNoteResponse,
+  NormalizedEvaluationIssue,
+  NormalizedEvaluationResult,
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const roundToNearestFive = (num: number): number => Math.round(num / 5) * 5
-
-const PASS_THRESHOLD = 75
 
 type TemplateMetadata = {
   descriptionId: string | null
@@ -429,8 +361,8 @@ export async function evaluateChatWithMcp(params: {
   currentNote: string
   previousNote: string | undefined
 }): Promise<NormalizedEvaluationResult> {
-  const baseUrl = env.get('MCP_API_URL')
-  const token = env.get('MCP_TOKEN')
+  const baseUrl = mcpConfig.apiUrl
+  const token = mcpConfig.token
 
   if (!baseUrl) throw new Error('MCP_API_URL is not configured')
   console.log('params.currentNote', params.currentNote)
@@ -530,7 +462,7 @@ export async function evaluateChatWithMcp(params: {
 
   // Prefer MCP API score; fall back to issue-based calculation
   const finalScore = Math.max(0, Math.min(100, mcpResponse.score ?? derivedScore))
-  const passed = finalScore >= PASS_THRESHOLD
+  const passed = finalScore >= EvaluationThresholdEnum.passThreshold
   const validationStatus: 'pass' | 'fail' | 'error' = issueValidation.isValid
     ? passed
       ? 'pass'

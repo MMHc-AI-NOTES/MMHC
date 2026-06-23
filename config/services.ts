@@ -73,3 +73,8 @@ export const appConfig = {
     env.get('INTAKEQ_FORM_NOTE_URL_BASE', 'https://intakeq.com/#/client/')
   ),
 }
+
+export const mcpConfig = {
+  apiUrl: env.get('MCP_API_URL'),
+  token: env.get('MCP_TOKEN'),
+}

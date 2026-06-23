@@ -1,7 +1,7 @@
 import env from '#start/env'
 import { ChatAiReviewEnum, type ChatAiReview } from '#enums/chat_enum'
 import { evaluateChatWithMcp } from '#services/mcp_service'
-import type { NormalizedEvaluationResult } from '#services/mcp_service'
+import type { NormalizedEvaluationResult } from '#interfaces/mcp_interface'
 
 // ─── Param Types ──────────────────────────────────────────────────────────────
 
