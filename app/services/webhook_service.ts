@@ -370,7 +370,6 @@ const REQUIRED_QUESTIONS = [
   '5th question',
 ]
 
-
 const validatePayloadQuestions = (
   questions: webhookSessionValidatorInterface['Questions']
 ): { isValid: boolean; errors: string[] } => {
@@ -389,9 +388,7 @@ const validatePayloadQuestions = (
   const missingRequiredQuestions: string[] = []
 
   REQUIRED_QUESTIONS.forEach((requiredText) => {
-    const found = questionsWithAnswers.some(
-      (q) => q.text && q.text.trim() === requiredText.trim()
-    )
+    const found = questionsWithAnswers.some((q) => q.text && q.text.trim() === requiredText.trim())
     if (found) {
       foundRequiredQuestions.push(requiredText)
     } else {
@@ -410,8 +407,6 @@ const validatePayloadQuestions = (
     errors,
   }
 }
-
-
 
 /**
  * Process webhook job from BullMQ queue
