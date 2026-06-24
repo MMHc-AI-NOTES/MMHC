@@ -16,10 +16,9 @@ import { sendSuccess } from '#services/custom_response_service'
 import type { webhookSessionValidatorInterface } from '#validators/webhook_validator'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { storeWebhookSessionVersionIfDifferent } from '#services/json_comparison_service'
-import { practiceQConfig } from '#config/services'
 import { DateTime } from 'luxon'
 import type { WebhookJobData } from '#jobs/queues/webhook_queue'
-import { sendMissingFieldsEmail } from '#services/email_service'
+// import { sendMissingFieldsEmail } from '#services/email_service'
 // import Agent from '#models/agent'
 // import Chat from '#models/chat'
 // import { createChat } from '#services/chat_service'
@@ -220,6 +219,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       await existingSession.save()
       session = existingSession
     } else {
+      console.log('new session+++++++++++++++++++++++++++++')
       // Create new session
       session = await Session.create({
         noteId: payload.NoteId,
@@ -370,30 +370,19 @@ const REQUIRED_QUESTIONS = [
   '5th question',
 ]
 
-/**
- * Validate note details Questions array
- * Checks if all 5 required questions are present with non-empty answers
- * @returns {isValid: boolean, errors: string[]}
- */
-const validateNoteQuestions = (
-  noteDetails: PracticeQNote | null
+
+const validatePayloadQuestions = (
+  questions: webhookSessionValidatorInterface['Questions']
 ): { isValid: boolean; errors: string[] } => {
   const errors: string[] = []
 
-  if (!noteDetails) {
-    errors.push('Note details not found')
+  if (!questions || !Array.isArray(questions)) {
+    errors.push('Questions array not found in webhook payload')
     return { isValid: false, errors }
   }
-
-  if (!('Questions' in noteDetails) || !Array.isArray((noteDetails as any).Questions)) {
-    errors.push('Questions array not found in note details')
-    return { isValid: false, errors }
-  }
-
-  const questions = (noteDetails as any).Questions
 
   const questionsWithAnswers = questions.filter(
-    (q: any) => q.Text && q.Answer && typeof q.Answer === 'string' && q.Answer.trim().length > 0
+    (q) => q.text && q.answer && typeof q.answer === 'string' && q.answer.trim().length > 0
   )
 
   const foundRequiredQuestions: string[] = []
@@ -401,7 +390,7 @@ const validateNoteQuestions = (
 
   REQUIRED_QUESTIONS.forEach((requiredText) => {
     const found = questionsWithAnswers.some(
-      (q: any) => q.Text && q.Text.trim() === requiredText.trim()
+      (q) => q.text && q.text.trim() === requiredText.trim()
     )
     if (found) {
       foundRequiredQuestions.push(requiredText)
@@ -422,49 +411,7 @@ const validateNoteQuestions = (
   }
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-const fetchPracticeQNoteWithRetry = async (
-  noteId: string,
-  maxAttempts = 3,
-  delayMs = 1000
-): Promise<PracticeQNote | null> => {
-  const PRACTICEQ_API_KEY = practiceQConfig.apiKey
-  if (!PRACTICEQ_API_KEY) {
-    throw new Error('PRACTICEQ_API_KEY is missing in environment variables')
-  }
 
-  let attempts = 0
-  let lastError: any = null
-
-  while (attempts < maxAttempts) {
-    attempts++
-    try {
-      const response = await fetch(`${practiceQConfig.baseUrl}/notes/${noteId}`, {
-        method: 'GET',
-        headers: {
-          'X-Auth-Key': PRACTICEQ_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`PracticeQ API error: ${response.status} ${response.statusText}`)
-      }
-
-      const noteDetails = (await response.json()) as PracticeQNote
-      return noteDetails
-    } catch (error: any) {
-      lastError = error
-      console.error(`Attempt ${attempts} failed to fetch note from PracticeQ: ${error.message}`)
-      if (attempts < maxAttempts) {
-        await sleep(delayMs * attempts)
-      }
-    }
-  }
-  throw new Error(
-    `Failed to fetch note from PracticeQ after ${maxAttempts} attempts: ${lastError?.message}`
-  )
-}
 
 /**
  * Process webhook job from BullMQ queue
@@ -484,33 +431,25 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     workflowStatus = WorkflowEnum.failed
   }
 
-  let noteDetails: PracticeQNote | null = null
   let questionsValidation: { isValid: boolean; errors: string[] } | null = null
   if (webhookValidation.isValid && noteId) {
-    try {
-      noteDetails = await fetchPracticeQNoteWithRetry(noteId)
-      questionsValidation = validateNoteQuestions(noteDetails)
-      if (!questionsValidation.isValid) {
-        workflowStatus = WorkflowEnum.failed
-      }
-    } catch (error: any) {
+    questionsValidation = validatePayloadQuestions(payload.Questions ?? [])
+    if (!questionsValidation.isValid) {
       workflowStatus = WorkflowEnum.failed
     }
   }
 
   // Only include fields that exist in FIELD_MAPPING; ignore all other keys
-  let sessionString = ''
-  if (noteDetails && 'Questions' in noteDetails && Array.isArray((noteDetails as any).Questions)) {
-    const sessionObject: Record<string, string> = {}
-    const questions = (noteDetails as any).Questions
-    for (const q of questions) {
-      const id = q.Id ?? q.id
-      const answer = q.Answer ?? q.answer ?? ''
+  const sessionObject: Record<string, string> = {}
+  if (Array.isArray(payload.Questions)) {
+    for (const q of payload.Questions) {
+      const id = q.id ?? (q as any).Id
+      const answer = q.answer ?? (q as any).Answer ?? ''
       const fieldName = FIELD_MAPPING[id]
       if (fieldName) sessionObject[fieldName] = answer ?? ''
     }
-    sessionString = JSON.stringify(sessionObject)
   }
+  const sessionString = JSON.stringify(sessionObject)
 
   let patientId: number | null = null
   if (clientId) {
@@ -527,7 +466,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
   const cptCode = await CptCode.findBy('code', '90791')
   const sessionId = `session-${noteId || ''}`
   const sessionTime = (() => {
-    const d = (noteDetails as any)?.Date ?? (noteDetails as any)?.LastModified
+    const d = payload.Date ?? payload.LastModified
     if (d && typeof d === 'string') {
       const parsed = DateTime.fromISO(d, { setZone: true })
       if (parsed.isValid) return parsed
@@ -611,32 +550,32 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     }
   }
 
-  if (workflowStatus === WorkflowEnum.failed && session?.practitioner) {
-    try {
-      const practitioner = session.practitioner
-      const practitionerName = practitioner.fullName || practitioner.email || 'Practitioner'
-      const practitionerEmail = practitioner.email
-
-      const missingFields: string[] = []
-      if (questionsValidation && !questionsValidation.isValid) {
-        questionsValidation.errors
-          .filter((error) => error.includes('Missing required questions'))
-          .forEach((error) => {
-            const match = error.match(/Missing required questions: (.+?)(?:\. Found:|$)/)
-            if (match) {
-              const missingQuestions = match[1].split(', ').map((q) => q.trim())
-              missingFields.push(...missingQuestions)
-            }
-          })
-      }
-
-      if (practitionerEmail) {
-        await sendMissingFieldsEmail(practitionerEmail, practitionerName, missingFields, noteId)
-      }
-    } catch (error: any) {
-      // Email sending failed, but don't break the process
-    }
-  }
+  // if (workflowStatus === WorkflowEnum.failed && session?.practitioner) {
+  //   try {
+  //     const practitioner = session.practitioner
+  //     const practitionerName = practitioner.fullName || practitioner.email || 'Practitioner'
+  //     const practitionerEmail = practitioner.email
+  //
+  //     const missingFields: string[] = []
+  //     if (questionsValidation && !questionsValidation.isValid) {
+  //       questionsValidation.errors
+  //         .filter((error) => error.includes('Missing required questions'))
+  //         .forEach((error) => {
+  //           const match = error.match(/Missing required questions: (.+?)(?:\. Found:|$)/)
+  //           if (match) {
+  //             const missingQuestions = match[1].split(', ').map((q) => q.trim())
+  //             missingFields.push(...missingQuestions)
+  //           }
+  //         })
+  //     }
+  //
+  //     if (practitionerEmail) {
+  //       await sendMissingFieldsEmail(practitionerEmail, practitionerName, missingFields, noteId)
+  //     }
+  //   } catch (error: any) {
+  //     // Email sending failed, but don't break the process
+  //   }
+  // }
 
   const allValidationErrors = [...webhookValidation.errors]
   if (questionsValidation && !questionsValidation.isValid) {
@@ -650,7 +589,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     clientId,
     workflow: workflowStatus === WorkflowEnum.in_queue ? 'in_queue' : 'failed',
     validationErrors: allValidationErrors,
-    noteDetails: noteDetails ? { Id: noteDetails.Id } : null,
+    noteDetails: null,
     sessionStored: session ? true : null,
     patientId,
   }
