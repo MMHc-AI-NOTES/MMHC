@@ -17,3 +17,11 @@ export const ChatResultEnum = {
   fail: 2,
   error: 3,
 }
+
+// AI review provider stored on each chat record
+export const ChatAiReviewEnum = {
+  bedrock: 'bedrock',
+  mcp: 'mcp',
+} as const
+
+export type ChatAiReview = (typeof ChatAiReviewEnum)[keyof typeof ChatAiReviewEnum]

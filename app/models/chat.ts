@@ -4,7 +4,12 @@ import { softDeleteQuery } from '#helpers/soft_delete_helper'
 import User from '#models/user'
 import HumanReview from '#models/human_review'
 import Agent from '#models/agent'
-import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
+import {
+  ChatSeverityEnum,
+  ChatTriggerSourceEnum,
+  ChatResultEnum,
+  type ChatAiReview,
+} from '#enums/chat_enum'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 
 export const chatFilterEnum = [
@@ -18,6 +23,7 @@ export const chatFilterEnum = [
   'agent_id',
   'severity',
   'result',
+  'ai_review',
 ]
 export const chatSortEnum = [
   'id',
@@ -30,6 +36,7 @@ export const chatSortEnum = [
   'updated_at',
   'severity',
   'result',
+  'ai_review',
 ]
 
 export default class Chat extends BaseModel {
@@ -123,6 +130,9 @@ export default class Chat extends BaseModel {
     },
   })
   declare result: number | null
+
+  @column()
+  declare aiReview: ChatAiReview
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

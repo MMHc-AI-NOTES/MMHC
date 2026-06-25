@@ -6,6 +6,7 @@ import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess } from '#services/custom_response_service'
 import { evaluateChatWithBedrock } from '#services/bedrock_service'
+import { getChatAiReview } from '#services/evaluation_service'
 import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
@@ -142,6 +143,7 @@ export const createChat = async (
       triggerSource: ChatTriggerSourceEnum.rerun,
       severity: severity,
       result: result,
+      aiReview: getChatAiReview(),
     }
 
     const chat = await Chat.create(chatData)
