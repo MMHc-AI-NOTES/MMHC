@@ -53,7 +53,6 @@ export default await Env.create(new URL('../', import.meta.url), {
   AI_REVIEW: Env.schema.enum.optional(['BEDROCK', 'MCP'] as const),
   MCP_API_URL: Env.schema.string(),
   MCP_TOKEN: Env.schema.string(),
-  ADJUDICATIONS_API_URL: Env.schema.string.optional(),
 
   /*
   |----------------------------------------------------------
