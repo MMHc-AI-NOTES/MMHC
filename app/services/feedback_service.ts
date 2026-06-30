@@ -79,11 +79,9 @@ async function loadTemplateLookups(verdicts: SubmitFeedbackPayload['verdicts']):
   const values = [...lookupValues]
   const templates = await SmeIssuesTamplate.query()
     .where((query) => {
-      query
-        .whereIn('description_id', values)
-        .orWhereHas('issueDescription', (issueQuery) => {
-          issueQuery.whereIn('description', values)
-        })
+      query.whereIn('description_id', values).orWhereHas('issueDescription', (issueQuery) => {
+        issueQuery.whereIn('description', values)
+      })
     })
     .preload('issueDescription')
     .preload('issuesRelatedTo')
@@ -113,9 +111,7 @@ async function loadTemplateLookups(verdicts: SubmitFeedbackPayload['verdicts']):
   return { byDescriptionId, byDescriptionText }
 }
 
-async function loadSectionLookups(
-  sections: string[]
-): Promise<Map<string, IssuesRelatedTo>> {
+async function loadSectionLookups(sections: string[]): Promise<Map<string, IssuesRelatedTo>> {
   const uniqueSections = [...new Set(sections.map((s) => s.trim()).filter(Boolean))]
   const map = new Map<string, IssuesRelatedTo>()
 
@@ -183,11 +179,9 @@ async function resolveVerdicts(
       verdict.code?.trim() ||
       ''
 
-    const description =
-      templateMeta?.description?.trim() || verdict.description?.trim() || ''
+    const description = templateMeta?.description?.trim() || verdict.description?.trim() || ''
 
-    const section =
-      templateMeta?.section?.trim() || sectionRow?.displayName || sectionKey
+    const section = templateMeta?.section?.trim() || sectionRow?.displayName || sectionKey
 
     return {
       smeIssueTemplateId: templateMeta?.templateId ?? null,
@@ -395,14 +389,10 @@ export async function submitFeedback(
   let mcpStatus = 0
 
   try {
-    const res = await axios.post(
-      `${baseUrl.replace(/\/$/, '')}/adjudications`,
-      adjudicationBody,
-      {
-        headers,
-        validateStatus: () => true,
-      }
-    )
+    const res = await axios.post(`${baseUrl.replace(/\/$/, '')}/adjudications`, adjudicationBody, {
+      headers,
+      validateStatus: () => true,
+    })
 
     mcpStatus = res.status
     parsedResponse = res.data

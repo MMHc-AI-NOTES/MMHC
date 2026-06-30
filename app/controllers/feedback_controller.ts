@@ -1,6 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
-import { submitFeedback, getFeedbackVerdicts, deleteFeedbackVerdict } from '#services/feedback_service'
+import {
+  submitFeedback,
+  getFeedbackVerdicts,
+  deleteFeedbackVerdict,
+} from '#services/feedback_service'
 import { submitFeedbackValidator, feedbackVerdictIdValidator } from '#validators/feedback_validator'
 import vine from '@vinejs/vine'
 
