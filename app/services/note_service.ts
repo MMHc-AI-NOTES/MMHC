@@ -326,6 +326,9 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       .preload('noteReviewMarks', (marksQuery) => {
         marksQuery.preload('reviewer')
       })
+      .preload('feedbackVerdicts', (feedbackQuery) => {
+        feedbackQuery.orderBy('updated_at', 'desc')
+      })
       .withCount('chats', (countQuery) => {
         countQuery.as('chat_count')
       })
@@ -383,6 +386,10 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       version_count: note.$extras.version_count || 0,
       reviewers: extractReviewers(serialized),
       diagnosis,
+      feedback_verdicts: (note.feedbackVerdicts || []).map((verdict) => ({
+        id: verdict.id,
+        adjudication_request: verdict.adjudicationRequest,
+      })),
     }
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)
