@@ -1,14 +1,21 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
+import db from '@adonisjs/lucid/services/db'
 
 export default class extends BaseSchema {
   protected tableName = 'feedback_verdicts'
 
   async up() {
-    this.schema.dropTableIfExists(this.tableName)
-
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id').primary()
-      table.string('note_id', 100).notNullable()
+
+      table
+        .integer('session_id')
+        .unsigned()
+        .notNullable()
+        .references('id')
+        .inTable('session')
+        .onDelete('CASCADE')
+
       table
         .bigInteger('reviewer_id')
         .unsigned()
@@ -16,24 +23,56 @@ export default class extends BaseSchema {
         .inTable('users')
         .onDelete('CASCADE')
         .nullable()
+
+      table
+        .integer('sme_issue_template_id')
+        .unsigned()
+        .references('id')
+        .inTable('sme_issues_tamplate')
+        .onDelete('SET NULL')
+        .nullable()
+
+      table
+        .integer('issue_description_id')
+        .unsigned()
+        .references('id')
+        .inTable('issue_descriptions')
+        .onDelete('SET NULL')
+        .nullable()
+
+      table
+        .integer('issues_related_to_id')
+        .unsigned()
+        .references('id')
+        .inTable('issues_related_to')
+        .onDelete('SET NULL')
+        .nullable()
+
       table.string('scorer_version', 100).nullable()
-      table.string('reviewer_name', 150).notNullable()
       table.timestamp('reviewed_at').notNullable()
-      table.string('section', 100).notNullable()
-      table.string('description_id', 50).notNullable().defaultTo('')
-      table.text('description').nullable()
-      table.string('code', 50).nullable()
       table.string('side', 10).notNullable()
-      table.string('verdict', 10).notNullable()
+      table.tinyint('verdict').unsigned().notNullable()
       table.text('comment').nullable()
-      table.string('by', 150).notNullable()
+      table.text('adjudication_request').nullable()
       table.text('adjudication_response').nullable()
       table.timestamps(true, true)
 
-      table.unique(['note_id', 'section', 'description_id', 'side', 'by'])
-      table.index('note_id')
-      table.index('reviewer_id')
-      table.index(['note_id', 'reviewer_id'])
+      table.index(['session_id'])
+      table.index(['reviewer_id'])
+      table.index(['sme_issue_template_id'])
+      table.index(['issue_description_id'])
+      table.index(['issues_related_to_id'])
+    })
+
+    this.defer(async () => {
+      try {
+        await db.rawQuery(`
+          CREATE UNIQUE INDEX fb_verdict_uq
+          ON feedback_verdicts (session_id, reviewer_id, side, sme_issue_template_id, issue_description_id)
+        `)
+      } catch {
+        // ignore if index already exists
+      }
     })
   }
 

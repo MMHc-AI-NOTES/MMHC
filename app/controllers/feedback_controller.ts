@@ -21,7 +21,7 @@ export default class FeedbackController {
       const payload = await submitFeedbackValidator.validate(ctx.request.body())
       console.log('[Feedback] Validated payload:', payload)
       const user = ctx.auth.getUserOrFail()
-      return await submitFeedback(payload, user.id, ctx)
+      return await submitFeedback(payload, user.id, ctx, user.fullName)
     } catch (error) {
       console.log('feedback submit error', error)
       return ErrorService.handleError(ctx, error)

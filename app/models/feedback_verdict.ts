@@ -38,7 +38,7 @@ export default class FeedbackVerdict extends BaseModel {
   declare side: string
 
   @column()
-  declare verdict: string
+  declare verdict: number
 
   @column()
   declare comment: string | null
