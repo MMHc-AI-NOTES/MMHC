@@ -3,8 +3,7 @@ export const FeedbackVerdictEnum = {
   DOWN: 2,
 } as const
 
-export type FeedbackVerdictValue =
-  (typeof FeedbackVerdictEnum)[keyof typeof FeedbackVerdictEnum]
+export type FeedbackVerdictValue = (typeof FeedbackVerdictEnum)[keyof typeof FeedbackVerdictEnum]
 
 const MCP_VERDICT_BY_VALUE: Record<FeedbackVerdictValue, string> = {
   [FeedbackVerdictEnum.UP]: 'up',

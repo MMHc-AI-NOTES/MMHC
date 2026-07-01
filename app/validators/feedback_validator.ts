@@ -6,10 +6,7 @@ export const submitFeedbackValidator = vine.compile(
   vine.object({
     note_id: vine.string().trim().minLength(1),
     description_id: vine.string().trim().minLength(1),
-    verdict: vine
-      .number()
-      .withoutDecimals()
-      .in([FeedbackVerdictEnum.UP, FeedbackVerdictEnum.DOWN]),
+    verdict: vine.number().withoutDecimals().in([FeedbackVerdictEnum.UP, FeedbackVerdictEnum.DOWN]),
     comment: vine.string().trim().optional(),
   })
 )
