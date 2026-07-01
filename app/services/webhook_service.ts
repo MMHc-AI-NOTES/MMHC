@@ -219,7 +219,6 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       await existingSession.save()
       session = existingSession
     } else {
-      console.log('new session+++++++++++++++++++++++++++++')
       // Create new session
       session = await Session.create({
         noteId: payload.NoteId,
