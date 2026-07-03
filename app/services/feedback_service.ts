@@ -160,7 +160,7 @@ export async function submitFeedback(
     side: 'AI',
     verdict: payload.verdict,
     comment: payload.comment ?? null,
-    adjudicationRequest: payload,
+    adjudicationRequest: adjudicationBody,
     adjudicationResponse: mcpResponse && typeof mcpResponse === 'object' ? mcpResponse : null,
   }
 
