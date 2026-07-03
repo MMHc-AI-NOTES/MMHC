@@ -1,6 +1,7 @@
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import FeedbackVerdict from '#models/feedback_verdict'
 import Session from '#models/session'
+import Chat from '#models/chat'
 import axios from 'axios'
 import { mcpConfig } from '#config/services'
 import { sendSuccess, sendError } from '#services/custom_response_service'
@@ -11,6 +12,12 @@ import { feedbackVerdictToMcpString } from '#enums/feedback_verdict_enum'
 import { MCP_MODEL_ID } from '#services/mcp_chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
+
+export async function resolveScorerVersion(noteId: string) {
+  const chat = await Chat.query().where('note_id', noteId).orderBy('id', 'desc').first()
+  console.log('[Feedback] Scorer version:', chat?.modelId)
+  return chat?.modelId || MCP_MODEL_ID
+}
 
 export async function resolveSessionByNoteId(noteId: string) {
   return Session.query().where('note_id', noteId).orderBy('id', 'desc').first()
@@ -44,7 +51,7 @@ export function formatFeedbackVerdictResponse(record: FeedbackVerdict) {
     description: issueDescription?.description ?? null,
     code: template?.descriptionId ?? null,
     side: record.side,
-    verdict: feedbackVerdictToMcpString(record.verdict),
+    verdict: record.verdict,
     comment: record.comment,
     by: record.reviewer?.fullName ?? null,
   }
@@ -74,10 +81,11 @@ export async function submitFeedback(
   const descriptionId = template.descriptionId ?? payload.description_id
   const reviewer = reviewerName ?? ''
   const reviewedAt = DateTime.now()
+  const scorerVersion = await resolveScorerVersion(session.noteId)
 
   const adjudicationBody = {
     note_id: session.noteId,
-    scorer_version: MCP_MODEL_ID,
+    scorer_version: scorerVersion,
     reviewer,
     reviewed_at: reviewedAt.toISO(),
     verdicts: [
@@ -106,12 +114,24 @@ export async function submitFeedback(
     }
 
     const url = `${mcpConfig.apiUrl.replace(/\/$/, '')}/adjudications`
-    const res = await axios.post(url, adjudicationBody, { headers, validateStatus: () => true })
-    mcpResponse = res.data
-    mcpSynced = res.status >= 200 && res.status < 300
 
-    console.log('[Feedback] MCP response status:', res.status)
-    console.log('[Feedback] MCP response body:', mcpResponse)
+    console.log('[Feedback] MCP request:', JSON.stringify(adjudicationBody, null, 2))
+
+    try {
+      const res = await axios.post(url, adjudicationBody, { headers, validateStatus: () => true })
+      mcpResponse = res.data
+      mcpSynced = res.status >= 200 && res.status < 300
+      console.log('[Feedback] MCP response status:', res.status)
+      console.log('[Feedback] MCP response body:', mcpResponse)
+    } catch (error: any) {
+      const message = error.code === 'ECONNREFUSED'
+        ? `MCP server not reachable at ${mcpConfig.apiUrl}`
+        : error.message ?? 'MCP API call failed'
+
+      mcpResponse = { error: message, code: error.code ?? null }
+      mcpSynced = false
+      console.log('[Feedback] MCP call failed:', message)
+    }
   }
 
   let query = FeedbackVerdict.query()
@@ -134,7 +154,7 @@ export async function submitFeedback(
     smeIssueTemplateId: template.id,
     issueDescriptionId: template.issueDescriptionId,
     issuesRelatedToId: template.issuesRelatedToId,
-    scorerVersion: MCP_MODEL_ID,
+    scorerVersion,
     reviewedAt,
     side: 'AI',
     verdict: payload.verdict,
@@ -152,9 +172,7 @@ export async function submitFeedback(
   }
 
   await record.load('reviewer')
-  await record.load('smeIssueTemplate', (q) =>
-    q.preload('issueDescription').preload('issuesRelatedTo')
-  )
+  await record.load('smeIssueTemplate', (q) => q.preload('issueDescription').preload('issuesRelatedTo'))
 
   await createAuditLog({
     ctx,
@@ -168,14 +186,11 @@ export async function submitFeedback(
     metadata: { note_id: session.noteId, session_id: session.id, mcp_synced: mcpSynced },
   })
 
-  return sendSuccess(
-    mcpSynced ? 'Feedback submitted successfully' : 'Feedback saved but MCP call failed',
-    {
-      verdict: formatFeedbackVerdictResponse(record),
-      mcp_synced: mcpSynced,
-      adjudication: mcpResponse,
-    }
-  )
+  return sendSuccess(mcpSynced ? 'Feedback submitted successfully' : 'Feedback saved but MCP call failed', {
+    verdict: formatFeedbackVerdictResponse(record),
+    mcp_synced: mcpSynced,
+    adjudication: mcpResponse,
+  })
 }
 
 export async function getFeedbackVerdicts(noteId: string, reviewerId?: number) {
