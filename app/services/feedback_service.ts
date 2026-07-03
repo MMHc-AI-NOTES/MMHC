@@ -124,9 +124,10 @@ export async function submitFeedback(
       console.log('[Feedback] MCP response status:', res.status)
       console.log('[Feedback] MCP response body:', mcpResponse)
     } catch (error: any) {
-      const message = error.code === 'ECONNREFUSED'
-        ? `MCP server not reachable at ${mcpConfig.apiUrl}`
-        : error.message ?? 'MCP API call failed'
+      const message =
+        error.code === 'ECONNREFUSED'
+          ? `MCP server not reachable at ${mcpConfig.apiUrl}`
+          : (error.message ?? 'MCP API call failed')
 
       mcpResponse = { error: message, code: error.code ?? null }
       mcpSynced = false
@@ -172,7 +173,9 @@ export async function submitFeedback(
   }
 
   await record.load('reviewer')
-  await record.load('smeIssueTemplate', (q) => q.preload('issueDescription').preload('issuesRelatedTo'))
+  await record.load('smeIssueTemplate', (q) =>
+    q.preload('issueDescription').preload('issuesRelatedTo')
+  )
 
   await createAuditLog({
     ctx,
@@ -186,11 +189,14 @@ export async function submitFeedback(
     metadata: { note_id: session.noteId, session_id: session.id, mcp_synced: mcpSynced },
   })
 
-  return sendSuccess(mcpSynced ? 'Feedback submitted successfully' : 'Feedback saved but MCP call failed', {
-    verdict: formatFeedbackVerdictResponse(record),
-    mcp_synced: mcpSynced,
-    adjudication: mcpResponse,
-  })
+  return sendSuccess(
+    mcpSynced ? 'Feedback submitted successfully' : 'Feedback saved but MCP call failed',
+    {
+      verdict: formatFeedbackVerdictResponse(record),
+      mcp_synced: mcpSynced,
+      adjudication: mcpResponse,
+    }
+  )
 }
 
 export async function getFeedbackVerdicts(noteId: string, reviewerId?: number) {
