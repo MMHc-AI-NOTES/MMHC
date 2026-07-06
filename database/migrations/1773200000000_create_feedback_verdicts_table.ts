@@ -62,7 +62,6 @@ export default class extends BaseSchema {
       table.index(['issue_description_id'])
       table.index(['issues_related_to_id'])
     })
-
   }
 
   async down() {
