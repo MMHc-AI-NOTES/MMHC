@@ -1,5 +1,4 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import db from '@adonisjs/lucid/services/db'
 
 export default class extends BaseSchema {
   protected tableName = 'feedback_verdicts'
@@ -64,16 +63,6 @@ export default class extends BaseSchema {
       table.index(['issues_related_to_id'])
     })
 
-    this.defer(async () => {
-      try {
-        await db.rawQuery(`
-          CREATE UNIQUE INDEX fb_verdict_uq
-          ON feedback_verdicts (session_id, reviewer_id, side, sme_issue_template_id, issue_description_id)
-        `)
-      } catch {
-        // ignore if index already exists
-      }
-    })
   }
 
   async down() {

@@ -104,6 +104,14 @@ export async function relinkPatientSessions(patientId: number) {
   }
 }
 
+export async function getSessionBySessionId(sessionId: string) {
+  return Session.query().where('session_id', sessionId).first()
+}
+
+export async function getSessionByNoteId(noteId: string) {
+  return Session.query().where('note_id', noteId).orderBy('id', 'desc').first()
+}
+
 /**
  * Webhook flow (parent-child method):
  * 1. Use ClientId to resolve patient (find or create).

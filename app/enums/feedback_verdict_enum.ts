@@ -1,24 +1,35 @@
 export const FeedbackVerdictEnum = {
-  ACCEPT: 1,
-  REFUTE: 2,
+  UP: {
+    id: 1,
+    label: 'ACCEPT',
+    mcp_label: 'accept',
+  },
+  DOWN: {
+    id: 2,
+    label: 'REJECT',
+    mcp_label: 'reject',
+  },
 } as const
 
-export type FeedbackVerdictValue = (typeof FeedbackVerdictEnum)[keyof typeof FeedbackVerdictEnum]
+export type FeedbackVerdictKey = keyof typeof FeedbackVerdictEnum
+export type FeedbackVerdictValue = (typeof FeedbackVerdictEnum)[FeedbackVerdictKey]['id']
 
-const MCP_VERDICT_BY_VALUE: Record<FeedbackVerdictValue, string> = {
-  [FeedbackVerdictEnum.ACCEPT]: 'accept',
-  [FeedbackVerdictEnum.REFUTE]: 'refute',
-}
+const VERDICT_BY_ID: Record<FeedbackVerdictValue, (typeof FeedbackVerdictEnum)[FeedbackVerdictKey]> =
+  {
+    [FeedbackVerdictEnum.UP.id]: FeedbackVerdictEnum.UP,
+    [FeedbackVerdictEnum.DOWN.id]: FeedbackVerdictEnum.DOWN,
+  }
 
-/** MCP adjudication API expects "accept" / "refute" strings */
+export const FEEDBACK_VERDICT_IDS = [
+  FeedbackVerdictEnum.UP.id,
+  FeedbackVerdictEnum.DOWN.id,
+] as const
+
+/** MCP adjudication API expects "accept" / "reject" strings */
 export function feedbackVerdictToMcpString(verdict: number): string {
-  if (verdict === FeedbackVerdictEnum.ACCEPT)
-    return MCP_VERDICT_BY_VALUE[FeedbackVerdictEnum.ACCEPT]
-  if (verdict === FeedbackVerdictEnum.REFUTE)
-    return MCP_VERDICT_BY_VALUE[FeedbackVerdictEnum.REFUTE]
-  return MCP_VERDICT_BY_VALUE[FeedbackVerdictEnum.REFUTE]
+  return VERDICT_BY_ID[verdict as FeedbackVerdictValue]?.mcp_label ?? FeedbackVerdictEnum.DOWN.mcp_label
 }
 
 export function isFeedbackVerdictValue(value: unknown): value is FeedbackVerdictValue {
-  return value === FeedbackVerdictEnum.ACCEPT || value === FeedbackVerdictEnum.REFUTE
+  return value === FeedbackVerdictEnum.UP.id || value === FeedbackVerdictEnum.DOWN.id
 }

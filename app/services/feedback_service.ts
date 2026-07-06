@@ -1,9 +1,6 @@
-import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import FeedbackVerdict from '#models/feedback_verdict'
-import Session from '#models/session'
-import Chat from '#models/chat'
-import axios from 'axios'
 import { mcpConfig } from '#config/services'
+import axios from 'axios'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
@@ -12,15 +9,14 @@ import { feedbackVerdictToMcpString } from '#enums/feedback_verdict_enum'
 import { MCP_MODEL_ID } from '#services/mcp_chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
+import { getSessionBySessionId, getSessionByNoteId } from '#services/webhook_service'
+import { getSmeIssueTemplateByDescriptionId } from '#services/sme_issue_template_service'
+import { getLatestChatByNoteId } from '#services/chat_service'
 
 export async function resolveScorerVersion(noteId: string) {
-  const chat = await Chat.query().where('note_id', noteId).orderBy('id', 'desc').first()
+  const chat = await getLatestChatByNoteId(noteId)
   console.log('[Feedback] Scorer version:', chat?.modelId)
   return chat?.modelId || MCP_MODEL_ID
-}
-
-export async function resolveSessionByNoteId(noteId: string) {
-  return Session.query().where('note_id', noteId).orderBy('id', 'desc').first()
 }
 
 export async function loadFeedbackVerdictsForSession(sessionId: number, reviewerId?: number) {
@@ -63,16 +59,12 @@ export async function submitFeedback(
   ctx?: HttpContext,
   reviewerName?: string | null
 ) {
-  const session = await resolveSessionByNoteId(payload.note_id)
+  const session = await getSessionBySessionId(payload.session_id)
   if (!session) {
-    return sendError('Note not found for the provided note_id')
+    return sendError('Session not found for the provided session_id')
   }
 
-  const template = await SmeIssuesTamplate.query()
-    .where('description_id', payload.description_id)
-    .preload('issueDescription')
-    .preload('issuesRelatedTo')
-    .first()
+  const template = await getSmeIssueTemplateByDescriptionId(payload.description_id)
 
   if (!template) {
     return sendError('Issue template not found for the provided description_id')
@@ -134,7 +126,6 @@ export async function submitFeedback(
       console.log('[Feedback] MCP call failed:', message)
     }
   }
-
   let query = FeedbackVerdict.query()
     .where('session_id', session.id)
     .where('reviewer_id', reviewerId)
@@ -186,7 +177,11 @@ export async function submitFeedback(
     modelType: 'FeedbackVerdict',
     modelId: record.id,
     noteId: session.noteId,
-    metadata: { note_id: session.noteId, session_id: session.id, mcp_synced: mcpSynced },
+    metadata: {
+      note_id: session.noteId,
+      session_id: session.sessionId,
+      mcp_synced: mcpSynced,
+    },
   })
 
   return sendSuccess(
@@ -200,7 +195,7 @@ export async function submitFeedback(
 }
 
 export async function getFeedbackVerdicts(noteId: string, reviewerId?: number) {
-  const session = await resolveSessionByNoteId(noteId)
+  const session = await getSessionByNoteId(noteId)
   if (!session) {
     return sendError('Note not found for the provided note_id')
   }
@@ -209,7 +204,7 @@ export async function getFeedbackVerdicts(noteId: string, reviewerId?: number) {
 
   return sendSuccess('Feedback verdicts retrieved successfully', {
     note_id: noteId,
-    session_id: session.id,
+    session_id: session.sessionId,
     verdicts: verdicts.map(formatFeedbackVerdictResponse),
   })
 }

@@ -1,18 +1,33 @@
-import vine from '@vinejs/vine'
+import vine, { SimpleMessagesProvider } from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
-import { FeedbackVerdictEnum } from '#enums/feedback_verdict_enum'
+import { FEEDBACK_VERDICT_IDS } from '#enums/feedback_verdict_enum'
+import Session from '#models/session'
 
 export const submitFeedbackValidator = vine.compile(
   vine.object({
-    note_id: vine.string().trim().minLength(1),
+    session_id: vine
+      .string()
+      .trim()
+      .minLength(1)
+      .exists({
+        table: Session.table,
+        column: 'session_id',
+        filter: (query) => {
+          query.whereNull('deleted_at')
+        },
+      }),
     description_id: vine.string().trim().minLength(1),
     verdict: vine
       .number()
       .withoutDecimals()
-      .in([FeedbackVerdictEnum.ACCEPT, FeedbackVerdictEnum.REFUTE]),
+      .in([...FEEDBACK_VERDICT_IDS]),
     comment: vine.string().trim().optional(),
   })
 )
+
+submitFeedbackValidator.messagesProvider = new SimpleMessagesProvider({
+  'session_id.database.exists': 'Session not found for the provided session_id',
+})
 
 export type SubmitFeedbackPayload = Infer<typeof submitFeedbackValidator>
 

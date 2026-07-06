@@ -91,6 +91,14 @@ export const listSmeIssueTemplates = async (page?: number, pageSize?: number) =>
   }
 }
 
+export async function getSmeIssueTemplateByDescriptionId(descriptionId: string) {
+  return SmeIssuesTamplate.query()
+    .where('description_id', descriptionId)
+    .preload('issueDescription')
+    .preload('issuesRelatedTo')
+    .first()
+}
+
 export const getSmeIssueTemplate = async (id: number) => {
   try {
     const template = await SmeIssuesTamplate.query()
