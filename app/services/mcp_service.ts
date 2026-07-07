@@ -349,6 +349,23 @@ async function normaliseMcpIssues(aiIssues: McpAiIssue[]): Promise<{
   return { issues, score }
 }
 
+export function buildMcpScoreNoteRequest(params: {
+  noteId: string
+  clientId: string
+  currentNote: string
+  previousNote: string | undefined
+}): McpScoreNoteRequest {
+  const currentSession = parseSessionForMcp(params.currentNote)
+  const previousSession = params.previousNote ? parseSessionForMcp(params.previousNote) : null
+
+  return {
+    note_id: params.noteId,
+    client_id: params.clientId,
+    current_session: currentSession,
+    previous_session: previousSession,
+  }
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
@@ -367,15 +384,9 @@ export async function evaluateChatWithMcp(params: {
   if (!baseUrl) throw new Error('MCP_API_URL is not configured')
   console.log('params.currentNote', params.currentNote)
   console.log('params.previousNote', params.previousNote)
-  const currentSession = parseSessionForMcp(params.currentNote)
-  const previousSession = params.previousNote ? parseSessionForMcp(params.previousNote) : null
-
-  const requestBody: McpScoreNoteRequest = {
-    note_id: params.noteId,
-    client_id: params.clientId,
-    current_session: currentSession,
-    previous_session: previousSession,
-  }
+  const requestBody = buildMcpScoreNoteRequest(params)
+  const currentSession = requestBody.current_session
+  const previousSession = requestBody.previous_session ?? null
 
   const userInput = buildUserInput(currentSession, previousSession)
   logger.info({ requestBody }, 'requestBody')
