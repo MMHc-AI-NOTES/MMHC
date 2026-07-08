@@ -147,7 +147,6 @@ export async function submitFeedback(
     'authorization': `Bearer ${mcpConfig.token}`,
   }
   console.log('request body', JSON.stringify(adjudicationBody, null, 2))
-  console.log('headers', JSON.stringify(headers, null, 2))
   try {
     const res = await axios.post(url, adjudicationBody, { headers, validateStatus: () => true })
     if (res.status !== HttpStatusCode.Ok) {
