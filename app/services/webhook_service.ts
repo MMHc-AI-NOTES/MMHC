@@ -105,7 +105,7 @@ export async function relinkPatientSessions(patientId: number) {
 }
 
 export async function getSessionBySessionId(sessionId: string) {
-  return Session.query().where('session_id', sessionId).first()
+  return Session.query().where('id', sessionId).first()
 }
 
 export async function getSessionByNoteId(noteId: string) {

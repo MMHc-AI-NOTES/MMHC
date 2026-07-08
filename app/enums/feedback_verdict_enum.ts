@@ -6,7 +6,7 @@ export const FeedbackVerdictEnum = {
   },
   DOWN: {
     id: 2,
-    label: 'REJECT',
-    mcp_label: 'reject',
+    label: 'REFUTE',
+    mcp_label: 'refute',
   },
 } as const

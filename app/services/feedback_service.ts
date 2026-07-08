@@ -12,7 +12,6 @@ import { DateTime } from 'luxon'
 import { getSessionBySessionId } from '#services/webhook_service'
 import { getSmeIssueTemplateByDescriptionId } from '#services/sme_issue_template_service'
 import { getLatestChatByNoteId } from '#services/chat_service'
-import { getUserById } from '#services/user_service'
 
 const FEEDBACK_SIDE = 'AI'
 
@@ -63,17 +62,20 @@ export function formatFeedbackVerdictResponse(record: FeedbackVerdict) {
 export async function submitFeedback(
   payload: SubmitFeedbackPayload,
   reviewerId: number,
+  reviewerName: string,
   ctx?: HttpContext
 ) {
-  const session = (await getSessionBySessionId(payload.session_id))!
-
+  const session = await getSessionBySessionId(payload.session_id)
+  if (!session) {
+    return sendError('Session not found for the provided session_id')
+  }
   const template = await getSmeIssueTemplateByDescriptionId(payload.description_id)
   if (!template) {
     return sendError('Issue template not found for the provided description_id')
   }
 
   const descriptionId = template.descriptionId ?? payload.description_id
-  const reviewer = (await getUserById(reviewerId)).fullName
+  const reviewer = reviewerName
   const reviewedAt = DateTime.now()
   const scorerVersion = await resolveScorerVersion(session.noteId)
 
