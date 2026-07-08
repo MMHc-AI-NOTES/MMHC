@@ -1,6 +1,6 @@
 import vine, { SimpleMessagesProvider } from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
-import { FEEDBACK_VERDICT_IDS } from '#enums/feedback_verdict_enum'
+import { FeedbackVerdictEnum } from '#enums/feedback_verdict_enum'
 import Session from '#models/session'
 
 export const submitFeedbackValidator = vine.compile(
@@ -20,7 +20,7 @@ export const submitFeedbackValidator = vine.compile(
     verdict: vine
       .number()
       .withoutDecimals()
-      .in([...FEEDBACK_VERDICT_IDS]),
+      .in([FeedbackVerdictEnum.UP.id, FeedbackVerdictEnum.DOWN.id]),
     comment: vine.string().trim().optional(),
   })
 )
@@ -34,5 +34,11 @@ export type SubmitFeedbackPayload = Infer<typeof submitFeedbackValidator>
 export const feedbackVerdictIdValidator = vine.compile(
   vine.object({
     id: vine.number().withoutDecimals(),
+  })
+)
+
+export const feedbackSessionIdParamsValidator = vine.compile(
+  vine.object({
+    session_id: vine.string().trim().minLength(1),
   })
 )

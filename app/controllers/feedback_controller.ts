@@ -5,23 +5,19 @@ import {
   getFeedbackVerdicts,
   deleteFeedbackVerdict,
 } from '#services/feedback_service'
-import { submitFeedbackValidator, feedbackVerdictIdValidator } from '#validators/feedback_validator'
-import vine from '@vinejs/vine'
-
-const noteIdParamsValidator = vine.compile(
-  vine.object({
-    note_id: vine.string().trim().minLength(1),
-  })
-)
+import {
+  submitFeedbackValidator,
+  feedbackVerdictIdValidator,
+  feedbackSessionIdParamsValidator,
+} from '#validators/feedback_validator'
 
 export default class FeedbackController {
   public async submit(ctx: HttpContext) {
     try {
-      console.log('[Feedback] Incoming request body:', ctx.request.body())
       const payload = await submitFeedbackValidator.validate(ctx.request.body())
       console.log('[Feedback] Validated payload:', payload)
       const user = ctx.auth.getUserOrFail()
-      return await submitFeedback(payload, user.id, ctx, user.fullName)
+      return await submitFeedback(payload, user.id, ctx)
     } catch (error) {
       console.log('feedback submit error', error)
       return ErrorService.handleError(ctx, error)
@@ -30,14 +26,8 @@ export default class FeedbackController {
 
   public async show(ctx: HttpContext) {
     try {
-      const { note_id: noteId } = await noteIdParamsValidator.validate(ctx.params)
-      const reviewerIdParam = ctx.request.input('reviewer_id')
-      const reviewerId =
-        reviewerIdParam !== undefined && reviewerIdParam !== null && reviewerIdParam !== ''
-          ? Number(reviewerIdParam)
-          : undefined
-
-      return await getFeedbackVerdicts(noteId, reviewerId)
+      const { session_id: sessionId } = await feedbackSessionIdParamsValidator.validate(ctx.params)
+      return await getFeedbackVerdicts(sessionId)
     } catch (error) {
       console.log('feedback get error', error)
       return ErrorService.handleError(ctx, error)
@@ -47,7 +37,8 @@ export default class FeedbackController {
   public async destroy(ctx: HttpContext) {
     try {
       const { id } = await feedbackVerdictIdValidator.validate(ctx.params)
-      return await deleteFeedbackVerdict(id)
+      const user = ctx.auth.getUserOrFail()
+      return await deleteFeedbackVerdict(id, user.id)
     } catch (error) {
       console.log('feedback delete error', error)
       return ErrorService.handleError(ctx, error)

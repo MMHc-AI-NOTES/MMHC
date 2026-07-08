@@ -1,38 +1,45 @@
 import FeedbackVerdict from '#models/feedback_verdict'
 import { mcpConfig } from '#config/services'
-import axios from 'axios'
+import axios, { HttpStatusCode } from 'axios'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { SubmitFeedbackPayload } from '#validators/feedback_validator'
-import { feedbackVerdictToMcpString } from '#enums/feedback_verdict_enum'
+import { FeedbackVerdictEnum } from '#enums/feedback_verdict_enum'
 import { MCP_MODEL_ID } from '#services/mcp_chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
-import { getSessionBySessionId, getSessionByNoteId } from '#services/webhook_service'
+import { getSessionBySessionId } from '#services/webhook_service'
 import { getSmeIssueTemplateByDescriptionId } from '#services/sme_issue_template_service'
 import { getLatestChatByNoteId } from '#services/chat_service'
+import { getUserById } from '#services/user_service'
+
+const FEEDBACK_SIDE = 'AI'
 
 export async function resolveScorerVersion(noteId: string) {
   const chat = await getLatestChatByNoteId(noteId)
-  console.log('[Feedback] Scorer version:', chat?.modelId)
   return chat?.modelId || MCP_MODEL_ID
 }
+export async function loadFeedbackVerdictsForSession(sessionId: string | number) {
+  let internalSessionId: number
 
-export async function loadFeedbackVerdictsForSession(sessionId: number, reviewerId?: number) {
-  const query = FeedbackVerdict.query()
-    .where('session_id', sessionId)
+  if (typeof sessionId === 'number') {
+    internalSessionId = sessionId
+  } else {
+    const session = await getSessionBySessionId(sessionId)
+    if (!session) {
+      return []
+    }
+    internalSessionId = session.id
+  }
+
+  return FeedbackVerdict.query()
+    .where('session_id', internalSessionId)
     .preload('reviewer')
     .preload('smeIssueTemplate', (q) => q.preload('issueDescription').preload('issuesRelatedTo'))
     .preload('issueDescription')
     .preload('issuesRelatedTo')
     .orderBy('updated_at', 'desc')
-
-  if (reviewerId) {
-    query.where('reviewer_id', reviewerId)
-  }
-
-  return query
 }
 
 export function formatFeedbackVerdictResponse(record: FeedbackVerdict) {
@@ -56,22 +63,17 @@ export function formatFeedbackVerdictResponse(record: FeedbackVerdict) {
 export async function submitFeedback(
   payload: SubmitFeedbackPayload,
   reviewerId: number,
-  ctx?: HttpContext,
-  reviewerName?: string | null
+  ctx?: HttpContext
 ) {
-  const session = await getSessionBySessionId(payload.session_id)
-  if (!session) {
-    return sendError('Session not found for the provided session_id')
-  }
+  const session = (await getSessionBySessionId(payload.session_id))!
 
   const template = await getSmeIssueTemplateByDescriptionId(payload.description_id)
-
   if (!template) {
     return sendError('Issue template not found for the provided description_id')
   }
 
   const descriptionId = template.descriptionId ?? payload.description_id
-  const reviewer = reviewerName ?? ''
+  const reviewer = (await getUserById(reviewerId)).fullName
   const reviewedAt = DateTime.now()
   const scorerVersion = await resolveScorerVersion(session.noteId)
 
@@ -86,50 +88,20 @@ export async function submitFeedback(
         description_id: descriptionId,
         description: template.issueDescription?.description ?? '',
         code: descriptionId,
-        side: 'AI',
-        verdict: feedbackVerdictToMcpString(payload.verdict),
+        side: FEEDBACK_SIDE,
+        verdict:
+          payload.verdict === FeedbackVerdictEnum.UP.id
+            ? FeedbackVerdictEnum.UP.mcp_label
+            : FeedbackVerdictEnum.DOWN.mcp_label,
         comment: payload.comment ?? '',
         by: reviewer,
       },
     ],
   }
-
-  let mcpResponse: unknown = null
-  let mcpSynced = false
-
-  if (mcpConfig.apiUrl) {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (mcpConfig.token) {
-      headers.authorization = mcpConfig.token.startsWith('Bearer ')
-        ? mcpConfig.token
-        : `Bearer ${mcpConfig.token}`
-    }
-
-    const url = `${mcpConfig.apiUrl.replace(/\/$/, '')}/adjudications`
-
-    console.log('[Feedback] MCP request:', JSON.stringify(adjudicationBody, null, 2))
-
-    try {
-      const res = await axios.post(url, adjudicationBody, { headers, validateStatus: () => true })
-      mcpResponse = res.data
-      mcpSynced = res.status >= 200 && res.status < 300
-      console.log('[Feedback] MCP response status:', res.status)
-      console.log('[Feedback] MCP response body:', mcpResponse)
-    } catch (error: any) {
-      const message =
-        error.code === 'ECONNREFUSED'
-          ? `MCP server not reachable at ${mcpConfig.apiUrl}`
-          : (error.message ?? 'MCP API call failed')
-
-      mcpResponse = { error: message, code: error.code ?? null }
-      mcpSynced = false
-      console.log('[Feedback] MCP call failed:', message)
-    }
-  }
   let query = FeedbackVerdict.query()
     .where('session_id', session.id)
     .where('reviewer_id', reviewerId)
-    .where('side', 'AI')
+    .where('side', FEEDBACK_SIDE)
     .where('sme_issue_template_id', template.id)
 
   if (template.issueDescriptionId) {
@@ -140,6 +112,10 @@ export async function submitFeedback(
 
   const existing = await query.first()
 
+  if (existing && existing.reviewerId !== reviewerId) {
+    return sendError('You are not allowed to update this feedback')
+  }
+
   const data = {
     sessionId: session.id,
     reviewerId,
@@ -148,11 +124,11 @@ export async function submitFeedback(
     issuesRelatedToId: template.issuesRelatedToId,
     scorerVersion,
     reviewedAt,
-    side: 'AI',
+    side: FEEDBACK_SIDE,
     verdict: payload.verdict,
     comment: payload.comment ?? null,
     adjudicationRequest: adjudicationBody,
-    adjudicationResponse: mcpResponse && typeof mcpResponse === 'object' ? mcpResponse : null,
+    adjudicationResponse: null as object | null,
   }
 
   let record: FeedbackVerdict
@@ -162,6 +138,36 @@ export async function submitFeedback(
   } else {
     record = await FeedbackVerdict.create(data)
   }
+
+  let mcpResponse: unknown = null
+  let mcpSynced = false
+  const url = `${mcpConfig.apiUrl}/adjudications`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'authorization': `Bearer ${mcpConfig.token}`,
+  }
+  console.log('request body', JSON.stringify(adjudicationBody, null, 2))
+  console.log('headers', JSON.stringify(headers, null, 2))
+  try {
+    const res = await axios.post(url, adjudicationBody, { headers, validateStatus: () => true })
+    if (res.status !== HttpStatusCode.Ok) {
+      mcpSynced = false
+      mcpResponse = res.data
+    } else {
+      mcpSynced = true
+      mcpResponse = res.data
+    }
+    console.log('[Feedback] MCP response status:', res.status)
+    console.log('[Feedback] MCP response body:', JSON.stringify(mcpResponse, null, 2))
+  } catch (error: any) {
+    mcpResponse = { error: error.message ?? 'MCP API call failed', code: error.code ?? null }
+    mcpSynced = false
+    console.log('[Feedback] MCP call failed:', error.message)
+  }
+
+  record.adjudicationResponse =
+    mcpResponse && typeof mcpResponse === 'object' ? (mcpResponse as object) : null
+  await record.save()
 
   await record.load('reviewer')
   await record.load('smeIssueTemplate', (q) =>
@@ -183,7 +189,6 @@ export async function submitFeedback(
       mcp_synced: mcpSynced,
     },
   })
-
   return sendSuccess(
     mcpSynced ? 'Feedback submitted successfully' : 'Feedback saved but MCP call failed',
     {
@@ -194,25 +199,26 @@ export async function submitFeedback(
   )
 }
 
-export async function getFeedbackVerdicts(noteId: string, reviewerId?: number) {
-  const session = await getSessionByNoteId(noteId)
-  if (!session) {
-    return sendError('Note not found for the provided note_id')
-  }
+export async function getFeedbackVerdicts(sessionId: string) {
+  const session = (await getSessionBySessionId(sessionId))!
 
-  const verdicts = await loadFeedbackVerdictsForSession(session.id, reviewerId)
+  const verdicts = await loadFeedbackVerdictsForSession(sessionId)
 
   return sendSuccess('Feedback verdicts retrieved successfully', {
-    note_id: noteId,
     session_id: session.sessionId,
+    note_id: session.noteId,
     verdicts: verdicts.map(formatFeedbackVerdictResponse),
   })
 }
 
-export async function deleteFeedbackVerdict(id: number) {
+export async function deleteFeedbackVerdict(id: number, reviewerId: number) {
   const verdict = await FeedbackVerdict.find(id)
   if (!verdict) {
     return sendError('Feedback verdict not found')
+  }
+
+  if (verdict.reviewerId !== reviewerId) {
+    return sendError('You are not allowed to delete this feedback')
   }
 
   await verdict.delete()
