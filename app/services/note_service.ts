@@ -383,8 +383,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
     delete serialized.feedback_verdicts
 
     // const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.id)
-       const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.sessionId)
-
+    const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.sessionId)
 
     const noteWithCount = {
       ...serialized,
