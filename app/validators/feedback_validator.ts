@@ -34,13 +34,10 @@ export type SubmitFeedbackPayload = Infer<typeof submitFeedbackValidator>
 
 export const feedbackVerdictIdValidator = vine.compile(
   vine.object({
-    id: vine
-      .number()
-      .withoutDecimals()
-      .exists({
-        table: FeedbackVerdict.table,
-        column: 'id',
-      }),
+    id: vine.number().withoutDecimals().exists({
+      table: FeedbackVerdict.table,
+      column: 'id',
+    }),
   })
 )
 
