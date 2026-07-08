@@ -109,7 +109,7 @@ export async function getSessionBySessionId(sessionId: string) {
 }
 
 export async function getSessionByNoteId(noteId: string) {
-  return Session.query().where('note_id', noteId).orderBy('id', 'desc').first()
+  return Session.query().where('note_id', noteId).first()
 }
 
 /**
