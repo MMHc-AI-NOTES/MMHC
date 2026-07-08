@@ -104,12 +104,34 @@ export async function relinkPatientSessions(patientId: number) {
   }
 }
 
-export async function getSessionBySessionId(sessionId: string) {
-  return Session.query().where('session_id', sessionId).first()
+export const getSessionBySessionId = async (sessionId: string) => {
+  try {
+    const session = await Session.query().where('id', sessionId).first()
+
+    if (!session) {
+      throw new Error(`Session with session_id ${sessionId} does not exist`)
+    }
+
+    return session
+  } catch (error: any) {
+    console.log('Error in getSessionBySessionId:', error.message)
+    throw new Error(error.message)
+  }
 }
 
-export async function getSessionByNoteId(noteId: string) {
-  return Session.query().where('note_id', noteId).first()
+export const getSessionByNoteId = async (noteId: string) => {
+  try {
+    const session = await Session.query().where('note_id', noteId).first()
+
+    if (!session) {
+      throw new Error(`Session with note_id ${noteId} does not exist`)
+    }
+
+    return session
+  } catch (error: any) {
+    console.log('Error in getSessionByNoteId:', error.message)
+    throw new Error(error.message)
+  }
 }
 
 /**

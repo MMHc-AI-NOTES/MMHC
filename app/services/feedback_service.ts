@@ -5,15 +5,13 @@ import { sendSuccess, sendError } from '#services/custom_response_service'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { SubmitFeedbackPayload } from '#validators/feedback_validator'
-import { FeedbackVerdictEnum } from '#enums/feedback_verdict_enum'
+import { FeedbackVerdictEnum, FeedbackSideEnum } from '#enums/feedback_verdict_enum'
 import { MCP_MODEL_ID } from '#services/mcp_chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import { getSessionBySessionId } from '#services/webhook_service'
 import { getSmeIssueTemplateByDescriptionId } from '#services/sme_issue_template_service'
 import { getLatestChatByNoteId } from '#services/chat_service'
-
-const FEEDBACK_SIDE = 'AI'
 
 export async function resolveScorerVersion(noteId: string) {
   const chat = await getLatestChatByNoteId(noteId)
@@ -66,14 +64,7 @@ export async function submitFeedback(
   ctx?: HttpContext
 ) {
   const session = await getSessionBySessionId(payload.session_id)
-  if (!session) {
-    return sendError('Session not found for the provided session_id')
-  }
   const template = await getSmeIssueTemplateByDescriptionId(payload.description_id)
-  if (!template) {
-    return sendError('Issue template not found for the provided description_id')
-  }
-
   const descriptionId = template.descriptionId ?? payload.description_id
   const reviewer = reviewerName
   const reviewedAt = DateTime.now()
@@ -90,7 +81,7 @@ export async function submitFeedback(
         description_id: descriptionId,
         description: template.issueDescription?.description ?? '',
         code: descriptionId,
-        side: FEEDBACK_SIDE,
+        side: FeedbackSideEnum.AI,
         verdict:
           payload.verdict === FeedbackVerdictEnum.UP.id
             ? FeedbackVerdictEnum.UP.mcp_label
@@ -103,7 +94,7 @@ export async function submitFeedback(
   let query = FeedbackVerdict.query()
     .where('session_id', session.id)
     .where('reviewer_id', reviewerId)
-    .where('side', FEEDBACK_SIDE)
+    .where('side', FeedbackSideEnum.AI)
     .where('sme_issue_template_id', template.id)
 
   if (template.issueDescriptionId) {
@@ -126,7 +117,7 @@ export async function submitFeedback(
     issuesRelatedToId: template.issuesRelatedToId,
     scorerVersion,
     reviewedAt,
-    side: FEEDBACK_SIDE,
+    side: FeedbackSideEnum.AI,
     verdict: payload.verdict,
     comment: payload.comment ?? null,
     adjudicationRequest: adjudicationBody,
@@ -201,7 +192,7 @@ export async function submitFeedback(
 }
 
 export async function getFeedbackVerdicts(sessionId: string) {
-  const session = (await getSessionBySessionId(sessionId))!
+  const session = await getSessionBySessionId(sessionId)
 
   const verdicts = await loadFeedbackVerdictsForSession(sessionId)
 
@@ -212,11 +203,22 @@ export async function getFeedbackVerdicts(sessionId: string) {
   })
 }
 
-export async function deleteFeedbackVerdict(id: number, reviewerId: number) {
-  const verdict = await FeedbackVerdict.find(id)
-  if (!verdict) {
-    return sendError('Feedback verdict not found')
+export const getFeedbackVerdictById = async (id: number) => {
+  try {
+    const FeedbackResponse = await FeedbackVerdict.query().where('id', id).first()
+
+    if (!FeedbackResponse) {
+      throw new Error(`Feedback verdict with id ${id} does not exist`)
+    }
+    return FeedbackResponse
+  } catch (error: any) {
+    console.log('Error in getFeedbackVerdictById:', error.message)
+    throw new Error(error.message)
   }
+}
+
+export async function deleteFeedbackVerdict(id: number, reviewerId: number) {
+  const verdict = await getFeedbackVerdictById(id)
 
   if (verdict.reviewerId !== reviewerId) {
     return sendError('You are not allowed to delete this feedback')

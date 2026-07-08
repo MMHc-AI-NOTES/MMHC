@@ -10,3 +10,7 @@ export const FeedbackVerdictEnum = {
     mcp_label: 'refute',
   },
 } as const
+
+export const FeedbackSideEnum = {
+  AI: 'AI',
+} as const
