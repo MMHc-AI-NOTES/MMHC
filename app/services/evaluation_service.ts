@@ -22,6 +22,8 @@ interface McpParams {
   previousNote?: string
   noteId: string
   clientId: string
+  cptCode: string
+  diagnosis: unknown[]
 }
 
 type EvaluationParams = BedrockParams | McpParams
@@ -54,6 +56,8 @@ export function buildEvaluationParams(data: {
   // MCP
   noteId?: string
   clientId?: string
+  cptCode?: string
+  diagnosis?: unknown[]
 }): EvaluationParams {
   const provider = getProvider()
 
@@ -72,6 +76,8 @@ export function buildEvaluationParams(data: {
       previousNote: data.previousNote,
       noteId: data.noteId,
       clientId: data.clientId,
+      cptCode: data.cptCode ?? '',
+      diagnosis: data.diagnosis ?? [],
     }
   }
 
@@ -105,6 +111,8 @@ export async function evaluateNote(params: EvaluationParams): Promise<Normalized
     return evaluateChatWithMcp({
       noteId: params.noteId,
       clientId: params.clientId,
+      cptCode: params.cptCode,
+      diagnosis: params.diagnosis,
       currentNote: params.currentNote,
       previousNote: params.previousNote,
     })

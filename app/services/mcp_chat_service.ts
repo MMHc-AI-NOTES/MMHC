@@ -7,9 +7,11 @@ import { sendSuccess } from '#services/custom_response_service'
 import {
   evaluateChatWithMcp,
   resolveMcpClientId,
+  resolveMcpCptCode,
   toMcpApiResponse,
   toMcpApiResponseOrNull,
 } from '#services/mcp_service'
+import { getDiagnosisFromAuditLog } from '#services/note_service'
 import type { NormalizedEvaluationResult } from '#interfaces/mcp_interface'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getChatAiReview } from '#services/evaluation_service'
@@ -53,12 +55,16 @@ function mapWorkflow(validationStatus?: string): number {
 
 async function runMcpEvaluation(session: Session): Promise<NormalizedEvaluationResult> {
   await session.load('patient')
+  await session.load('cptCode')
 
   const previousNote = await resolvePreviousSessionContent(session)
+  const diagnosis = await getDiagnosisFromAuditLog(session.noteId)
 
   return evaluateChatWithMcp({
     noteId: session.noteId,
     clientId: resolveMcpClientId(session),
+    cptCode: resolveMcpCptCode(session),
+    diagnosis,
     currentNote: session.session,
     previousNote,
   })
@@ -69,7 +75,11 @@ export const createMcpChat = async (
   userId: number,
   ctx?: HttpContext
 ) => {
-  const session = await Session.query().where('note_id', reqData.note_id).preload('patient').first()
+  const session = await Session.query()
+    .where('note_id', reqData.note_id)
+    .preload('patient')
+    .preload('cptCode')
+    .first()
 
   if (!session) {
     ctx?.logger.error({ noteId: reqData.note_id }, 'Session not found while creating MCP chat')
@@ -143,7 +153,11 @@ export const createMcpChat = async (
 }
 
 export const scoreMcpNote = async (reqData: createMcpChatValidatorInterface) => {
-  const session = await Session.query().where('note_id', reqData.note_id).preload('patient').first()
+  const session = await Session.query()
+    .where('note_id', reqData.note_id)
+    .preload('patient')
+    .preload('cptCode')
+    .first()
 
   if (!session) {
     logger.error({ noteId: reqData.note_id }, 'Session not found for the provided note')
@@ -186,7 +200,11 @@ export const reevaluateMcpChat = async (chatId: number) => {
     throw new Error('MCP chat not found')
   }
 
-  const session = await Session.query().where('note_id', chat.noteId).preload('patient').first()
+  const session = await Session.query()
+    .where('note_id', chat.noteId)
+    .preload('patient')
+    .preload('cptCode')
+    .first()
 
   if (!session) {
     logger.error({ noteId: chat.noteId }, 'Session not found for this chat')
