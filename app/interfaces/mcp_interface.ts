@@ -18,7 +18,7 @@ export interface McpScoreNoteRequest {
   note_id: string
   client_id: string
   cpt_code: string
-  diagnosis: unknown[]
+  diagnosis: Record<string, any>[]
   current_session: Session
   previous_session?: Session | null
 }

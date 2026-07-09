@@ -23,7 +23,7 @@ interface McpParams {
   noteId: string
   clientId: string
   cptCode: string
-  diagnosis: unknown[]
+  diagnosis: Record<string, any>[]
 }
 
 type EvaluationParams = BedrockParams | McpParams
@@ -57,7 +57,7 @@ export function buildEvaluationParams(data: {
   noteId?: string
   clientId?: string
   cptCode?: string
-  diagnosis?: unknown[]
+  diagnosis?: Record<string, any>[]
 }): EvaluationParams {
   const provider = getProvider()
 

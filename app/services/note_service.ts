@@ -19,7 +19,7 @@ import fs from 'node:fs/promises'
 import db from '@adonisjs/lucid/services/db'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 
-export async function getDiagnosisFromAuditLog(noteId: string): Promise<unknown[]> {
+export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<string, any>[]> {
   const auditLog = await db
     .from('audit_logs')
     .where('note_id', noteId)

@@ -272,7 +272,7 @@ export function buildMcpScoreNoteRequest(params: {
   noteId: string
   clientId: string
   cptCode: string
-  diagnosis: unknown[]
+  diagnosis: Record<string, any>[]
   currentNote: string
   previousNote?: string
 }): McpScoreNoteRequest {
@@ -396,7 +396,7 @@ export async function evaluateChatWithMcp(params: {
   noteId: string
   clientId: string
   cptCode: string
-  diagnosis: unknown[]
+  diagnosis: Record<string, any>[]
   currentNote: string
   previousNote: string | undefined
 }): Promise<NormalizedEvaluationResult> {
