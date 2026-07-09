@@ -17,14 +17,19 @@ import type { updateNoteValidatorInterface } from '#validators/note_validator'
 import app from '@adonisjs/core/services/app'
 import fs from 'node:fs/promises'
 import db from '@adonisjs/lucid/services/db'
+import { AuditActionEnum } from '#enums/audit_log_enum'
 
 export async function getDiagnosisFromAuditLog(noteId: string): Promise<unknown[]> {
-  const auditLog = await db.from('audit_logs').where('note_id', noteId).select('metadata').first()
+  const auditLog = await db
+    .from('audit_logs')
+    .where('note_id', noteId)
+    .where('action', AuditActionEnum.webhookSessionReceived)
+    .select('metadata')
+    .first()
 
   if (!auditLog?.metadata) {
     return []
   }
-
   const meta =
     typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
 
