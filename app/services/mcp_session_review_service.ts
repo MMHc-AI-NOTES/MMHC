@@ -9,9 +9,7 @@ import {
 } from '#services/mcp_service'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 
-export const invokeMcpSessionReview = async (
-  payload: invokeMcpSessionReviewValidatorInterface
-) => {
+export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewValidatorInterface) => {
   console.log('[MCP Session Review] Frontend request:', JSON.stringify(payload, null, 2))
 
   const session = await Session.query().where('note_id', payload.note_id).preload('patient').first()
