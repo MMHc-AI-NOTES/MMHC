@@ -16,13 +16,8 @@ import { sendSuccess } from '#services/custom_response_service'
 import type { webhookSessionValidatorInterface } from '#validators/webhook_validator'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { storeWebhookSessionVersionIfDifferent } from '#services/json_comparison_service'
-import { practiceQConfig } from '#config/services'
 import { DateTime } from 'luxon'
 import type { WebhookJobData } from '#jobs/queues/webhook_queue'
-import { sendMissingFieldsEmail } from '#services/email_service'
-// import Agent from '#models/agent'
-// import Chat from '#models/chat'
-// import { createChat } from '#services/chat_service'
 
 /**
  * Field mapping: question id → canonical session field name.
@@ -305,44 +300,6 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       await relinkPatientSessions(session.patientId)
     }
 
-    // Automatically create chat with default prompt for AI evaluation
-    // Create chat if: 1) Chat doesn't exist, OR 2) New version was stored (details changed)
-    // NOTE: Temporarily disabled by commenting out the following block. Uncomment
-    // to re-enable automatic chat creation on webhook:
-    /*
-    try {
-      // Check if chat already exists for this note
-      const existingChat = await Chat.query().where('note_id', payload.NoteId).first()
-
-      // Create chat if: no chat exists OR new version was stored
-      const shouldCreateChat = !existingChat || versionResult.stored
-
-      if (shouldCreateChat) {
-        // Find default active agent
-        const defaultAgent = await Agent.query()
-          .where('is_default', true)
-          .where('is_active', true)
-          .first()
-
-        if (defaultAgent && defaultAgent.prompt && defaultAgent.model) {
-          // Create chat with default agent for automatic evaluation
-          // Pass the session instance we already have to avoid querying again
-          await createChat(
-            {
-              note_id: payload.NoteId,
-              prompt_id: defaultAgent.id,
-            },
-            practitionerId,
-            session // Pass the session instance we already have
-          )
-        }
-      }
-    } catch (chatError: any) {
-      // Log error but don't fail webhook processing
-      console.log(`Error creating automatic chat for note ${payload.NoteId}:`, chatError.message)
-    }
-    */
-
     const status = existingSession ? 'updated' : 'created'
     console.log('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
     return sendSuccess(
@@ -418,39 +375,25 @@ const REQUIRED_QUESTIONS = [
   '5th question',
 ]
 
-/**
- * Validate note details Questions array
- * Checks if all 5 required questions are present with non-empty answers
- * @returns {isValid: boolean, errors: string[]}
- */
-const validateNoteQuestions = (
-  noteDetails: PracticeQNote | null
+const validatePayloadQuestions = (
+  questions: webhookSessionValidatorInterface['Questions']
 ): { isValid: boolean; errors: string[] } => {
   const errors: string[] = []
 
-  if (!noteDetails) {
-    errors.push('Note details not found')
+  if (!questions || !Array.isArray(questions)) {
+    errors.push('Questions array not found in webhook payload')
     return { isValid: false, errors }
   }
-
-  if (!('Questions' in noteDetails) || !Array.isArray((noteDetails as any).Questions)) {
-    errors.push('Questions array not found in note details')
-    return { isValid: false, errors }
-  }
-
-  const questions = (noteDetails as any).Questions
 
   const questionsWithAnswers = questions.filter(
-    (q: any) => q.Text && q.Answer && typeof q.Answer === 'string' && q.Answer.trim().length > 0
+    (q) => q.text && q.answer && typeof q.answer === 'string' && q.answer.trim().length > 0
   )
 
   const foundRequiredQuestions: string[] = []
   const missingRequiredQuestions: string[] = []
 
   REQUIRED_QUESTIONS.forEach((requiredText) => {
-    const found = questionsWithAnswers.some(
-      (q: any) => q.Text && q.Text.trim() === requiredText.trim()
-    )
+    const found = questionsWithAnswers.some((q) => q.text && q.text.trim() === requiredText.trim())
     if (found) {
       foundRequiredQuestions.push(requiredText)
     } else {
@@ -468,50 +411,6 @@ const validateNoteQuestions = (
     isValid: errors.length === 0,
     errors,
   }
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-const fetchPracticeQNoteWithRetry = async (
-  noteId: string,
-  maxAttempts = 3,
-  delayMs = 1000
-): Promise<PracticeQNote | null> => {
-  const PRACTICEQ_API_KEY = practiceQConfig.apiKey
-  if (!PRACTICEQ_API_KEY) {
-    throw new Error('PRACTICEQ_API_KEY is missing in environment variables')
-  }
-
-  let attempts = 0
-  let lastError: any = null
-
-  while (attempts < maxAttempts) {
-    attempts++
-    try {
-      const response = await fetch(`${practiceQConfig.baseUrl}/notes/${noteId}`, {
-        method: 'GET',
-        headers: {
-          'X-Auth-Key': PRACTICEQ_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`PracticeQ API error: ${response.status} ${response.statusText}`)
-      }
-
-      const noteDetails = (await response.json()) as PracticeQNote
-      return noteDetails
-    } catch (error: any) {
-      lastError = error
-      console.error(`Attempt ${attempts} failed to fetch note from PracticeQ: ${error.message}`)
-      if (attempts < maxAttempts) {
-        await sleep(delayMs * attempts)
-      }
-    }
-  }
-  throw new Error(
-    `Failed to fetch note from PracticeQ after ${maxAttempts} attempts: ${lastError?.message}`
-  )
 }
 
 /**
@@ -532,33 +431,25 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     workflowStatus = WorkflowEnum.failed
   }
 
-  let noteDetails: PracticeQNote | null = null
   let questionsValidation: { isValid: boolean; errors: string[] } | null = null
   if (webhookValidation.isValid && noteId) {
-    try {
-      noteDetails = await fetchPracticeQNoteWithRetry(noteId)
-      questionsValidation = validateNoteQuestions(noteDetails)
-      if (!questionsValidation.isValid) {
-        workflowStatus = WorkflowEnum.failed
-      }
-    } catch (error: any) {
+    questionsValidation = validatePayloadQuestions(payload.Questions ?? [])
+    if (!questionsValidation.isValid) {
       workflowStatus = WorkflowEnum.failed
     }
   }
 
   // Only include fields that exist in FIELD_MAPPING; ignore all other keys
-  let sessionString = ''
-  if (noteDetails && 'Questions' in noteDetails && Array.isArray((noteDetails as any).Questions)) {
-    const sessionObject: Record<string, string> = {}
-    const questions = (noteDetails as any).Questions
-    for (const q of questions) {
-      const id = q.Id ?? q.id
-      const answer = q.Answer ?? q.answer ?? ''
+  const sessionObject: Record<string, string> = {}
+  if (Array.isArray(payload.Questions)) {
+    for (const q of payload.Questions) {
+      const id = q.id ?? (q as any).Id
+      const answer = q.answer ?? (q as any).Answer ?? ''
       const fieldName = FIELD_MAPPING[id]
       if (fieldName) sessionObject[fieldName] = answer ?? ''
     }
-    sessionString = JSON.stringify(sessionObject)
   }
+  const sessionString = JSON.stringify(sessionObject)
 
   let patientId: number | null = null
   if (clientId) {
@@ -575,7 +466,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
   const cptCode = await CptCode.findBy('code', '90791')
   const sessionId = `session-${noteId || ''}`
   const sessionTime = (() => {
-    const d = (noteDetails as any)?.Date ?? (noteDetails as any)?.LastModified
+    const d = payload.Date ?? payload.LastModified
     if (d && typeof d === 'string') {
       const parsed = DateTime.fromISO(d, { setZone: true })
       if (parsed.isValid) return parsed
@@ -659,33 +550,6 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     }
   }
 
-  if (workflowStatus === WorkflowEnum.failed && session?.practitioner) {
-    try {
-      const practitioner = session.practitioner
-      const practitionerName = practitioner.fullName || practitioner.email || 'Practitioner'
-      const practitionerEmail = practitioner.email
-
-      const missingFields: string[] = []
-      if (questionsValidation && !questionsValidation.isValid) {
-        questionsValidation.errors
-          .filter((error) => error.includes('Missing required questions'))
-          .forEach((error) => {
-            const match = error.match(/Missing required questions: (.+?)(?:\. Found:|$)/)
-            if (match) {
-              const missingQuestions = match[1].split(', ').map((q) => q.trim())
-              missingFields.push(...missingQuestions)
-            }
-          })
-      }
-
-      if (practitionerEmail) {
-        await sendMissingFieldsEmail(practitionerEmail, practitionerName, missingFields, noteId)
-      }
-    } catch (error: any) {
-      // Email sending failed, but don't break the process
-    }
-  }
-
   const allValidationErrors = [...webhookValidation.errors]
   if (questionsValidation && !questionsValidation.isValid) {
     allValidationErrors.push(...questionsValidation.errors)
@@ -698,7 +562,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     clientId,
     workflow: workflowStatus === WorkflowEnum.in_queue ? 'in_queue' : 'failed',
     validationErrors: allValidationErrors,
-    noteDetails: noteDetails ? { Id: noteDetails.Id } : null,
+    noteDetails: null,
     sessionStored: session ? true : null,
     patientId,
   }
