@@ -15,7 +15,12 @@ import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getChatAiReview } from '#services/evaluation_service'
 import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
-import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
+import {
+  ChatSeverityEnum,
+  ChatTriggerSourceEnum,
+  ChatResultEnum,
+  ChatAiReviewEnum,
+} from '#enums/chat_enum'
 import { aiScoreThresholds } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
 import { createAuditLog } from '#services/audit_log_service'
@@ -25,7 +30,6 @@ import type { createMcpChatValidatorInterface } from '#validators/mcp_chat_valid
 import logger from '@adonisjs/core/services/logger'
 
 export const MCP_MODEL_ID = 'mcp-v13'
-export const MCP_PROMPT_LABEL = 'MCP AI Scorer v13'
 
 function mapSeverity(validationStatus?: string): number {
   if (validationStatus === 'error') return ChatSeverityEnum.critical
@@ -87,12 +91,17 @@ export const createMcpChat = async (
 
   const severity = mapSeverity(evaluation.validation_result?.status)
   const result = mapResult(evaluation.validation_result?.status)
+  const prompt = JSON.stringify(evaluation.mcp_request ?? {})
+  const modelId =
+    evaluation.mcp_response?.meta.scorer_version ??
+    evaluation.mcp_response?.model_version ??
+    MCP_MODEL_ID
 
   const chat = await Chat.create({
-    prompt: MCP_PROMPT_LABEL,
+    prompt,
     userNote: session.session,
     userInput: evaluation.user_input,
-    modelId: MCP_MODEL_ID,
+    modelId,
     noteId: reqData.note_id,
     evaluationScore: evaluation.score,
     responseTime,
@@ -122,7 +131,7 @@ export const createMcpChat = async (
       note_id: reqData.note_id,
       chat_id: chat.id,
       provider: 'MCP',
-      model_id: MCP_MODEL_ID,
+      model_id: chat.modelId,
     },
   })
 
@@ -158,7 +167,7 @@ export const scoreMcpNote = async (reqData: createMcpChatValidatorInterface) => 
 export const getMcpChatById = async (chatId: number) => {
   const chat = await Chat.query()
     .where('id', chatId)
-    .where('model_id', MCP_MODEL_ID)
+    .where('ai_review', ChatAiReviewEnum.mcp)
     .preload('user')
     .preload('humanReviews', (reviewsQuery) =>
       reviewsQuery.orderBy('id', 'desc').preload('practitioner')
@@ -181,7 +190,7 @@ export const getMcpChatById = async (chatId: number) => {
 export const reevaluateMcpChat = async (chatId: number) => {
   const chat = await Chat.find(chatId)
 
-  if (!chat || chat.modelId !== MCP_MODEL_ID) {
+  if (!chat || chat.aiReview !== ChatAiReviewEnum.mcp) {
     logger.error({ chatId }, 'MCP chat not found')
     throw new Error('MCP chat not found')
   }
@@ -201,6 +210,11 @@ export const reevaluateMcpChat = async (chatId: number) => {
   const endTimeMs = Date.now()
   const endTime = DateTime.fromMillis(endTimeMs)
   const responseTime = (endTimeMs - startTimeMs) / 1000
+  const prompt = JSON.stringify(evaluation.mcp_request ?? {})
+  const modelId =
+    evaluation.mcp_response?.meta.scorer_version ??
+    evaluation.mcp_response?.model_version ??
+    MCP_MODEL_ID
 
   chat.evaluationScore = evaluation.score
   chat.responseTime = responseTime
@@ -210,6 +224,8 @@ export const reevaluateMcpChat = async (chatId: number) => {
   chat.evaluation = evaluation.evaluation
   chat.bedrockResponse = evaluation
   chat.userInput = evaluation.user_input
+  chat.prompt = prompt
+  chat.modelId = modelId
   chat.severity = mapSeverity(evaluation.validation_result?.status)
   chat.result = mapResult(evaluation.validation_result?.status)
   chat.userNote = session.session
@@ -244,7 +260,7 @@ export const listMcpChats = async (
     let sortChat: any
 
     let chatListings: any = Chat.query()
-      .where('model_id', MCP_MODEL_ID)
+      .where('ai_review', ChatAiReviewEnum.mcp)
       .preload('user')
       .preload('humanReviews', (reviewsQuery) =>
         reviewsQuery.orderBy('id', 'desc').preload('practitioner')
