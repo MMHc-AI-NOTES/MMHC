@@ -263,9 +263,7 @@ export function resolveMcpClientId(session: {
 }
 
 /** CPT code string from preloaded session.cptCode relation. */
-export function resolveMcpCptCode(session: {
-  cptCode?: { code?: string | null } | null
-}): string {
+export function resolveMcpCptCode(session: { cptCode?: { code?: string | null } | null }): string {
   return session.cptCode?.code?.trim() ?? ''
 }
 
@@ -416,7 +414,10 @@ export async function evaluateChatWithMcp(params: {
     previousNote: params.previousNote,
   })
 
-  const userInput = buildUserInput(requestBody.current_session, requestBody.previous_session ?? null)
+  const userInput = buildUserInput(
+    requestBody.current_session,
+    requestBody.previous_session ?? null
+  )
   logger.info({ requestBody }, 'requestBody')
   let mcpResponse: McpScoreNoteResponse
   let rawResponse: string
