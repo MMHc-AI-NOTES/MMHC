@@ -301,7 +301,6 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
   try {
     const note = await Session.query()
       .where('note_id', noteId)
-      .orderBy('id', 'desc')
       .preload('practitioner')
       .preload('patient')
       .preload('parentNote')
@@ -382,7 +381,6 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
     delete serialized.feedbackVerdicts
     delete serialized.feedback_verdicts
 
-    // const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.id)
     const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.id)
 
     const noteWithCount = {
