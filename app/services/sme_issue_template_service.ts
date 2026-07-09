@@ -91,6 +91,25 @@ export const listSmeIssueTemplates = async (page?: number, pageSize?: number) =>
   }
 }
 
+export const getSmeIssueTemplateByDescriptionId = async (descriptionId: string) => {
+  try {
+    const smeIssueTemplate = await SmeIssuesTamplate.query()
+      .where('description_id', descriptionId)
+      .preload('issueDescription')
+      .preload('issuesRelatedTo')
+      .first()
+
+    if (!smeIssueTemplate) {
+      throw new Error(`SME Issue Template with description_id ${descriptionId} does not exist`)
+    }
+
+    return smeIssueTemplate
+  } catch (error: any) {
+    console.log('Error in getSmeIssueTemplateByDescriptionId:', error.message)
+    throw new Error(error.message)
+  }
+}
+
 export const getSmeIssueTemplate = async (id: number) => {
   try {
     const template = await SmeIssuesTamplate.query()

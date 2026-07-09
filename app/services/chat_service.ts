@@ -204,6 +204,10 @@ export const createChat = async (
   }
 }
 
+export async function getLatestChatByNoteId(noteId: string) {
+  return Chat.query().where('note_id', noteId).first()
+}
+
 export const getChatById = async (chatId: number) => {
   try {
     const chat = await Chat.query()
