@@ -25,6 +25,16 @@ export interface McpAiIssue {
   evidence: string
   justification: string
   detector_tier: string
+  source?: string
+}
+
+export interface McpScoreNoteMeta {
+  sections_flagged?: string[]
+  clean_sections?: string[]
+  fail_reason?: string
+  scorer_version?: string
+  llm?: boolean
+  is_mock?: boolean
 }
 
 /** Response body from POST /score-note */
@@ -36,7 +46,7 @@ export interface McpScoreNoteResponse {
   score: number
   latency_ms: number
   ai_issues: McpAiIssue[]
-  meta: Record<string, unknown>
+  meta: McpScoreNoteMeta
 }
 
 /** Shared normalized issue shape (matches Bedrock output). */
@@ -81,4 +91,6 @@ export interface NormalizedEvaluationResult {
   }
   /** Full MCP /score-note response when AI_REVIEW=MCP */
   'mcp_response'?: McpScoreNoteResponse
+  /** Full MCP /score-note request body sent to the API */
+  'mcp_request'?: McpScoreNoteRequest
 }

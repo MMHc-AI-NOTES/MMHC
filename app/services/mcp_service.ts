@@ -419,6 +419,7 @@ export async function evaluateChatWithMcp(params: {
       evaluation: null,
       raw_response: '',
       user_input: userInput,
+      mcp_request: requestBody,
       validation_result: {
         isValid: false,
         status: 'error',
@@ -493,6 +494,7 @@ export async function evaluateChatWithMcp(params: {
         : issueValidation.message,
     },
     'mcp_response': mcpResponse,
+    'mcp_request': requestBody,
   }
 }
 
