@@ -4,8 +4,13 @@ import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess } from '#services/custom_response_service'
-import { evaluateChatWithMcp, resolveMcpClientId, toMcpApiResponse } from '#services/mcp_service'
-import type { NormalizedEvaluationResult, McpScoreNoteResponse } from '#interfaces/mcp_interface'
+import {
+  evaluateChatWithMcp,
+  resolveMcpClientId,
+  toMcpApiResponse,
+  toMcpApiResponseOrNull,
+} from '#services/mcp_service'
+import type { NormalizedEvaluationResult } from '#interfaces/mcp_interface'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getChatAiReview } from '#services/evaluation_service'
 import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'
@@ -233,56 +238,65 @@ export const listMcpChats = async (
   filters?: Array<any>,
   sorts?: Array<any>
 ) => {
-  let query: any
-  let filterData: any
-  let sortChat: any
+  try {
+    let query: any
+    let filterData: any
+    let sortChat: any
 
-  let chatListings: any = Chat.query()
-    .where('model_id', MCP_MODEL_ID)
-    .preload('user')
-    .preload('humanReviews', (reviewsQuery) =>
-      reviewsQuery.orderBy('id', 'desc').preload('practitioner')
-    )
+    let chatListings: any = Chat.query()
+      .where('model_id', MCP_MODEL_ID)
+      .preload('user')
+      .preload('humanReviews', (reviewsQuery) =>
+        reviewsQuery.orderBy('id', 'desc').preload('practitioner')
+      )
 
-  if (filters?.length) {
-    filterData = applyFilters(chatListings, filters, chatFilterEnum)
-  }
-  if (filterData?.status === false) {
+    if (filters?.length) {
+      filterData = applyFilters(chatListings, filters, chatFilterEnum)
+    }
+    if (filterData?.status === false) {
+      return {
+        status: filterData.status,
+        message: filterData.message,
+      }
+    }
+
+    query = filterData?.query ?? chatListings
+    if (!sorts?.length) {
+      query = query.orderBy('id', 'desc')
+    }
+    if (sorts?.length) {
+      sortChat = applySorting(query, sorts, chatSortEnum)
+      if (sortChat?.status) {
+        return sortChat
+      }
+    }
+
+    const sortQuery = sortChat?.query ?? query
+    const chatListingPaginated = await paginateQuery(sortQuery, pageSize, page)
+
     return {
-      status: filterData.status,
-      message: filterData.message,
+      status: true,
+      message: 'MCP chats listed successfully',
+      data: {
+        count: chatListingPaginated['rows'].length,
+        total_count: chatListingPaginated.total,
+        total_page_count: chatListingPaginated.lastPage,
+        page: chatListingPaginated.currentPage,
+        page_size: chatListingPaginated.perPage,
+        data: chatListingPaginated['rows'].map((chat: Chat) => {
+          const stored = chat.bedrockResponse as NormalizedEvaluationResult | null
+          const mcpResponse = toMcpApiResponseOrNull(stored)
+
+          return {
+            ...chat.serialize(),
+            mcp_response: mcpResponse,
+            mcp_error: mcpResponse ? null : (stored?.validation_result?.message ?? null),
+          }
+        }),
+      },
     }
-  }
-
-  query = filterData?.query ?? chatListings
-  if (!sorts?.length) {
-    query = query.orderBy('id', 'desc')
-  }
-  if (sorts?.length) {
-    sortChat = applySorting(query, sorts, chatSortEnum)
-    if (sortChat?.status) {
-      return sortChat
-    }
-  }
-
-  const sortQuery = sortChat?.query ?? query
-  const chatListingPaginated = await paginateQuery(sortQuery, pageSize, page)
-
-  return {
-    status: true,
-    message: 'MCP chats listed successfully',
-    data: {
-      count: chatListingPaginated['rows'].length,
-      total_count: chatListingPaginated.total,
-      total_page_count: chatListingPaginated.lastPage,
-      page: chatListingPaginated.currentPage,
-      page_size: chatListingPaginated.perPage,
-      data: chatListingPaginated['rows']
-        .map((row: any) => {
-          const stored = row.bedrockResponse as NormalizedEvaluationResult | null
-          return stored ? toMcpApiResponse(stored) : null
-        })
-        .filter(Boolean) as McpScoreNoteResponse[],
-    },
+  } catch (error: any) {
+    logger.error({ error }, 'Error in listMcpChats')
+    throw new Error('Failed to retrieve MCP chats. Please try again later.')
   }
 }

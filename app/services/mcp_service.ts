@@ -498,6 +498,22 @@ export async function evaluateChatWithMcp(params: {
 
 /** Return only the raw MCP /score-note payload for API responses. */
 export function toMcpApiResponse(evaluation: NormalizedEvaluationResult): McpScoreNoteResponse {
+  const response = toMcpApiResponseOrNull(evaluation)
+  if (response) {
+    return response
+  }
+
+  throw new Error(evaluation.validation_result?.message ?? 'MCP API returned no response')
+}
+
+/** Same as toMcpApiResponse but returns null when MCP payload is unavailable. */
+export function toMcpApiResponseOrNull(
+  evaluation: NormalizedEvaluationResult | null | undefined
+): McpScoreNoteResponse | null {
+  if (!evaluation) {
+    return null
+  }
+
   if (evaluation.mcp_response) {
     return evaluation.mcp_response
   }
@@ -510,5 +526,5 @@ export function toMcpApiResponse(evaluation: NormalizedEvaluationResult): McpSco
     }
   }
 
-  throw new Error(evaluation.validation_result?.message ?? 'MCP API returned no response')
+  return null
 }
