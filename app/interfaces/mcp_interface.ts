@@ -4,14 +4,21 @@ export interface Session {
   'Assessment & Therapeutic Intervention': string
   'Reaction to Intervention': string
   'Plan and Collaboration': string
+  'Session Duration': string
+  'Mental Status (optional)': string
   'Suicidality': string
   'Homicidality': string
+  'Therapist Reflection and Insight (optional)': string
+  'Overall': string
+  'Therapist Initials': string
 }
 
 /** Request body for POST /score-note */
 export interface McpScoreNoteRequest {
   note_id: string
   client_id: string
+  cpt_code: string
+  diagnosis: Record<string, any>[]
   current_session: Session
   previous_session?: Session | null
 }

@@ -28,6 +28,21 @@ export type {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const SESSION_FIELD_KEYS: (keyof Session)[] = [
+  'Subjective',
+  'Objective',
+  'Assessment & Therapeutic Intervention',
+  'Reaction to Intervention',
+  'Plan and Collaboration',
+  'Session Duration',
+  'Mental Status (optional)',
+  'Suicidality',
+  'Homicidality',
+  'Therapist Reflection and Insight (optional)',
+  'Overall',
+  'Therapist Initials',
+]
+
 const roundToNearestFive = (num: number): number => Math.round(num / 5) * 5
 
 type TemplateMetadata = {
@@ -221,24 +236,19 @@ export function parseNoteToSessionObject(note: unknown): Record<string, unknown>
 
 /**
  * Build MCP current_session / previous_session from DB session JSON.
- * Keeps only non-empty clinical fields (same keys as IntakeQ webhook storage).
+ * Maps stored webhook field names to the MCP Session interface.
  */
 export function parseSessionForMcp(sessionContent: unknown): Session {
   const parsed = parseNoteToSessionObject(sessionContent)
 
-  const getFieldValue = (key: string): string => {
+  const getFieldValue = (key: keyof Session): string => {
     return String(parsed[key] ?? '').trim()
   }
 
-  return {
-    'Subjective': getFieldValue('Subjective'),
-    'Objective': getFieldValue('Objective'),
-    'Assessment & Therapeutic Intervention': getFieldValue('Assessment & Therapeutic Intervention'),
-    'Reaction to Intervention': getFieldValue('Reaction to Intervention'),
-    'Plan and Collaboration': getFieldValue('Plan and Collaboration'),
-    'Suicidality': getFieldValue('Suicidality'),
-    'Homicidality': getFieldValue('Homicidality'),
-  }
+  return SESSION_FIELD_KEYS.reduce((session, key) => {
+    session[key] = getFieldValue(key)
+    return session
+  }, {} as Session)
 }
 
 /** MCP client_id = PracticeQ patient client_id from DB, not internal session id. */
@@ -250,6 +260,33 @@ export function resolveMcpClientId(session: {
   if (session.patient?.clientId?.trim()) return session.patient.clientId.trim()
   if (session.patientId) return String(session.patientId)
   return String(session.id ?? '')
+}
+
+/** CPT code string from preloaded session.cptCode relation. */
+export function resolveMcpCptCode(session: { cptCode?: { code?: string | null } | null }): string {
+  return session.cptCode?.code?.trim() ?? ''
+}
+
+/** Build the MCP POST /score-note request body. */
+export function buildMcpScoreNoteRequest(params: {
+  noteId: string
+  clientId: string
+  cptCode: string
+  diagnosis: Record<string, any>[]
+  currentNote: string
+  previousNote?: string
+}): McpScoreNoteRequest {
+  const currentSession = parseSessionForMcp(params.currentNote)
+  const previousSession = params.previousNote ? parseSessionForMcp(params.previousNote) : null
+
+  return {
+    note_id: params.noteId,
+    client_id: params.clientId,
+    cpt_code: params.cptCode,
+    diagnosis: params.diagnosis,
+    current_session: currentSession,
+    previous_session: previousSession,
+  }
 }
 
 /**
@@ -358,6 +395,8 @@ async function normaliseMcpIssues(aiIssues: McpAiIssue[]): Promise<{
 export async function evaluateChatWithMcp(params: {
   noteId: string
   clientId: string
+  cptCode: string
+  diagnosis: Record<string, any>[]
   currentNote: string
   previousNote: string | undefined
 }): Promise<NormalizedEvaluationResult> {
@@ -365,19 +404,20 @@ export async function evaluateChatWithMcp(params: {
   const token = mcpConfig.token
 
   if (!baseUrl) throw new Error('MCP_API_URL is not configured')
-  console.log('params.currentNote', params.currentNote)
-  console.log('params.previousNote', params.previousNote)
-  const currentSession = parseSessionForMcp(params.currentNote)
-  const previousSession = params.previousNote ? parseSessionForMcp(params.previousNote) : null
 
-  const requestBody: McpScoreNoteRequest = {
-    note_id: params.noteId,
-    client_id: params.clientId,
-    current_session: currentSession,
-    previous_session: previousSession,
-  }
+  const requestBody = buildMcpScoreNoteRequest({
+    noteId: params.noteId,
+    clientId: params.clientId,
+    cptCode: params.cptCode,
+    diagnosis: params.diagnosis,
+    currentNote: params.currentNote,
+    previousNote: params.previousNote,
+  })
 
-  const userInput = buildUserInput(currentSession, previousSession)
+  const userInput = buildUserInput(
+    requestBody.current_session,
+    requestBody.previous_session ?? null
+  )
   logger.info({ requestBody }, 'requestBody')
   let mcpResponse: McpScoreNoteResponse
   let rawResponse: string
@@ -459,7 +499,6 @@ export async function evaluateChatWithMcp(params: {
   // ── Normalise ──────────────────────────────────────────────────────────────
   const issueValidation = validateMcpIssues(mcpResponse.ai_issues ?? [])
   const { issues, score: derivedScore } = await normaliseMcpIssues(mcpResponse.ai_issues ?? [])
-  console.log('issues', issues)
 
   // Prefer MCP API score; fall back to issue-based calculation
   const finalScore = Math.max(0, Math.min(100, mcpResponse.score ?? derivedScore))
