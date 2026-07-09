@@ -104,9 +104,24 @@ export async function relinkPatientSessions(patientId: number) {
   }
 }
 
+export const getSessionById = async (id: number) => {
+  try {
+    const session = await Session.query().where('id', id).whereNull('deleted_at').first()
+
+    if (!session) {
+      throw new Error(`Session with id ${id} does not exist`)
+    }
+
+    return session
+  } catch (error: any) {
+    console.log('Error in getSessionById:', error.message)
+    throw new Error(error.message)
+  }
+}
+
 export const getSessionBySessionId = async (sessionId: string) => {
   try {
-    const session = await Session.query().where('id', sessionId).first()
+    const session = await Session.query().where('session_id', sessionId).whereNull('deleted_at').first()
 
     if (!session) {
       throw new Error(`Session with session_id ${sessionId} does not exist`)

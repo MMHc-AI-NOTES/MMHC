@@ -9,7 +9,7 @@ import { FeedbackVerdictEnum, FeedbackSideEnum } from '#enums/feedback_verdict_e
 import { MCP_MODEL_ID } from '#services/mcp_chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
-import { getSessionBySessionId } from '#services/webhook_service'
+import { getSessionById, getSessionBySessionId } from '#services/webhook_service'
 import { getSmeIssueTemplateByDescriptionId } from '#services/sme_issue_template_service'
 import { getLatestChatByNoteId } from '#services/chat_service'
 
@@ -63,7 +63,7 @@ export async function submitFeedback(
   reviewerName: string,
   ctx?: HttpContext
 ) {
-  const session = await getSessionBySessionId(payload.session_id)
+  const session = await getSessionById(payload.session_id)
   const template = await getSmeIssueTemplateByDescriptionId(payload.description_id)
   const descriptionId = template.descriptionId ?? payload.description_id
   const reviewer = reviewerName
@@ -191,8 +191,8 @@ export async function submitFeedback(
   )
 }
 
-export async function getFeedbackVerdicts(sessionId: string) {
-  const session = await getSessionBySessionId(sessionId)
+export async function getFeedbackVerdicts(sessionId: number) {
+  const session = await getSessionById(sessionId)
 
   const verdicts = await loadFeedbackVerdictsForSession(sessionId)
 

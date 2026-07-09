@@ -14,6 +14,7 @@ import {
 export default class FeedbackController {
   public async submit(ctx: HttpContext) {
     try {
+      console.log('ctx.request.body()', ctx.request.body())
       const payload = await submitFeedbackValidator.validate(ctx.request.body())
       const user = ctx.auth.getUserOrFail()
       return await submitFeedback(payload, user.id, user.fullName ?? '', ctx)
