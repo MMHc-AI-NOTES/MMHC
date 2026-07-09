@@ -5,6 +5,10 @@ import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess, sendError } from '#services/custom_response_service'
+import {
+  formatFeedbackVerdictResponse,
+  loadFeedbackVerdictsForSession,
+} from '#services/feedback_service'
 import { AiStatusEnum, HumanReviewEnum, ManagerEnum, WorkflowEnum } from '#enums/session_enum'
 import { UserTypeEnum } from '#enums/user_type_enum'
 import { DateTime } from 'luxon'
@@ -374,6 +378,11 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
     })
     serialized.webhookVersions = versionsWithPrev
     delete serialized.webhook_versions
+    delete serialized.feedbackVerdicts
+    delete serialized.feedback_verdicts
+
+    const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.id)
+
     const noteWithCount = {
       ...serialized,
       is_current_note: isCurrentNote,
@@ -383,6 +392,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       version_count: note.$extras.version_count || 0,
       reviewers: extractReviewers(serialized),
       diagnosis,
+      feedback_verdicts: feedbackVerdicts.map(formatFeedbackVerdictResponse),
     }
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)

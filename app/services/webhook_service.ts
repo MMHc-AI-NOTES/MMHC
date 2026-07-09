@@ -103,6 +103,54 @@ export async function relinkPatientSessions(patientId: number) {
   }
 }
 
+export const getSessionById = async (id: number) => {
+  try {
+    const session = await Session.query().where('id', id).whereNull('deleted_at').first()
+
+    if (!session) {
+      throw new Error(`Session with id ${id} does not exist`)
+    }
+
+    return session
+  } catch (error: any) {
+    console.log('Error in getSessionById:', error.message)
+    throw new Error(error.message)
+  }
+}
+
+export const getSessionBySessionId = async (sessionId: string) => {
+  try {
+    const session = await Session.query()
+      .where('session_id', sessionId)
+      .whereNull('deleted_at')
+      .first()
+
+    if (!session) {
+      throw new Error(`Session with session_id ${sessionId} does not exist`)
+    }
+
+    return session
+  } catch (error: any) {
+    console.log('Error in getSessionBySessionId:', error.message)
+    throw new Error(error.message)
+  }
+}
+
+export const getSessionByNoteId = async (noteId: string) => {
+  try {
+    const session = await Session.query().where('note_id', noteId).first()
+
+    if (!session) {
+      throw new Error(`Session with note_id ${noteId} does not exist`)
+    }
+
+    return session
+  } catch (error: any) {
+    console.log('Error in getSessionByNoteId:', error.message)
+    throw new Error(error.message)
+  }
+}
+
 /**
  * Webhook flow (parent-child method):
  * 1. Use ClientId to resolve patient (find or create).
