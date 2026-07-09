@@ -121,7 +121,10 @@ export const getSessionById = async (id: number) => {
 
 export const getSessionBySessionId = async (sessionId: string) => {
   try {
-    const session = await Session.query().where('session_id', sessionId).whereNull('deleted_at').first()
+    const session = await Session.query()
+      .where('session_id', sessionId)
+      .whereNull('deleted_at')
+      .first()
 
     if (!session) {
       throw new Error(`Session with session_id ${sessionId} does not exist`)
