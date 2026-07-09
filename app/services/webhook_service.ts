@@ -18,10 +18,6 @@ import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { storeWebhookSessionVersionIfDifferent } from '#services/json_comparison_service'
 import { DateTime } from 'luxon'
 import type { WebhookJobData } from '#jobs/queues/webhook_queue'
-// import { sendMissingFieldsEmail } from '#services/email_service'
-// import Agent from '#models/agent'
-// import Chat from '#models/chat'
-// import { createChat } from '#services/chat_service'
 
 /**
  * Field mapping: question id → canonical session field name.
@@ -304,44 +300,6 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       await relinkPatientSessions(session.patientId)
     }
 
-    // Automatically create chat with default prompt for AI evaluation
-    // Create chat if: 1) Chat doesn't exist, OR 2) New version was stored (details changed)
-    // NOTE: Temporarily disabled by commenting out the following block. Uncomment
-    // to re-enable automatic chat creation on webhook:
-    /*
-    try {
-      // Check if chat already exists for this note
-      const existingChat = await Chat.query().where('note_id', payload.NoteId).first()
-
-      // Create chat if: no chat exists OR new version was stored
-      const shouldCreateChat = !existingChat || versionResult.stored
-
-      if (shouldCreateChat) {
-        // Find default active agent
-        const defaultAgent = await Agent.query()
-          .where('is_default', true)
-          .where('is_active', true)
-          .first()
-
-        if (defaultAgent && defaultAgent.prompt && defaultAgent.model) {
-          // Create chat with default agent for automatic evaluation
-          // Pass the session instance we already have to avoid querying again
-          await createChat(
-            {
-              note_id: payload.NoteId,
-              prompt_id: defaultAgent.id,
-            },
-            practitionerId,
-            session // Pass the session instance we already have
-          )
-        }
-      }
-    } catch (chatError: any) {
-      // Log error but don't fail webhook processing
-      console.log(`Error creating automatic chat for note ${payload.NoteId}:`, chatError.message)
-    }
-    */
-
     const status = existingSession ? 'updated' : 'created'
     console.log('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
     return sendSuccess(
@@ -591,33 +549,6 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
       })
     }
   }
-
-  // if (workflowStatus === WorkflowEnum.failed && session?.practitioner) {
-  //   try {
-  //     const practitioner = session.practitioner
-  //     const practitionerName = practitioner.fullName || practitioner.email || 'Practitioner'
-  //     const practitionerEmail = practitioner.email
-  //
-  //     const missingFields: string[] = []
-  //     if (questionsValidation && !questionsValidation.isValid) {
-  //       questionsValidation.errors
-  //         .filter((error) => error.includes('Missing required questions'))
-  //         .forEach((error) => {
-  //           const match = error.match(/Missing required questions: (.+?)(?:\. Found:|$)/)
-  //           if (match) {
-  //             const missingQuestions = match[1].split(', ').map((q) => q.trim())
-  //             missingFields.push(...missingQuestions)
-  //           }
-  //         })
-  //     }
-  //
-  //     if (practitionerEmail) {
-  //       await sendMissingFieldsEmail(practitionerEmail, practitionerName, missingFields, noteId)
-  //     }
-  //   } catch (error: any) {
-  //     // Email sending failed, but don't break the process
-  //   }
-  // }
 
   const allValidationErrors = [...webhookValidation.errors]
   if (questionsValidation && !questionsValidation.isValid) {
