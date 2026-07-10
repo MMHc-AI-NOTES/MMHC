@@ -213,7 +213,7 @@ export default class SyncMorfNotes extends BaseCommand {
               sessionTime: sessionTime.isValid ? sessionTime : morf.createdAt,
               practitionerId,
               patientId: patient.id,
-              type: SessionTypeEnum.intake,
+              type: SessionTypeEnum.progress_note,
               cptCodeId: cptCode.id,
               aiScore: null,
               aiStatus: AiStatusEnum.not_reviewed,
