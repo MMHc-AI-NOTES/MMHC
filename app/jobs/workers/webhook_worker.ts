@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq'
 import { redisConfig } from '#config/services'
 import { WEBHOOK_QUEUE_NAME, type WebhookJobData } from '#jobs/queues/webhook_queue'
-import { createSessionFromWebhook } from '#services/webhook_service'
+import { processWebhookJob } from '#services/webhook_service'
 
 let webhookWorker: Worker | null = null
 
@@ -16,8 +16,8 @@ export const startWebhookWorker = () => {
     async (job: Job<WebhookJobData>) => {
       try {
         console.log(`Processing webhook job ${job.id} for note: ${job.data.payload.NoteId}`)
-        // Reuse existing session creation logic
-        const result = await createSessionFromWebhook(job.data.payload)
+        // Process webhook job from queue
+        const result = await processWebhookJob(job.data)
         console.log(
           `Webhook job ${job.id} completed successfully for note: ${job.data.payload.NoteId}`
         )
