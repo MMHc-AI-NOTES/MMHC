@@ -18,6 +18,7 @@ import { AuditActionEnum } from '#enums/audit_log_enum'
 import type {
   createChatValidatorInterface,
   updateChatValidatorInterface,
+  updateChatScoreValidatorInterface,
 } from '#validators/chat_validator'
 
 export const createChat = async (
@@ -555,6 +556,34 @@ export const reevaluateChat = async (chatId: number) => {
     return sendSuccess('Chat re-evaluated successfully', chat)
   } catch (error: any) {
     console.log('Error in reevaluateChat:', error.message)
+    throw error
+  }
+}
+
+export const updateChatScore = async (
+  chatId: number,
+  payload: updateChatScoreValidatorInterface
+) => {
+  try {
+    const chat = await Chat.find(chatId)
+    if (!chat) {
+      console.log('Error in updateChatScore: Chat not found with id:', chatId)
+      throw new Error('Chat not found')
+    }
+    const bedrockResponse =
+      chat.bedrockResponse && typeof chat.bedrockResponse === 'object'
+        ? { ...(chat.bedrockResponse as Record<string, unknown>) }
+        : {}
+
+    bedrockResponse.score = payload.score
+
+    chat.bedrockResponse = bedrockResponse
+    chat.evaluationScore = payload.score
+    await chat.save()
+
+    return sendSuccess('Chat score updated successfully', chat)
+  } catch (error: any) {
+    console.log('Error in updateChatScore:', error.message)
     throw error
   }
 }

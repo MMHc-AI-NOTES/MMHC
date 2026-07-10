@@ -2,6 +2,7 @@ import {
   chatIdValidator,
   createChatValidator,
   updateChatValidator,
+  updateChatScoreValidator,
 } from '#validators/chat_validator'
 import { paginationValidator } from '#validators/pagination_validator'
 import {
@@ -11,6 +12,7 @@ import {
   listChats,
   updateChat,
   reevaluateChat,
+  updateChatScore,
 } from '#services/chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
@@ -47,6 +49,18 @@ export default class ChatController {
       return chatResponse
     } catch (error) {
       console.log('chat updating error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async updateScore(ctx: HttpContext) {
+    try {
+      console.log('ctx.params', ctx.params)
+      const { chatId } = await chatIdValidator.validate(ctx.params)
+      const payload = await updateChatScoreValidator.validate(ctx.request.body())
+      return await updateChatScore(chatId, payload)
+    } catch (error) {
+      console.log('chat score updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

@@ -30,3 +30,11 @@ export const chatIdValidator = vine.compile(
 )
 
 export type chatIdValidatorInterface = Infer<typeof chatIdValidator>
+
+export const updateChatScoreValidator = vine.compile(
+  vine.object({
+    score: vine.number().min(0).max(100),
+  })
+)
+
+export type updateChatScoreValidatorInterface = Infer<typeof updateChatScoreValidator>
