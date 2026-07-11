@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "adonisjs-best-practices": {
+      "source": "futuregerald/futuregerald-claude-plugin",
+      "sourceType": "github",
+      "skillPath": "skills/adonisjs-best-practices/SKILL.md",
+      "computedHash": "41f9ef436a84ab6beb2feaea0ce5ec55b397a0536c82f323dfac26ffedd137a1"
+    },
+    "typescript-best-practices": {
+      "source": "0xbigboss/claude-code",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/typescript-best-practices/SKILL.md",
+      "computedHash": "9866bb48d92a951feafb77f6f48ea39b42c6c1e901788c916d4aad40f60db008"
+    }
+  }
+}
