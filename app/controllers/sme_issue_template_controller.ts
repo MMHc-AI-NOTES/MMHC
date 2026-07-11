@@ -58,7 +58,9 @@ export default class SmeIssueTemplateController {
   public async update(ctx: HttpContext) {
     try {
       const { id } = await smeIssueTemplateIdValidator.validate(ctx.params)
-      const payload = await updateSmeIssueTemplateValidator.validate(ctx.request.body())
+      const payload = await updateSmeIssueTemplateValidator.validate(ctx.request.body(), {
+        meta: { templateId: id },
+      })
       const response = await updateSmeIssueTemplate(id, payload)
       return response
     } catch (error) {
