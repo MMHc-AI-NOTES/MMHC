@@ -16,55 +16,61 @@ When working with React components (`.tsx`, `.jsx` files or `@react` imports), a
 Use the type system to prevent invalid states at compile time.
 
 **Discriminated unions for mutually exclusive states:**
+
 ```ts
 // Good: only valid combinations possible
 type RequestState<T> =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'success'; data: T }
-  | { status: 'error'; error: Error };
+  | { status: 'error'; error: Error }
 
 // Bad: allows invalid combinations like { loading: true, error: Error }
 type RequestState<T> = {
-  loading: boolean;
-  data?: T;
-  error?: Error;
-};
+  loading: boolean
+  data?: T
+  error?: Error
+}
 ```
 
 **Branded types for domain primitives:**
+
 ```ts
-type UserId = string & { readonly __brand: 'UserId' };
-type OrderId = string & { readonly __brand: 'OrderId' };
+type UserId = string & { readonly __brand: 'UserId' }
+type OrderId = string & { readonly __brand: 'OrderId' }
 
 // Compiler prevents passing OrderId where UserId expected
-function getUser(id: UserId): Promise<User> { /* ... */ }
+function getUser(id: UserId): Promise<User> {
+  /* ... */
+}
 ```
 
 **Const assertions for literal unions:**
+
 ```ts
-const ROLES = ['admin', 'user', 'guest'] as const;
-type Role = typeof ROLES[number]; // 'admin' | 'user' | 'guest'
+const ROLES = ['admin', 'user', 'guest'] as const
+type Role = (typeof ROLES)[number] // 'admin' | 'user' | 'guest'
 
 // Array and type stay in sync automatically
 function isValidRole(role: string): role is Role {
-  return ROLES.includes(role as Role);
+  return ROLES.includes(role as Role)
 }
 ```
 
 **Exhaustive switch with never check:**
+
 ```ts
-type Status = "active" | "inactive";
+type Status = 'active' | 'inactive'
 
 function processStatus(status: Status): string {
   switch (status) {
-    case "active":
-      return "processing";
-    case "inactive":
-      return "skipped";
+    case 'active':
+      return 'processing'
+    case 'inactive':
+      return 'skipped'
     default: {
-      const _exhaustive: never = status;
-      throw new Error(`unhandled status: ${_exhaustive}`);
+      const _exhaustive: never = status
+      throw new Error(`unhandled status: ${_exhaustive}`)
     }
   }
 }
@@ -78,31 +84,31 @@ function processStatus(status: Status): string {
 - Add `.transform()` for data normalization at parse time (trim strings, parse dates).
 
 ```ts
-import { z } from "zod";
+import { z } from 'zod'
 
 const UserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   name: z.string().min(1),
   createdAt: z.string().transform((s) => new Date(s)),
-});
+})
 
-type User = z.infer<typeof UserSchema>;
+type User = z.infer<typeof UserSchema>
 
 // Strict parsing at trust boundaries — throws if API contract violated
 export async function fetchUser(id: string): Promise<User> {
-  const response = await fetch(`/api/users/${id}`);
+  const response = await fetch(`/api/users/${id}`)
   if (!response.ok) {
-    throw new Error(`fetch user ${id} failed: ${response.status}`);
+    throw new Error(`fetch user ${id} failed: ${response.status}`)
   }
-  return UserSchema.parse(await response.json());
+  return UserSchema.parse(await response.json())
 }
 
 // Caller handles both success and error from user input
-const result = UserSchema.safeParse(formData);
+const result = UserSchema.safeParse(formData)
 if (!result.success) {
-  setErrors(result.error.flatten().fieldErrors);
-  return;
+  setErrors(result.error.flatten().fieldErrors)
+  return
 }
 ```
 
@@ -117,8 +123,8 @@ For advanced type utilities beyond TypeScript builtins, consider [type-fest](htt
 - `Simplify<T>` - flatten complex intersection types in IDE tooltips
 
 ```ts
-import type { Opaque, PartialDeep } from 'type-fest';
+import type { Opaque, PartialDeep } from 'type-fest'
 
-type UserId = Opaque<string, 'UserId'>;
-type UserPatch = PartialDeep<User>;
+type UserId = Opaque<string, 'UserId'>
+type UserPatch = PartialDeep<User>
 ```
