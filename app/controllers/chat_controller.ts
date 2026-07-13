@@ -55,7 +55,6 @@ export default class ChatController {
 
   public async updateScore(ctx: HttpContext) {
     try {
-      console.log('ctx.params', ctx.params)
       const { chatId } = await chatIdValidator.validate(ctx.params)
       const payload = await updateChatScoreValidator.validate(ctx.request.body())
       return await updateChatScore(chatId, payload)

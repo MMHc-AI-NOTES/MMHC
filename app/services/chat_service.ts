@@ -565,11 +565,8 @@ export const updateChatScore = async (
   payload: updateChatScoreValidatorInterface
 ) => {
   try {
-    const chat = await Chat.find(chatId)
-    if (!chat) {
-      console.log('Error in updateChatScore: Chat not found with id:', chatId)
-      throw new Error('Chat not found')
-    }
+    const db = await getChatById(chatId)
+    const chat = db.data
     const bedrockResponse =
       chat.bedrockResponse && typeof chat.bedrockResponse === 'object'
         ? { ...(chat.bedrockResponse as Record<string, unknown>) }
