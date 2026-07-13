@@ -28,8 +28,8 @@ export default class CptCode extends BaseModel {
   @column()
   declare code: string
 
-  @column({ columnName: 'appointment_type_id' })
-  declare appointmentTypeId: string | null
+  @column()
+  declare appointmentTypeId: string
 
   @column()
   declare name: string
