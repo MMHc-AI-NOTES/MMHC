@@ -1,6 +1,7 @@
 # Enable AWS Application Signals for Python on ECS
 
 ## Overview
+
 This guide provides complete steps to enable AWS Application Signals for ECS services (both EC2 and Fargate launch types), including distributed tracing, performance monitoring, and service mapping.
 
 ## Prerequisites
@@ -31,7 +32,7 @@ const taskRole = new iam.Role(this, 'EcsTaskRole', {
   inlinePolicies: {
     // Your existing inline policies...
   },
-});
+})
 ```
 
 #### 1.2 Create CloudWatch Agent Log Group
@@ -41,7 +42,7 @@ const cwAgentLogGroup = new logs.LogGroup(this, 'CwAgentLogGroup', {
   logGroupName: '/ecs/ecs-cwagent',
   removalPolicy: cdk.RemovalPolicy.DESTROY,
   retention: logs.RetentionDays.ONE_MONTH,
-});
+})
 ```
 
 #### 1.3 Add CloudWatch Agent Container to Each Task Definition
@@ -54,23 +55,23 @@ const cwAgentContainer = taskDefinition.addContainer('ecs-cwagent-{{SERVICE_NAME
   cpu: 64,
   environment: {
     CW_CONFIG_CONTENT: JSON.stringify({
-      "traces": {
-        "traces_collected": {
-          "application_signals": {}
-        }
+      traces: {
+        traces_collected: {
+          application_signals: {},
+        },
       },
-      "logs": {
-        "metrics_collected": {
-          "application_signals": {}
-        }
-      }
+      logs: {
+        metrics_collected: {
+          application_signals: {},
+        },
+      },
     }),
   },
   logging: ecs.LogDrivers.awsLogs({
     streamPrefix: 'ecs',
     logGroup: cwAgentLogGroup,
   }),
-});
+})
 ```
 
 ### Step 2: Add AWS Distro for OpenTelemetry Zero-Code Auto-Instrumentation to Main Service
@@ -82,17 +83,19 @@ const taskDefinition = new ecs.FargateTaskDefinition(this, '{{SERVICE_NAME}}Task
   // Existing configuration...
   volumes: [
     {
-      name: "opentelemetry-auto-instrumentation-python"
-    }
+      name: 'opentelemetry-auto-instrumentation-python',
+    },
   ],
-});
+})
 ```
 
 #### 2.2 Add ADOT Auto-instrumentation Init Container
 
 ```typescript
 const initContainer = taskDefinition.addContainer('init', {
-  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/adot-autoinstrumentation-python:v0.18.0'), // Minimum version for ServiceEvents. Check ../application-signals-onboarding.md for how to query the latest version.
+  image: ecs.ContainerImage.fromRegistry(
+    'public.ecr.aws/aws-observability/adot-autoinstrumentation-python:v0.18.0'
+  ), // Minimum version for ServiceEvents. Check ../application-signals-onboarding.md for how to query the latest version.
   essential: false,
   memoryReservationMiB: 64,
   cpu: 32,
@@ -101,13 +104,13 @@ const initContainer = taskDefinition.addContainer('init', {
     streamPrefix: 'init-{{SERVICE_NAME}}',
     logGroup: serviceLogGroup,
   }),
-});
+})
 
 initContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-python',
   containerPath: '/otel-auto-instrumentation-python',
   readOnly: false,
-});
+})
 ```
 
 #### 2.3 Configure Main Application Container OpenTelemetry Environment Variables
@@ -122,7 +125,8 @@ const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', 
     OTEL_RESOURCE_ATTRIBUTES: 'service.name={{SERVICE_NAME}}',
     OTEL_METRICS_EXPORTER: 'none',
     OTEL_LOGS_EXPORTER: 'none',
-    PYTHONPATH: '/otel-auto-instrumentation-python/opentelemetry/instrumentation/auto_instrumentation:{{EXISTING_PYTHONPATH}}:/otel-auto-instrumentation-python',
+    PYTHONPATH:
+      '/otel-auto-instrumentation-python/opentelemetry/instrumentation/auto_instrumentation:{{EXISTING_PYTHONPATH}}:/otel-auto-instrumentation-python',
     OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'true',
     OTEL_TRACES_EXPORTER: 'otlp',
     OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
@@ -132,7 +136,7 @@ const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', 
     OTEL_AWS_APPLICATION_SIGNALS_EXPORTER_ENDPOINT: 'http://localhost:4316/v1/metrics',
     OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
   },
-});
+})
 ```
 
 Replace `{{EXISTING_PYTHONPATH}}` with the container's current `PYTHONPATH` value so the instrumentation paths are **prepended** to it rather than overwriting it. If the container does **not** already set a `PYTHONPATH`, drop that segment entirely:
@@ -148,7 +152,7 @@ mainContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-python',
   containerPath: '/otel-auto-instrumentation-python',
   readOnly: false,
-});
+})
 ```
 
 #### 2.5 Configure Container Dependencies
@@ -157,12 +161,12 @@ mainContainer.addMountPoints({
 mainContainer.addContainerDependencies({
   container: initContainer,
   condition: ecs.ContainerDependencyCondition.SUCCESS,
-});
+})
 
 mainContainer.addContainerDependencies({
   container: cwAgentContainer,
   condition: ecs.ContainerDependencyCondition.START,
-});
+})
 ```
 
 ### Step 3: Apply Python Framework-Specific Changes
@@ -170,18 +174,20 @@ mainContainer.addContainerDependencies({
 #### 3.a: Django-Specific Configuration
 
 ##### 3.a.1: Set DJANGO_SETTINGS_MODULE
+
 If your ECS application is built with Django, explicitly set the DJANGO_SETTINGS_MODULE environment variable:
 
 ```typescript
 const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', {
   environment: {
     // Existing environment variables...
-    DJANGO_SETTINGS_MODULE: '{{your django settings}}'
+    DJANGO_SETTINGS_MODULE: '{{your django settings}}',
   },
-});
+})
 ```
 
 ##### 3.a.2: Add --noreload When Using Django's Development Server
+
 If using Django's development server, override the Docker CMD to add `--noreload`:
 
 **Before (Dockerfile):**
@@ -194,8 +200,8 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 ```typescript
 const appContainer = taskDefinition.addContainer('Application', {
-  command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"],
-});
+  command: ['python', 'manage.py', 'runserver', '0.0.0.0:8000', '--noreload'],
+})
 ```
 
 ## Completion

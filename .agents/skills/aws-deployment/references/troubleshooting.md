@@ -12,58 +12,58 @@
 
 ### CodePipeline
 
-| Error/Symptom | Cause | Fix |
-|---------------|-------|-----|
-| `InternalError` on action | Artifact bucket wrong region or KMS permission denied | Ensure S3 bucket same region as pipeline; check KMS key policy |
-| `ActionConfigurationError` | Referenced resource deleted (CodeBuild project, deployment group) | Verify all resource names in action config still exist |
-| `AccessDeniedException` on action | Service role missing permissions for the action's provider | Add required permissions to pipeline service role |
-| Pipeline stuck InProgress | Disabled transition, waiting approval, or slow action | Check `get-pipeline-state` for `actionStates`; look for PENDING approval |
-| `PipelineExecutionNotStoppableException` | Execution in terminal state (Succeeded/Failed) | Already finished — no action needed |
-| `InvalidStructureException` on create/update | Malformed pipeline JSON | Validate JSON; check all required fields per action type |
-| `StageNotRetryableException` | Stage not in Failed state | Only failed stages can be retried |
-| `RevisionOutOfSyncException` | PARALLEL mode race between executions | Use QUEUED mode for sequential consistency |
-| Trigger fires on unrelated changes | File path filter skipped (>100 files in commit) | Add branch filter as primary gate |
-| Trigger never fires | sourceActionName mismatch or connection PENDING | Verify trigger config matches source action name exactly |
-| `AccessDenied` on cross-account action | Missing KMS/S3/IAM trust (need all three) | Verify: KMS key policy, S3 bucket policy, target role trust policy |
+| Error/Symptom                                | Cause                                                             | Fix                                                                      |
+| -------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `InternalError` on action                    | Artifact bucket wrong region or KMS permission denied             | Ensure S3 bucket same region as pipeline; check KMS key policy           |
+| `ActionConfigurationError`                   | Referenced resource deleted (CodeBuild project, deployment group) | Verify all resource names in action config still exist                   |
+| `AccessDeniedException` on action            | Service role missing permissions for the action's provider        | Add required permissions to pipeline service role                        |
+| Pipeline stuck InProgress                    | Disabled transition, waiting approval, or slow action             | Check `get-pipeline-state` for `actionStates`; look for PENDING approval |
+| `PipelineExecutionNotStoppableException`     | Execution in terminal state (Succeeded/Failed)                    | Already finished — no action needed                                      |
+| `InvalidStructureException` on create/update | Malformed pipeline JSON                                           | Validate JSON; check all required fields per action type                 |
+| `StageNotRetryableException`                 | Stage not in Failed state                                         | Only failed stages can be retried                                        |
+| `RevisionOutOfSyncException`                 | PARALLEL mode race between executions                             | Use QUEUED mode for sequential consistency                               |
+| Trigger fires on unrelated changes           | File path filter skipped (>100 files in commit)                   | Add branch filter as primary gate                                        |
+| Trigger never fires                          | sourceActionName mismatch or connection PENDING                   | Verify trigger config matches source action name exactly                 |
+| `AccessDenied` on cross-account action       | Missing KMS/S3/IAM trust (need all three)                         | Verify: KMS key policy, S3 bucket policy, target role trust policy       |
 
 ### CodeBuild
 
-| Error/Symptom | Cause | Fix |
-|---------------|-------|-----|
-| `DOWNLOAD_SOURCE` failure | VPC without NAT, connection PENDING, or repo not found | Check VPC NAT gateway; verify connection AVAILABLE; check repo access |
-| `YAML_FILE_ERROR` | Missing `runtime-versions`, bad YAML syntax, or wrong filename | Add runtime-versions block; validate YAML; file must be `buildspec.yml` at root |
-| Build hangs indefinitely | VPC subnet without NAT gateway or S3 endpoint | Add NAT gateway to private subnet route table |
-| `Cannot connect to Docker daemon` | Privileged mode not enabled or dockerd not started | Set `privilegedMode=true` AND start dockerd in pre_build phase |
-| `BUILD_GENERAL1_SMALL not available` | Compute type not available in region or quota reached | Try different compute type or request quota increase |
-| Build timeout (default 60 min) | Long-running build or hanging dependency download | Increase `timeoutInMinutes`; check for network issues (VPC) |
-| `CODEBUILD_CLONE_REF` permission error | CodeBuild role missing UseConnection | Add `codeconnections:UseConnection` to CodeBuild service role (not pipeline role) |
-| `CLIENT_ERROR: unable to locate credentials` | Service role insufficient for operation | Check CodeBuild service role has needed permissions |
-| Artifacts not found by next stage | `base-directory` wrong or files pattern too restrictive | Verify `artifacts.base-directory` matches build output location |
+| Error/Symptom                                | Cause                                                          | Fix                                                                               |
+| -------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `DOWNLOAD_SOURCE` failure                    | VPC without NAT, connection PENDING, or repo not found         | Check VPC NAT gateway; verify connection AVAILABLE; check repo access             |
+| `YAML_FILE_ERROR`                            | Missing `runtime-versions`, bad YAML syntax, or wrong filename | Add runtime-versions block; validate YAML; file must be `buildspec.yml` at root   |
+| Build hangs indefinitely                     | VPC subnet without NAT gateway or S3 endpoint                  | Add NAT gateway to private subnet route table                                     |
+| `Cannot connect to Docker daemon`            | Privileged mode not enabled or dockerd not started             | Set `privilegedMode=true` AND start dockerd in pre_build phase                    |
+| `BUILD_GENERAL1_SMALL not available`         | Compute type not available in region or quota reached          | Try different compute type or request quota increase                              |
+| Build timeout (default 60 min)               | Long-running build or hanging dependency download              | Increase `timeoutInMinutes`; check for network issues (VPC)                       |
+| `CODEBUILD_CLONE_REF` permission error       | CodeBuild role missing UseConnection                           | Add `codeconnections:UseConnection` to CodeBuild service role (not pipeline role) |
+| `CLIENT_ERROR: unable to locate credentials` | Service role insufficient for operation                        | Check CodeBuild service role has needed permissions                               |
+| Artifacts not found by next stage            | `base-directory` wrong or files pattern too restrictive        | Verify `artifacts.base-directory` matches build output location                   |
 
 ### CodeDeploy
 
-| Error/Symptom | Cause | Fix |
-|---------------|-------|-----|
-| "no instances were found" | Tag filters match zero instances or agent not running | Verify EC2 tags; check `codedeploy-agent` status on instances |
-| "specified key does not exist" | S3 revision artifact location wrong | Verify S3 path matches revision location in `create-deployment` |
-| `ApplicationStop` fails every deploy | Previous revision's stop script is broken | Deploy fix-only revision or use `--ignore-application-stop-failures` |
-| "file already exists at this location" | file_exists_behavior not set | Set `OVERWRITE` in deployment or appspec `files.overwrite: true` |
-| `InstanceLimitExceeded` | ASG scaling faster than deployment completes | Suspend ASG Launch process, fix deployment, resume |
-| "agent was not able to receive the lifecycle event" | Agent not running or network timeout | SSH to instance; `sudo service codedeploy-agent status`; check SG |
-| HEALTH_CONSTRAINTS error | Not enough healthy instances to proceed | Reduce minimumHealthyHosts or fix unhealthy instances |
-| ECS deployment stuck | Health check failing on replacement task set | Verify target group health check path and port match container |
-| ECS "replacement task set did not stabilize" | Task crashes on startup or resource limits | Check ECS task stopped reason; verify CPU/memory, image exists |
-| Lambda deployment failed at BeforeAllowTraffic | Validation Lambda errored or timed out | Check Lambda logs; ensure it calls `codedeploy:PutLifecycleEventHookExecutionStatus` |
+| Error/Symptom                                       | Cause                                                 | Fix                                                                                  |
+| --------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| "no instances were found"                           | Tag filters match zero instances or agent not running | Verify EC2 tags; check `codedeploy-agent` status on instances                        |
+| "specified key does not exist"                      | S3 revision artifact location wrong                   | Verify S3 path matches revision location in `create-deployment`                      |
+| `ApplicationStop` fails every deploy                | Previous revision's stop script is broken             | Deploy fix-only revision or use `--ignore-application-stop-failures`                 |
+| "file already exists at this location"              | file_exists_behavior not set                          | Set `OVERWRITE` in deployment or appspec `files.overwrite: true`                     |
+| `InstanceLimitExceeded`                             | ASG scaling faster than deployment completes          | Suspend ASG Launch process, fix deployment, resume                                   |
+| "agent was not able to receive the lifecycle event" | Agent not running or network timeout                  | SSH to instance; `sudo service codedeploy-agent status`; check SG                    |
+| HEALTH_CONSTRAINTS error                            | Not enough healthy instances to proceed               | Reduce minimumHealthyHosts or fix unhealthy instances                                |
+| ECS deployment stuck                                | Health check failing on replacement task set          | Verify target group health check path and port match container                       |
+| ECS "replacement task set did not stabilize"        | Task crashes on startup or resource limits            | Check ECS task stopped reason; verify CPU/memory, image exists                       |
+| Lambda deployment failed at BeforeAllowTraffic      | Validation Lambda errored or timed out                | Check Lambda logs; ensure it calls `codedeploy:PutLifecycleEventHookExecutionStatus` |
 
 ### CodeConnections
 
-| Error/Symptom | Cause | Fix |
-|---------------|-------|-----|
-| Connection stays PENDING | Created via CLI/CFN without console completion | Complete OAuth handshake in AWS Console |
-| "Unable to use Connection" | IAM policy only has one service prefix | Add `codeconnections:UseConnection` and `codestar-connections:UseConnection` |
-| Repository not found | Wrong FullRepositoryId format or no repo access | Use `org/repo` format (case-sensitive); verify app has repo access |
-| Host in VPC_CONFIG_FAILED_INITIALIZATION | Network or TLS issue | Verify VPC routes to provider endpoint; validate TLS certificate |
-| Cookie error during GitHub authorization | Non-owner attempting GitHub App install | Organization owner must perform the installation |
+| Error/Symptom                            | Cause                                           | Fix                                                                          |
+| ---------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| Connection stays PENDING                 | Created via CLI/CFN without console completion  | Complete OAuth handshake in AWS Console                                      |
+| "Unable to use Connection"               | IAM policy only has one service prefix          | Add `codeconnections:UseConnection` and `codestar-connections:UseConnection` |
+| Repository not found                     | Wrong FullRepositoryId format or no repo access | Use `org/repo` format (case-sensitive); verify app has repo access           |
+| Host in VPC_CONFIG_FAILED_INITIALIZATION | Network or TLS issue                            | Verify VPC routes to provider endpoint; validate TLS certificate             |
+| Cookie error during GitHub authorization | Non-owner attempting GitHub App install         | Organization owner must perform the installation                             |
 
 ## Diagnostic Commands
 

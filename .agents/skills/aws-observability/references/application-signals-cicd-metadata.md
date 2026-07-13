@@ -8,27 +8,27 @@ Never modify application source code. Only edit the CI/CD workflow, Dockerfiles,
 
 ### Category 1 — Git metadata (BUILD time, bake into the Docker image)
 
-| Variable | Description | Git fallback |
-|----------|-------------|--------------|
-| `OTEL_AWS_SERVICE_EVENTS_GIT_REPO_URL` | HTTPS URL of the **app** repo | `git remote get-url origin` |
-| `OTEL_AWS_SERVICE_EVENTS_GIT_COMMIT_SHA` | Full SHA of the **app** commit | `git rev-parse HEAD` |
+| Variable                                 | Description                    | Git fallback                |
+| ---------------------------------------- | ------------------------------ | --------------------------- |
+| `OTEL_AWS_SERVICE_EVENTS_GIT_REPO_URL`   | HTTPS URL of the **app** repo  | `git remote get-url origin` |
+| `OTEL_AWS_SERVICE_EVENTS_GIT_COMMIT_SHA` | Full SHA of the **app** commit | `git rev-parse HEAD`        |
 
 **Note:** use a plain repo URL for `GIT_REPO_URL` — not one with embedded credentials (e.g. `https://<token>@github.com/...`). This value is propagated into telemetry, so an embedded token would leak. `git remote get-url origin` returns a credential-free URL in the normal case; strip any userinfo if your remote includes it.
 
 CI/CD provider mappings (use only when the app IS the workflow repo):
 
-| Provider | Repo URL | Commit SHA |
-|----------|----------|------------|
+| Provider       | Repo URL                                            | Commit SHA          |
+| -------------- | --------------------------------------------------- | ------------------- |
 | GitHub Actions | `${{ github.server_url }}/${{ github.repository }}` | `${{ github.sha }}` |
-| Jenkins | `$GIT_URL` | `$GIT_COMMIT` |
+| Jenkins        | `$GIT_URL`                                          | `$GIT_COMMIT`       |
 
 ### Category 2 — Deployment metadata (DEPLOY time, runtime env vars only)
 
-| Variable | Description |
-|----------|-------------|
-| `OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_URL` | URL of the CI/CD run that deployed the app |
-| `OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_ID` | Unique identifier of the CI/CD run (run ID / build number) |
-| `OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_TIMESTAMP` | ISO 8601 UTC timestamp: `date -u +%Y-%m-%dT%H:%M:%SZ` |
+| Variable                                       | Description                                                |
+| ---------------------------------------------- | ---------------------------------------------------------- |
+| `OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_URL`       | URL of the CI/CD run that deployed the app                 |
+| `OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_ID`        | Unique identifier of the CI/CD run (run ID / build number) |
+| `OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_TIMESTAMP` | ISO 8601 UTC timestamp: `date -u +%Y-%m-%dT%H:%M:%SZ`      |
 
 Deployment URL by provider — GitHub Actions: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`; Jenkins: `$BUILD_URL`. Deployment ID — GitHub Actions: `${{ github.run_id }}`; Jenkins: `$BUILD_NUMBER`.
 
@@ -97,12 +97,12 @@ ENV OTEL_AWS_SERVICE_EVENTS_GIT_COMMIT_SHA=${OTEL_AWS_SERVICE_EVENTS_GIT_COMMIT_
 ### Kubernetes deployment YAML with envsubst (deploy-side — 3 deployment vars only)
 
 ```yaml
-        - name: OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_URL
-          value: "${OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_URL}"
-        - name: OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_ID
-          value: "${OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_ID}"
-        - name: OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_TIMESTAMP
-          value: "${OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_TIMESTAMP}"
+- name: OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_URL
+  value: '${OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_URL}'
+- name: OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_ID
+  value: '${OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_ID}'
+- name: OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_TIMESTAMP
+  value: '${OTEL_AWS_SERVICE_EVENTS_DEPLOYMENT_TIMESTAMP}'
 ```
 
 Quotes around `value` are required — `DEPLOYMENT_ID` is numeric and YAML rejects it without quotes.

@@ -91,7 +91,7 @@ const role = new iam.Role(this, 'AppRole', {
     iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
     // ... keep existing policies
   ],
-});
+})
 ```
 
 ### Step 4: Modify UserData - Add Prerequisites
@@ -102,8 +102,8 @@ const role = new iam.Role(this, 'AppRole', {
 
 ```typescript
 instance.userData.addCommands(
-  'dnf install -y amazon-cloudwatch-agent',  // Use dnf for AL2023, yum for AL2
-);
+  'dnf install -y amazon-cloudwatch-agent' // Use dnf for AL2023, yum for AL2
+)
 ```
 
 ### Step 5: Modify UserData - Configure CloudWatch Agent
@@ -131,8 +131,8 @@ instance.userData.addCommands(
   '  -a fetch-config \\',
   '  -m ec2 \\',
   '  -s \\',
-  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json',
-);
+  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json'
+)
 ```
 
 ### Step 6: Install ADOT Java Auto-Instrumentation SDK
@@ -153,8 +153,8 @@ RUN curl -Lo /opt/aws-opentelemetry-agent.jar \
 instance.userData.addCommands(
   '# Download ADOT Java agent (latest; ServiceEvents requires >=2.28.2)',
   'curl -Lo /opt/aws-opentelemetry-agent.jar \\',
-  '  https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar',
-);
+  '  https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar'
+)
 ```
 
 ### Step 7: Modify UserData - Configure Application
@@ -182,8 +182,8 @@ instance.userData.addCommands(
   `  -e OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4316/v1/traces \\`,
   `  -e OTEL_RESOURCE_ATTRIBUTES=service.name={{SERVICE_NAME}} \\`,
   `  --network host \\`,
-  `  {{IMAGE_URI}}`,
-);
+  `  {{IMAGE_URI}}`
+)
 ```
 
 #### Option B: Non-Docker Deployment
@@ -201,8 +201,8 @@ instance.userData.addCommands(
   'export OTEL_RESOURCE_ATTRIBUTES=service.name={{SERVICE_NAME}}',
   '',
   '# Start application (existing command remains unchanged)',
-  '# The JAVA_TOOL_OPTIONS will automatically attach the agent',
-);
+  '# The JAVA_TOOL_OPTIONS will automatically attach the agent'
+)
 ```
 
 ## Completion

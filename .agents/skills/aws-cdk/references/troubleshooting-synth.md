@@ -39,20 +39,20 @@ The `app` field in `cdk.json` determines the execution mode. The failure causes 
 
 **If `cdk.json` uses compiled JS** (e.g., `"app": "node bin/app.js"`):
 
-| Cause | Symptom | Fix |
-|-------|---------|-----|
-| `outDir` mismatch with `cdk.json` | `Cannot find module 'bin/app.js'` | Ensure `tsconfig.json` `outDir` aligns with the path in `cdk.json`. If `outDir: "dist"`, then `"app": "node dist/bin/app.js"` |
-| Stale compiled `.js` files | Module existed before but was renamed/deleted in TS | `rm -rf cdk.out dist && npm run build && cdk synth` |
-| Never compiled | `.js` files don't exist | Run `npx tsc` or `npm run build` before `cdk synth` |
+| Cause                             | Symptom                                             | Fix                                                                                                                           |
+| --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `outDir` mismatch with `cdk.json` | `Cannot find module 'bin/app.js'`                   | Ensure `tsconfig.json` `outDir` aligns with the path in `cdk.json`. If `outDir: "dist"`, then `"app": "node dist/bin/app.js"` |
+| Stale compiled `.js` files        | Module existed before but was renamed/deleted in TS | `rm -rf cdk.out dist && npm run build && cdk synth`                                                                           |
+| Never compiled                    | `.js` files don't exist                             | Run `npx tsc` or `npm run build` before `cdk synth`                                                                           |
 
 **If `cdk.json` uses direct TS execution** (e.g., `"app": "npx tsx bin/app.ts"`):
 
-| Cause | Symptom | Fix |
-|-------|---------|-----|
-| Path aliases not resolved by ts-node | `Cannot find module 'lib/MyStack'` | Switch to `tsx` (`"app": "npx tsx bin/my-app.ts"`), or register `tsconfig-paths` with ts-node (`"app": "npx ts-node -r tsconfig-paths/register --prefer-ts-exts bin/my-app.ts"`) |
-| Monorepo — wrong `node_modules` | `Cannot find module 'typescript'` | Verify hoisting: `npm ls typescript`. Point `cdk.json` at correct binary. pnpm: `shamefully-hoist=true`. |
-| `npm link` / symlinked packages | `Cannot find module '@my/shared-constructs'` | Install peer deps explicitly, or `NODE_OPTIONS=--preserve-symlinks`. Long-term: publish to registry. |
-| Wrong working directory | `cdk.json` not found | `cd` to directory containing `cdk.json` |
+| Cause                                | Symptom                                      | Fix                                                                                                                                                                              |
+| ------------------------------------ | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path aliases not resolved by ts-node | `Cannot find module 'lib/MyStack'`           | Switch to `tsx` (`"app": "npx tsx bin/my-app.ts"`), or register `tsconfig-paths` with ts-node (`"app": "npx ts-node -r tsconfig-paths/register --prefer-ts-exts bin/my-app.ts"`) |
+| Monorepo — wrong `node_modules`      | `Cannot find module 'typescript'`            | Verify hoisting: `npm ls typescript`. Point `cdk.json` at correct binary. pnpm: `shamefully-hoist=true`.                                                                         |
+| `npm link` / symlinked packages      | `Cannot find module '@my/shared-constructs'` | Install peer deps explicitly, or `NODE_OPTIONS=--preserve-symlinks`. Long-term: publish to registry.                                                                             |
+| Wrong working directory              | `cdk.json` not found                         | `cd` to directory containing `cdk.json`                                                                                                                                          |
 
 ### Python — diagnostic flow
 
@@ -60,13 +60,13 @@ The `app` field in `cdk.json` determines the execution mode. The failure causes 
 
 **Step 2: Test import** — `python -c "import aws_cdk; print(aws_cdk.__version__)"`.
 
-| Cause | Symptom | Fix |
-|-------|---------|-----|
-| Virtualenv not activated | `No module named 'aws_cdk'` | `source .venv/bin/activate && pip install -r requirements.txt` |
-| Missing `pip install` | `No module named 'my_constructs'` | `pip install -r requirements.txt` |
-| CI — venv not activated | Module errors in pipeline | Activate in script, or set `"app": ".venv/bin/python app.py"` in `cdk.json` |
-| Poetry / Pipenv | CDK runs outside managed env | `"app": "poetry run python app.py"` or `"app": "pipenv run python app.py"` |
-| `cannot import name 'core' from 'aws_cdk'` | v1→v2 API change | Replace `from aws_cdk import core` with `import aws_cdk as cdk`. See [v1-to-v2-migration](v1-to-v2-migration.md). |
+| Cause                                      | Symptom                           | Fix                                                                                                               |
+| ------------------------------------------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Virtualenv not activated                   | `No module named 'aws_cdk'`       | `source .venv/bin/activate && pip install -r requirements.txt`                                                    |
+| Missing `pip install`                      | `No module named 'my_constructs'` | `pip install -r requirements.txt`                                                                                 |
+| CI — venv not activated                    | Module errors in pipeline         | Activate in script, or set `"app": ".venv/bin/python app.py"` in `cdk.json`                                       |
+| Poetry / Pipenv                            | CDK runs outside managed env      | `"app": "poetry run python app.py"` or `"app": "pipenv run python app.py"`                                        |
+| `cannot import name 'core' from 'aws_cdk'` | v1→v2 API change                  | Replace `from aws_cdk import core` with `import aws_cdk as cdk`. See [v1-to-v2-migration](v1-to-v2-migration.md). |
 
 ### Prevention
 
@@ -90,7 +90,7 @@ The asset path does not exist at synth time.
 new lambda.Function(this, 'Fn', {
   code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
   // ...
-});
+})
 ```
 
 ### FailedToBundleAsset
@@ -160,17 +160,13 @@ You SHOULD only suppress annotations when the flagged pattern is intentional and
 **Per-resource:**
 
 ```typescript
-NagSuppressions.addResourceSuppressions(myBucket, [
-  { id: '$RULE_ID', reason: '$JUSTIFICATION' },
-]);
+NagSuppressions.addResourceSuppressions(myBucket, [{ id: '$RULE_ID', reason: '$JUSTIFICATION' }])
 ```
 
 **Per-stack:**
 
 ```typescript
-NagSuppressions.addStackSuppressions(myStack, [
-  { id: '$RULE_ID', reason: '$JUSTIFICATION' },
-]);
+NagSuppressions.addStackSuppressions(myStack, [{ id: '$RULE_ID', reason: '$JUSTIFICATION' }])
 ```
 
 **By path:**
@@ -178,7 +174,7 @@ NagSuppressions.addStackSuppressions(myStack, [
 ```typescript
 NagSuppressions.addResourceSuppressionsByPath(stack, '/$STACK/$CONSTRUCT_PATH', [
   { id: '$RULE_ID', reason: '$JUSTIFICATION' },
-]);
+])
 ```
 
 You MUST NOT suppress annotations without providing a reason.
@@ -228,10 +224,10 @@ A circular reference exists between two or more stacks.
    new ssm.StringParameter(this, 'Param', {
      parameterName: '/$APP/$RESOURCE_ARN',
      stringValue: resource.resourceArn,
-   });
+   })
 
    // Consumer stack
-   const arn = ssm.StringParameter.valueForStringParameter(this, '/$APP/$RESOURCE_ARN');
+   const arn = ssm.StringParameter.valueForStringParameter(this, '/$APP/$RESOURCE_ARN')
    ```
 
 3. **Pass raw ARN strings** instead of construct references when the full construct object is not needed.

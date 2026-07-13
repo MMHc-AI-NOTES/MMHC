@@ -9,17 +9,17 @@ allowed-tools: [Read]
 
 ## Service Overview
 
-| Developer Need | Recommend | Key CLI / CDK |
-|---|---|---|
-| Simplest container deploy (HTTP app/API, new customers) | ECS Express Mode | `aws ecs create-express-gateway-service` |
-| Web app, worker, batch, scheduled task | ECS on Fargate | `aws ecs create-service` / CDK `ecsPatterns.ApplicationLoadBalancedFargateService` |
-| GPU workloads or >16 vCPU | ECS on EC2 | CDK `ecs.Ec2Service` |
-| Store container images | ECR | `aws ecr create-repository` |
-| Web app behind a load balancer | ECS Fargate + ALB | CDK `ecsPatterns.ApplicationLoadBalancedFargateService` |
-| SQS worker scaling on queue depth | ECS Fargate + SQS | CDK `ecsPatterns.QueueProcessingFargateService` |
-| Cron job / scheduled task | ECS Fargate + EventBridge | CDK `ecsPatterns.ScheduledFargateTask` |
-| Service mesh / service-to-service | ECS Service Connect | Configure on ECS service with Cloud Map namespace |
-| Debug a running container | ECS Exec | `aws ecs execute-command --interactive --command "/bin/sh"` |
+| Developer Need                                          | Recommend                 | Key CLI / CDK                                                                      |
+| ------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
+| Simplest container deploy (HTTP app/API, new customers) | ECS Express Mode          | `aws ecs create-express-gateway-service`                                           |
+| Web app, worker, batch, scheduled task                  | ECS on Fargate            | `aws ecs create-service` / CDK `ecsPatterns.ApplicationLoadBalancedFargateService` |
+| GPU workloads or >16 vCPU                               | ECS on EC2                | CDK `ecs.Ec2Service`                                                               |
+| Store container images                                  | ECR                       | `aws ecr create-repository`                                                        |
+| Web app behind a load balancer                          | ECS Fargate + ALB         | CDK `ecsPatterns.ApplicationLoadBalancedFargateService`                            |
+| SQS worker scaling on queue depth                       | ECS Fargate + SQS         | CDK `ecsPatterns.QueueProcessingFargateService`                                    |
+| Cron job / scheduled task                               | ECS Fargate + EventBridge | CDK `ecsPatterns.ScheduledFargateTask`                                             |
+| Service mesh / service-to-service                       | ECS Service Connect       | Configure on ECS service with Cloud Map namespace                                  |
+| Debug a running container                               | ECS Exec                  | `aws ecs execute-command --interactive --command "/bin/sh"`                        |
 
 When a developer says "deploy my container" without naming a service: recommend ECS Express Mode for simple HTTP apps (replaces App Runner for new customers). Recommend ECS Fargate for everything else. Never recommend EKS unless they explicitly ask for Kubernetes.
 
@@ -96,9 +96,9 @@ Apply these every time. Each corrects a mistake agents make without explicit ins
 ## Quick-Start: CDK Fargate Web App
 
 ```typescript
-import * as cdk from 'aws-cdk-lib';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as cdk from 'aws-cdk-lib'
+import * as ecs from 'aws-cdk-lib/aws-ecs'
+import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns'
 
 const service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'WebApp', {
   taskImageOptions: {
@@ -112,12 +112,12 @@ const service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'Web
   publicLoadBalancer: true,
   circuitBreaker: { rollback: true },
   minHealthyPercent: 100,
-});
+})
 
-service.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
+service.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30')
 
-const scaling = service.service.autoScaleTaskCount({ minCapacity: 2, maxCapacity: 10 });
-scaling.scaleOnCpuUtilization('CpuScaling', { targetUtilizationPercent: 70 });
+const scaling = service.service.autoScaleTaskCount({ minCapacity: 2, maxCapacity: 10 })
+scaling.scaleOnCpuUtilization('CpuScaling', { targetUtilizationPercent: 70 })
 ```
 
 CDK L3 patterns auto-create VPC, cluster, ALB, target group, and security groups. For production, create these separately and pass them in. `ApplicationLoadBalancedFargateService` defaults to `assignPublicIp: false` — tasks in public subnets need `assignPublicIp: true` for internet access, or use private subnets with NAT.
@@ -157,49 +157,55 @@ Read reference files only when the conversation requires deeper detail.
 
 > **App Runner:** Sunset April 30, 2026 — no new customers, no new features. Existing customers should migrate to ECS Express Mode. See [App Runner Availability Change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html).
 
-| Factor | ECS Express Mode | ECS Fargate |
-|---|---|---|
-| Setup complexity | Minimal (single API call) | Moderate — task def, service, cluster, ALB |
-| Networking control | Managed (ALB in default VPC) | Full — awsvpc, security groups, subnets |
-| Scaling | Auto (CPU-based) | Configurable target/step scaling |
-| Use when | New simple HTTP app/API, zero infra management | Production services needing VPC, ALB, fine-grained IAM |
-| Limitations | New service, evolving feature set | Most setup required |
+| Factor             | ECS Express Mode                               | ECS Fargate                                            |
+| ------------------ | ---------------------------------------------- | ------------------------------------------------------ |
+| Setup complexity   | Minimal (single API call)                      | Moderate — task def, service, cluster, ALB             |
+| Networking control | Managed (ALB in default VPC)                   | Full — awsvpc, security groups, subnets                |
+| Scaling            | Auto (CPU-based)                               | Configurable target/step scaling                       |
+| Use when           | New simple HTTP app/API, zero infra management | Production services needing VPC, ALB, fine-grained IAM |
+| Limitations        | New service, evolving feature set              | Most setup required                                    |
 
 **Default recommendation:** Use ECS Fargate for production workloads. Use ECS Express Mode for the simplest path (new customers).
 
 ## Troubleshooting
 
 ### CannotPullContainerError
+
 **Cause**: Task cannot reach ECR. In private subnets, tasks need NAT gateway or VPC endpoints (`ecr.api`, `ecr.dkr`, `s3` gateway, `logs`).
 **Fix**: Verify route table has a route to NAT gateway or create the required VPC endpoints. Verify the execution role has `ecr:GetDownloadUrlForLayer`, `ecr:BatchGetImage`, `ecr:GetAuthorizationToken` (Resource: `"*"`). Check security group allows outbound HTTPS (443).
 
 ### Task failed ELB health checks
+
 **Cause**: Health check path returns non-200, container not listening on the configured port, or health check grace period too short.
 **Fix**: Verify the container responds on the health check path and port. Set `healthCheckGracePeriodSeconds` to at least 60s (longer for JVM apps). Ensure the security group allows traffic from the ALB security group on the container port.
 
 ### OutOfMemoryError / exit code 137
+
 **Cause**: Container exceeded its memory hard limit (SIGKILL). On Fargate, task-level memory is the hard limit.
 **Fix**: Increase task-level memory. For JVM apps, use `-XX:MaxRAMPercentage=75` instead of fixed `-Xmx` — this automatically adapts to the container's memory allocation. Check container-level `memory` (hard limit) vs `memoryReservation` (soft limit).
 
 ### AccessDeniedException on AWS API calls from container
+
 **Cause**: Permissions are on the execution role instead of the task role, or the task role is missing.
 **Fix**: Verify the task definition has `taskRoleArn` set (not just `executionRoleArn`). Add the required permissions to the task role.
 
 ### Service stuck deploying / tasks keep restarting
+
 **Cause**: Deployment circuit breaker not enabled, or health check failing on new tasks.
 **Fix**: Enable circuit breaker with rollback. Check service events: `aws ecs describe-services --cluster $CLUSTER --services $SERVICE --output json`. Check stopped task reasons: `aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ID --output json`.
 
 ### ECS Exec TargetNotConnectedException
+
 **Cause**: SSM agent not running, missing task role permissions, or missing VPC endpoint.
 **Fix**: Verify `enableExecuteCommand` is true on the service. Check the task role has SSM permissions. For private subnets, create the `ssmmessages` VPC endpoint. Verify with `aws ecs describe-tasks` that `ExecuteCommandAgent` status is `RUNNING`.
 
 ### Error retry classification
 
-| Retry | Do NOT retry |
-|---|---|
-| ThrottlingException | InvalidParameterException |
-| ServiceUnavailableException | ClientException |
-| ServerException | AccessDeniedException |
+| Retry                       | Do NOT retry              |
+| --------------------------- | ------------------------- |
+| ThrottlingException         | InvalidParameterException |
+| ServiceUnavailableException | ClientException           |
+| ServerException             | AccessDeniedException     |
 
 ## Security Considerations
 

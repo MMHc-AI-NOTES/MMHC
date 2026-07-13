@@ -4,22 +4,22 @@
 
 Two ARN prefixes coexist (service was rebranded from CodeStar Connections to CodeConnections):
 
-| Prefix | ARN Format |
-|--------|-----------|
-| `codeconnections` | `arn:aws:codeconnections:REGION:ACCOUNT:connection/UUID` |
+| Prefix                 | ARN Format                                                    |
+| ---------------------- | ------------------------------------------------------------- |
+| `codeconnections`      | `arn:aws:codeconnections:REGION:ACCOUNT:connection/UUID`      |
 | `codestar-connections` | `arn:aws:codestar-connections:REGION:ACCOUNT:connection/UUID` |
 
 Both work in pipeline configurations. IAM policy prefix must match the resource ARN prefix.
 
 ## Provider Comparison
 
-| Feature | GitHub | GitHub Enterprise | GitLab.com | GitLab Self-Managed | Bitbucket Cloud | Azure DevOps |
-|---------|--------|-------------------|------------|---------------------|-----------------|--------------|
-| Host resource required | No | Yes | No | Yes | No | No |
-| Auth mechanism | GitHub App | GitHub App | OAuth | OAuth | OAuth | OAuth |
-| Org owner required | Yes | Yes | No | No | No | No |
-| VPC endpoint needed | No | Yes (if private) | No | Yes | No | No |
-| Provider type value | `GitHub` | `GitHubEnterpriseServer` | `GitLab` | `GitLabSelfManaged` | `Bitbucket` | `AzureDevOps` |
+| Feature                | GitHub     | GitHub Enterprise        | GitLab.com | GitLab Self-Managed | Bitbucket Cloud | Azure DevOps  |
+| ---------------------- | ---------- | ------------------------ | ---------- | ------------------- | --------------- | ------------- |
+| Host resource required | No         | Yes                      | No         | Yes                 | No              | No            |
+| Auth mechanism         | GitHub App | GitHub App               | OAuth      | OAuth               | OAuth           | OAuth         |
+| Org owner required     | Yes        | Yes                      | No         | No                  | No              | No            |
+| VPC endpoint needed    | No         | Yes (if private)         | No         | Yes                 | No              | No            |
+| Provider type value    | `GitHub`   | `GitHubEnterpriseServer` | `GitLab`   | `GitLabSelfManaged` | `Bitbucket`     | `AzureDevOps` |
 
 ## Create a Connection
 
@@ -121,9 +121,7 @@ Use `codeconnections:` prefix for all Actions. The dual prefix only matters in t
 ```json
 {
   "Effect": "Allow",
-  "Action": [
-    "codeconnections:UseConnection"
-  ],
+  "Action": ["codeconnections:UseConnection"],
   "Resource": [
     "arn:aws:codeconnections:REGION:ACCOUNT:connection/CONNECTION_UUID",
     "arn:aws:codestar-connections:REGION:ACCOUNT:connection/OLD_CONNECTION_UUID"
@@ -138,11 +136,11 @@ Use `codeconnections:` prefix for all Actions. The dual prefix only matters in t
 
 **CRITICAL: UseConnection is over-permissive without condition keys.** It grants access to ALL repositories the connection can reach. MUST specify conditions:
 
-| Condition Key | Purpose |
-|--------------|---------|
+| Condition Key                      | Purpose                                      |
+| ---------------------------------- | -------------------------------------------- |
 | `codeconnections:FullRepositoryId` | Restrict to specific repo (e.g., `org/repo`) |
-| `codeconnections:ProviderAction` | Restrict operations (e.g., `read` only) |
-| `codeconnections:BranchName` | Restrict to specific branch |
+| `codeconnections:ProviderAction`   | Restrict operations (e.g., `read` only)      |
+| `codeconnections:BranchName`       | Restrict to specific branch                  |
 
 For pipeline service roles: minimum `codeconnections:UseConnection` with condition keys scoped to the repo.
 
@@ -150,14 +148,14 @@ For CodeBuild roles using `CODEBUILD_CLONE_REF`: add `codeconnections:UseConnect
 
 ## Common Errors
 
-| Error/Symptom | Cause | Fix |
-|---------------|-------|-----|
-| Pipeline fails "connection not available" | Connection PENDING | Complete OAuth in console |
-| Blank page / cookie error during GitHub auth | User not org owner | Have org owner perform installation |
-| `AccessDeniedException` on UseConnection | IAM only has one prefix | Add `codeconnections:UseConnection` and `codestar-connections:UseConnection` |
-| Host stuck in `VPC_CONFIG_FAILED_INITIALIZATION` | VPC/subnet/SG misconfiguration | Verify route to provider endpoint, validate TLS cert |
-| Pipeline trigger never fires | `sourceActionName` mismatch | Ensure trigger `sourceActionName` matches action `Name` exactly |
-| Repository not found | Wrong FullRepositoryId format | Use `org/repo` format (case-sensitive) |
+| Error/Symptom                                    | Cause                          | Fix                                                                          |
+| ------------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------------- |
+| Pipeline fails "connection not available"        | Connection PENDING             | Complete OAuth in console                                                    |
+| Blank page / cookie error during GitHub auth     | User not org owner             | Have org owner perform installation                                          |
+| `AccessDeniedException` on UseConnection         | IAM only has one prefix        | Add `codeconnections:UseConnection` and `codestar-connections:UseConnection` |
+| Host stuck in `VPC_CONFIG_FAILED_INITIALIZATION` | VPC/subnet/SG misconfiguration | Verify route to provider endpoint, validate TLS cert                         |
+| Pipeline trigger never fires                     | `sourceActionName` mismatch    | Ensure trigger `sourceActionName` matches action `Name` exactly              |
+| Repository not found                             | Wrong FullRepositoryId format  | Use `org/repo` format (case-sensitive)                                       |
 
 ## Security
 

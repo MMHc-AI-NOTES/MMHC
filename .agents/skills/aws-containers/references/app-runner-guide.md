@@ -21,9 +21,9 @@ This reference file is for **existing App Runner customers** who need to operate
 
 Operators MUST confirm the following before proceeding:
 
-| Dependency | Check Command |
-|---|---|
-| Correct account/region | `aws sts get-caller-identity --output json` |
+| Dependency                 | Check Command                                                                                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Correct account/region     | `aws sts get-caller-identity --output json`                                                                                                                                   |
 | Sufficient IAM permissions | Caller MUST have permissions for the target service (App Runner or ECS). Use least-privilege scoped policies — avoid `AdministratorAccess` or `*FullAccess` managed policies. |
 
 ---
@@ -72,18 +72,18 @@ ECS Express Mode is designed as the direct migration path for App Runner workloa
 
 ## Comparison: App Runner vs ECS Express Mode vs ECS Fargate
 
-| Feature | App Runner | ECS Express Mode | ECS Fargate (Standard) |
-|---|---|---|---|
-| **Setup complexity** | Minimal — single API/console action | Minimal — single API call provisions full stack | Full control — multiple resources to configure |
-| **Networking** | Automatic public endpoint; optional VPC connector for outbound | ALB provisioned automatically; VPC-native | Full VPC control; ALB/NLB configured separately |
-| **Scaling** | Concurrency-based auto scaling | Target-tracking auto scaling (CPU/memory/ALB requests) | Target-tracking, step, scheduled, or predictive scaling |
-| **Min instances** | 1 (cannot scale to zero) | 0 (MAY scale to zero with configuration; not explicitly documented for Express Mode — underlying ECS Application Auto Scaling supports min capacity 0) | 0 (MAY scale to zero) |
-| **Custom domain / TLS** | Built-in custom domain + auto TLS | Default service URL: automatic TLS via ACM certificate auto-provisioned by Express Mode. Custom domain: operator supplies ACM certificate and attaches it to the ALB HTTPS listener | Via ALB/NLB — operator manages certificate |
-| **VPC integration** | VPC connector (outbound only) | Full VPC-native | Full VPC-native |
-| **ECS Exec / SSH** | Not supported | Supported | Supported |
-| **Sidecar containers** | Not supported | Supported | Supported |
-| **Use case** | Simple web apps, APIs (existing customers only) | Simple web apps, APIs — App Runner replacement | Complex architectures, multi-container, full control |
-| **Limitations** | Sunsetting; no new customers; no sidecars; no ECS Exec | Newer service — feature set expanding | Requires more configuration and operational knowledge |
+| Feature                 | App Runner                                                     | ECS Express Mode                                                                                                                                                                    | ECS Fargate (Standard)                                  |
+| ----------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Setup complexity**    | Minimal — single API/console action                            | Minimal — single API call provisions full stack                                                                                                                                     | Full control — multiple resources to configure          |
+| **Networking**          | Automatic public endpoint; optional VPC connector for outbound | ALB provisioned automatically; VPC-native                                                                                                                                           | Full VPC control; ALB/NLB configured separately         |
+| **Scaling**             | Concurrency-based auto scaling                                 | Target-tracking auto scaling (CPU/memory/ALB requests)                                                                                                                              | Target-tracking, step, scheduled, or predictive scaling |
+| **Min instances**       | 1 (cannot scale to zero)                                       | 0 (MAY scale to zero with configuration; not explicitly documented for Express Mode — underlying ECS Application Auto Scaling supports min capacity 0)                              | 0 (MAY scale to zero)                                   |
+| **Custom domain / TLS** | Built-in custom domain + auto TLS                              | Default service URL: automatic TLS via ACM certificate auto-provisioned by Express Mode. Custom domain: operator supplies ACM certificate and attaches it to the ALB HTTPS listener | Via ALB/NLB — operator manages certificate              |
+| **VPC integration**     | VPC connector (outbound only)                                  | Full VPC-native                                                                                                                                                                     | Full VPC-native                                         |
+| **ECS Exec / SSH**      | Not supported                                                  | Supported                                                                                                                                                                           | Supported                                               |
+| **Sidecar containers**  | Not supported                                                  | Supported                                                                                                                                                                           | Supported                                               |
+| **Use case**            | Simple web apps, APIs (existing customers only)                | Simple web apps, APIs — App Runner replacement                                                                                                                                      | Complex architectures, multi-container, full control    |
+| **Limitations**         | Sunsetting; no new customers; no sidecars; no ECS Exec         | Newer service — feature set expanding                                                                                                                                               | Requires more configuration and operational knowledge   |
 
 ---
 
@@ -129,16 +129,16 @@ If **your application code** depends on AWS APIs or external endpoints during st
 
 > **Important:** App Runner's own managed actions — pulling source code and container images, pushing logs, and retrieving secrets referenced in the service configuration — are NOT routed through your VPC connector. This traffic traverses AWS-managed networking. You do NOT need VPC endpoints for ECR, CloudWatch Logs, or Secrets Manager to support App Runner's internal operations.
 >
-> Source: [Enabling VPC access for outgoing traffic](https://docs.aws.amazon.com/apprunner/latest/dg/network-vpc.html): *"App Runner traffic — App Runner manages several actions on your behalf, such as pulling source code and images, pushing logs, and retrieving secrets. The traffic that these actions generate isn't routed through your VPC."*
+> Source: [Enabling VPC access for outgoing traffic](https://docs.aws.amazon.com/apprunner/latest/dg/network-vpc.html): _"App Runner traffic — App Runner manages several actions on your behalf, such as pulling source code and images, pushing logs, and retrieving secrets. The traffic that these actions generate isn't routed through your VPC."_
 
 VPC endpoints or a NAT gateway are required ONLY for traffic originating from **your application code at runtime**. The following apply only if your container code calls these services:
 
-| Requirement | Purpose (applies only to application-code traffic) |
-|---|---|
-| NAT gateway in public subnet | Outbound access to the public internet from your application code |
-| VPC endpoint for an AWS service (e.g., DynamoDB, SQS, S3) | Private access to an AWS service your application code calls at runtime |
-| VPC endpoint for Secrets Manager | Only if your application code calls Secrets Manager directly at runtime (NOT needed for App Runner's managed secret injection) |
-| VPC endpoint for SSM Parameter Store | Only if your application code calls Parameter Store directly at runtime |
+| Requirement                                               | Purpose (applies only to application-code traffic)                                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| NAT gateway in public subnet                              | Outbound access to the public internet from your application code                                                              |
+| VPC endpoint for an AWS service (e.g., DynamoDB, SQS, S3) | Private access to an AWS service your application code calls at runtime                                                        |
+| VPC endpoint for Secrets Manager                          | Only if your application code calls Secrets Manager directly at runtime (NOT needed for App Runner's managed secret injection) |
+| VPC endpoint for SSM Parameter Store                      | Only if your application code calls Parameter Store directly at runtime                                                        |
 
 ### 4. AWS Services Need VPC Endpoints or NAT
 
@@ -210,9 +210,9 @@ Both App Runner and ECS Express Mode expose **public HTTPS endpoints by default*
 
 ### Authentication and Authorization
 
-- App Runner and ECS Express Mode provide **no built-in authentication**. Services are publicly accessible by default. Source: [Enabling Private endpoint for incoming traffic](https://docs.aws.amazon.com/apprunner/latest/dg/network-pl.html): *"By default when you create an AWS App Runner service, the service is accessible over the internet."*
+- App Runner and ECS Express Mode provide **no built-in authentication**. Services are publicly accessible by default. Source: [Enabling Private endpoint for incoming traffic](https://docs.aws.amazon.com/apprunner/latest/dg/network-pl.html): _"By default when you create an AWS App Runner service, the service is accessible over the internet."_
 - Operators MUST implement authentication at the application layer (e.g., JWT validation, OAuth 2.0) or place an API Gateway with authorizers in front of the service.
-- For internal-only services, use private subnets with an internal ALB. ECS Express Mode provisions an internal ALB when private subnets are provided via `--network-configuration`. Source: [Express Mode network configuration defaults](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-work.html): *"If you provide private subnets (subnets without an internet gateway in their route table), Express Mode will provision an internal ALB."*
+- For internal-only services, use private subnets with an internal ALB. ECS Express Mode provisions an internal ALB when private subnets are provided via `--network-configuration`. Source: [Express Mode network configuration defaults](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-work.html): _"If you provide private subnets (subnets without an internet gateway in their route table), Express Mode will provision an internal ALB."_
 
 ### Secret Management
 
@@ -223,7 +223,7 @@ Both App Runner and ECS Express Mode expose **public HTTPS endpoints by default*
 "secrets": [{"name": "DB_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret"}]
 ```
 
-- Source: [ExpressGatewayContainer API — `secrets` field](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_ExpressGatewayContainer.html): *"The secrets to pass to the container. Type: Array of Secret objects."*
+- Source: [ExpressGatewayContainer API — `secrets` field](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_ExpressGatewayContainer.html): _"The secrets to pass to the container. Type: Array of Secret objects."_
 - App Runner supports managed secret injection via service configuration — these secrets are retrieved by App Runner's managed infrastructure, not through your VPC. Source: [Enabling VPC access for outgoing traffic](https://docs.aws.amazon.com/apprunner/latest/dg/network-vpc.html)
 - Operators SHOULD enable automatic secret rotation in Secrets Manager. Source: [Express Mode best practices — Secrets management](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-best-practices.html)
 
@@ -236,7 +236,7 @@ Both App Runner and ECS Express Mode expose **public HTTPS endpoints by default*
 
 ### Encryption
 
-- **In transit**: Both App Runner and ECS Express Mode enforce HTTPS/TLS by default. Express Mode auto-provisions an ACM certificate and configures an HTTPS listener on port 443. Source: [Express Mode ALB defaults](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-work.html): *"listener-configurations.protocol: https"*
+- **In transit**: Both App Runner and ECS Express Mode enforce HTTPS/TLS by default. Express Mode auto-provisions an ACM certificate and configures an HTTPS listener on port 443. Source: [Express Mode ALB defaults](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-work.html): _"listener-configurations.protocol: https"_
 - **At rest**: Operators SHOULD enable KMS encryption on CloudWatch Logs log groups, ECR repositories, and any data stores the application uses. Secrets Manager encrypts secrets at rest by default using either an AWS-managed or customer-provided KMS key.
 
 ### Network Security

@@ -201,7 +201,7 @@ const role = new iam.Role(this, 'AppRole', {
     iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
     // ... keep existing policies
   ],
-});
+})
 ```
 
 ### Step 4: Modify UserData - Add Prerequisites
@@ -220,9 +220,9 @@ If indentation is inconsistent, Terraform will NOT strip the whitespace, causing
 
 ```typescript
 instance.userData.addCommands(
-  'dnf install -y amazon-cloudwatch-agent',  // Use dnf for AL2023, yum for AL2
+  'dnf install -y amazon-cloudwatch-agent' // Use dnf for AL2023, yum for AL2
   // ... rest of UserData follows
-);
+)
 ```
 
 **Placement:** Add this command early in the UserData script:
@@ -262,8 +262,8 @@ instance.userData.addCommands(
   '  -a fetch-config \\',
   '  -m ec2 \\',
   '  -s \\',
-  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json',
-);
+  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json'
+)
 ```
 
 ### Step 6: Install ADOT Python Auto-Instrumentation SDK
@@ -333,8 +333,8 @@ For non-Docker deployments, add to UserData AFTER CloudWatch Agent installation:
 ```typescript
 instance.userData.addCommands(
   '# Install ADOT Python auto-instrumentation',
-  'pip3 install aws-opentelemetry-distro',
-);
+  'pip3 install aws-opentelemetry-distro'
+)
 ```
 
 ### Step 7: Modify UserData - Configure Application (Docker Deployment)
@@ -375,8 +375,8 @@ instance.userData.addCommands(
   `  -e OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4316/v1/traces \\`,
   `  -e OTEL_RESOURCE_ATTRIBUTES=service.name={{SERVICE_NAME}} \\`,
   `  --network host \\`,
-  `  {{IMAGE_URI}}`,
-);
+  `  {{IMAGE_URI}}`
+)
 ```
 
 ##### Option 2: Django Applications
@@ -403,8 +403,8 @@ instance.userData.addCommands(
   `  -e OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4316/v1/traces \\`,
   `  -e OTEL_RESOURCE_ATTRIBUTES=service.name={{SERVICE_NAME}} \\`,
   `  --network host \\`,
-  `  {{IMAGE_URI}}`,
-);
+  `  {{IMAGE_URI}}`
+)
 ```
 
 #### Step 7B: WSGI Additional Configuration
@@ -479,8 +479,8 @@ instance.userData.addCommands(
   '',
   '# Start application with ADOT instrumentation',
   'cd {{APP_DIR}}',
-  'opentelemetry-instrument python {{ENTRY_POINT}}',
-);
+  'opentelemetry-instrument python {{ENTRY_POINT}}'
+)
 ```
 
 ##### Option 2: Django Applications
@@ -506,8 +506,8 @@ instance.userData.addCommands(
   '',
   '# Start Django application with ADOT instrumentation',
   'cd {{APP_DIR}}',
-  'opentelemetry-instrument python manage.py runserver 0.0.0.0:{{PORT}} --noreload',
-);
+  'opentelemetry-instrument python manage.py runserver 0.0.0.0:{{PORT}} --noreload'
+)
 ```
 
 **Django-specific notes:**

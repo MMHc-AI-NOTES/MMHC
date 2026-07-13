@@ -1,6 +1,7 @@
 # Enable AWS Application Signals for .NET on ECS
 
 ## Overview
+
 This guide provides complete steps to enable AWS Application Signals for ECS services (both EC2 and Fargate launch types), including distributed tracing, performance monitoring, and service mapping.
 
 ## Prerequisites
@@ -24,7 +25,7 @@ const taskRole = new iam.Role(this, 'EcsTaskRole', {
     iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXRayDaemonWriteAccess'),
     iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
   ],
-});
+})
 ```
 
 #### 1.2 Create CloudWatch Agent Log Group
@@ -34,7 +35,7 @@ const cwAgentLogGroup = new logs.LogGroup(this, 'CwAgentLogGroup', {
   logGroupName: '/ecs/ecs-cwagent',
   removalPolicy: cdk.RemovalPolicy.DESTROY,
   retention: logs.RetentionDays.ONE_MONTH,
-});
+})
 ```
 
 #### 1.3 Add CloudWatch Agent Container to Each Task Definition
@@ -47,23 +48,23 @@ const cwAgentContainer = taskDefinition.addContainer('ecs-cwagent-{{SERVICE_NAME
   cpu: 64,
   environment: {
     CW_CONFIG_CONTENT: JSON.stringify({
-      "traces": {
-        "traces_collected": {
-          "application_signals": {}
-        }
+      traces: {
+        traces_collected: {
+          application_signals: {},
+        },
       },
-      "logs": {
-        "metrics_collected": {
-          "application_signals": {}
-        }
-      }
+      logs: {
+        metrics_collected: {
+          application_signals: {},
+        },
+      },
     }),
   },
   logging: ecs.LogDrivers.awsLogs({
     streamPrefix: 'ecs',
     logGroup: cwAgentLogGroup,
   }),
-});
+})
 ```
 
 ### Step 2: Add AWS Distro for OpenTelemetry Zero-Code Auto-Instrumentation to Main Service
@@ -75,10 +76,10 @@ const taskDefinition = new ecs.FargateTaskDefinition(this, '{{SERVICE_NAME}}Task
   // Existing configuration...
   volumes: [
     {
-      name: "opentelemetry-auto-instrumentation-dotnet"
-    }
+      name: 'opentelemetry-auto-instrumentation-dotnet',
+    },
   ],
-});
+})
 ```
 
 #### 2.2 Add ADOT Auto-instrumentation Init Container
@@ -87,7 +88,9 @@ const taskDefinition = new ecs.FargateTaskDefinition(this, '{{SERVICE_NAME}}Task
 
 ```typescript
 const initContainer = taskDefinition.addContainer('init', {
-  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/adot-autoinstrumentation-dotnet:v1.9.2'),
+  image: ecs.ContainerImage.fromRegistry(
+    'public.ecr.aws/aws-observability/adot-autoinstrumentation-dotnet:v1.9.2'
+  ),
   essential: false,
   memoryReservationMiB: 64,
   cpu: 32,
@@ -96,35 +99,50 @@ const initContainer = taskDefinition.addContainer('init', {
     streamPrefix: 'init-{{SERVICE_NAME}}',
     logGroup: serviceLogGroup,
   }),
-});
+})
 
 initContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-dotnet',
   containerPath: '/otel-auto-instrumentation-dotnet',
   readOnly: false,
-});
+})
 ```
 
 ##### For Windows Server Containers:
 
 ```typescript
 const initContainer = taskDefinition.addContainer('init', {
-  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/adot-autoinstrumentation-dotnet:v1.9.2'),
+  image: ecs.ContainerImage.fromRegistry(
+    'public.ecr.aws/aws-observability/adot-autoinstrumentation-dotnet:v1.9.2'
+  ),
   essential: false,
   memoryReservationMiB: 64,
   cpu: 32,
-  command: ['CMD', '/c', 'xcopy', '/e', 'C:\\autoinstrumentation\\*', 'C:\\otel-auto-instrumentation', '&&', 'icacls', 'C:\\otel-auto-instrumentation', '/grant', '*S-1-1-0:R', '/T'],
+  command: [
+    'CMD',
+    '/c',
+    'xcopy',
+    '/e',
+    'C:\\autoinstrumentation\\*',
+    'C:\\otel-auto-instrumentation',
+    '&&',
+    'icacls',
+    'C:\\otel-auto-instrumentation',
+    '/grant',
+    '*S-1-1-0:R',
+    '/T',
+  ],
   logging: ecs.LogDrivers.awsLogs({
     streamPrefix: 'init-{{SERVICE_NAME}}',
     logGroup: serviceLogGroup,
   }),
-});
+})
 
 initContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-dotnet',
   containerPath: 'C:\\otel-auto-instrumentation',
   readOnly: false,
-});
+})
 ```
 
 #### 2.3 Configure Main Application Container OpenTelemetry Environment Variables
@@ -139,7 +157,8 @@ const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', 
     OTEL_RESOURCE_ATTRIBUTES: 'service.name={{SERVICE_NAME}}',
     OTEL_METRICS_EXPORTER: 'none',
     OTEL_LOGS_EXPORTER: 'none',
-    DOTNET_STARTUP_HOOKS: '/otel-auto-instrumentation-dotnet/net/OpenTelemetry.AutoInstrumentation.StartupHook.dll',
+    DOTNET_STARTUP_HOOKS:
+      '/otel-auto-instrumentation-dotnet/net/OpenTelemetry.AutoInstrumentation.StartupHook.dll',
     DOTNET_ADDITIONAL_DEPS: '/otel-auto-instrumentation-dotnet/AdditionalDeps',
     DOTNET_SHARED_STORE: '/otel-auto-instrumentation-dotnet/store',
     OTEL_DOTNET_AUTO_HOME: '/otel-auto-instrumentation-dotnet',
@@ -150,10 +169,12 @@ const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', 
     OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
     CORECLR_ENABLE_PROFILING: '1',
     CORECLR_PROFILER: '{918728DD-259F-4A6A-AC2B-B85E1B658318}',
-    CORECLR_PROFILER_PATH: '/otel-auto-instrumentation-dotnet/linux-x64/OpenTelemetry.AutoInstrumentation.Native.so',
-    OTEL_DOTNET_AUTO_PLUGINS: 'AWS.Distro.OpenTelemetry.AutoInstrumentation.Plugin, AWS.Distro.OpenTelemetry.AutoInstrumentation',
+    CORECLR_PROFILER_PATH:
+      '/otel-auto-instrumentation-dotnet/linux-x64/OpenTelemetry.AutoInstrumentation.Native.so',
+    OTEL_DOTNET_AUTO_PLUGINS:
+      'AWS.Distro.OpenTelemetry.AutoInstrumentation.Plugin, AWS.Distro.OpenTelemetry.AutoInstrumentation',
   },
-});
+})
 ```
 
 ##### For Windows Server Containers:
@@ -166,7 +187,8 @@ const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', 
     OTEL_RESOURCE_ATTRIBUTES: 'service.name={{SERVICE_NAME}}',
     OTEL_METRICS_EXPORTER: 'none',
     OTEL_LOGS_EXPORTER: 'none',
-    DOTNET_STARTUP_HOOKS: 'C:\\otel-auto-instrumentation\\net\\OpenTelemetry.AutoInstrumentation.StartupHook.dll',
+    DOTNET_STARTUP_HOOKS:
+      'C:\\otel-auto-instrumentation\\net\\OpenTelemetry.AutoInstrumentation.StartupHook.dll',
     DOTNET_ADDITIONAL_DEPS: 'C:\\otel-auto-instrumentation\\AdditionalDeps',
     DOTNET_SHARED_STORE: 'C:\\otel-auto-instrumentation\\store',
     OTEL_DOTNET_AUTO_HOME: 'C:\\otel-auto-instrumentation',
@@ -177,10 +199,12 @@ const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', 
     OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
     CORECLR_ENABLE_PROFILING: '1',
     CORECLR_PROFILER: '{918728DD-259F-4A6A-AC2B-B85E1B658318}',
-    CORECLR_PROFILER_PATH: 'C:\\otel-auto-instrumentation\\win-x64\\OpenTelemetry.AutoInstrumentation.Native.dll',
-    OTEL_DOTNET_AUTO_PLUGINS: 'AWS.Distro.OpenTelemetry.AutoInstrumentation.Plugin, AWS.Distro.OpenTelemetry.AutoInstrumentation',
+    CORECLR_PROFILER_PATH:
+      'C:\\otel-auto-instrumentation\\win-x64\\OpenTelemetry.AutoInstrumentation.Native.dll',
+    OTEL_DOTNET_AUTO_PLUGINS:
+      'AWS.Distro.OpenTelemetry.AutoInstrumentation.Plugin, AWS.Distro.OpenTelemetry.AutoInstrumentation',
   },
-});
+})
 ```
 
 #### 2.4 Add Mount Point to Main Container
@@ -192,7 +216,7 @@ mainContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-dotnet',
   containerPath: '/otel-auto-instrumentation-dotnet',
   readOnly: false,
-});
+})
 ```
 
 ##### For Windows Server Containers:
@@ -202,7 +226,7 @@ mainContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-dotnet',
   containerPath: 'C:\\otel-auto-instrumentation',
   readOnly: false,
-});
+})
 ```
 
 #### 2.5 Configure Container Dependencies
@@ -211,12 +235,12 @@ mainContainer.addMountPoints({
 mainContainer.addContainerDependencies({
   container: initContainer,
   condition: ecs.ContainerDependencyCondition.SUCCESS,
-});
+})
 
 mainContainer.addContainerDependencies({
   container: cwAgentContainer,
   condition: ecs.ContainerDependencyCondition.START,
-});
+})
 ```
 
 ## Completion

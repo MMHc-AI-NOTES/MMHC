@@ -22,23 +22,23 @@
 
 Operators MUST confirm the following before proceeding:
 
-| Dependency | Check Command |
-|---|---|
-| Correct account/region | `aws sts get-caller-identity --output json` |
-| CDK bootstrapped in target account | `cdk bootstrap aws://$ACCOUNT_ID/$REGION` |
+| Dependency                         | Check Command                               |
+| ---------------------------------- | ------------------------------------------- |
+| Correct account/region             | `aws sts get-caller-identity --output json` |
+| CDK bootstrapped in target account | `cdk bootstrap aws://$ACCOUNT_ID/$REGION`   |
 
 ---
 
 ## L3 Construct Overview
 
-| Pattern | Construct | Module | Use Case |
-|---|---|---|---|
-| Web App (ALB + Fargate) | `ApplicationLoadBalancedFargateService` | `aws-ecs-patterns` | HTTP/HTTPS services behind ALB |
-| Web App (NLB + Fargate) | `NetworkLoadBalancedFargateService` | `aws-ecs-patterns` | TCP/UDP services, static IP |
-| SQS Worker | `QueueProcessingFargateService` | `aws-ecs-patterns` | Queue-driven background processing |
-| Scheduled Task | `ScheduledFargateTask` | `aws-ecs-patterns` | Cron jobs, periodic batch work |
-| Web App (ALB + EC2) | `ApplicationLoadBalancedEc2Service` | `aws-ecs-patterns` | HTTP/HTTPS on EC2 launch type |
-| SQS Worker (EC2) | `QueueProcessingEc2Service` | `aws-ecs-patterns` | Queue processing on EC2 launch type |
+| Pattern                 | Construct                               | Module             | Use Case                            |
+| ----------------------- | --------------------------------------- | ------------------ | ----------------------------------- |
+| Web App (ALB + Fargate) | `ApplicationLoadBalancedFargateService` | `aws-ecs-patterns` | HTTP/HTTPS services behind ALB      |
+| Web App (NLB + Fargate) | `NetworkLoadBalancedFargateService`     | `aws-ecs-patterns` | TCP/UDP services, static IP         |
+| SQS Worker              | `QueueProcessingFargateService`         | `aws-ecs-patterns` | Queue-driven background processing  |
+| Scheduled Task          | `ScheduledFargateTask`                  | `aws-ecs-patterns` | Cron jobs, periodic batch work      |
+| Web App (ALB + EC2)     | `ApplicationLoadBalancedEc2Service`     | `aws-ecs-patterns` | HTTP/HTTPS on EC2 launch type       |
+| SQS Worker (EC2)        | `QueueProcessingEc2Service`             | `aws-ecs-patterns` | Queue processing on EC2 launch type |
 
 **When to drop to L2 constructs:** Use L2 (`ecs.FargateService` + `elbv2.ApplicationLoadBalancer`) when you need multiple services behind one ALB, custom task definitions with multiple containers, fine-grained log driver configuration (`mode: blocking`), or EFS volumes. L3 patterns don't expose these.
 
@@ -47,8 +47,8 @@ Operators MUST confirm the following before proceeding:
 ## Web App on Fargate
 
 ```typescript
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as ecs from 'aws-cdk-lib/aws-ecs'
+import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns'
 
 const service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'WebApp', {
   cluster,
@@ -62,25 +62,25 @@ const service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'Web
   desiredCount: 2,
   circuitBreaker: { rollback: true },
   publicLoadBalancer: true,
-});
+})
 
 // Reduce deregistration delay for faster deployments
-service.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
+service.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30')
 
 // Auto scaling
 const scaling = service.service.autoScaleTaskCount({
   minCapacity: 2,
   maxCapacity: 10,
-});
+})
 
 scaling.scaleOnCpuUtilization('CpuScaling', {
   targetUtilizationPercent: 60,
-});
+})
 
 scaling.scaleOnRequestCount('RequestScaling', {
   requestsPerTarget: 1000,
   targetGroup: service.targetGroup,
-});
+})
 ```
 
 Key points:
@@ -94,7 +94,7 @@ Key points:
 - To set `mode: blocking` for guaranteed log delivery (see CloudFormation section for rationale), use a custom task definition instead of `taskImageOptions`:
 
 ```typescript
-const taskDef = new ecs.FargateTaskDefinition(this, 'TaskDef', { cpu: 512, memoryLimitMiB: 1024 });
+const taskDef = new ecs.FargateTaskDefinition(this, 'TaskDef', { cpu: 512, memoryLimitMiB: 1024 })
 taskDef.addContainer('App', {
   image: ecs.ContainerImage.fromRegistry('$IMAGE_URI'),
   portMappings: [{ containerPort: 8080 }],
@@ -102,7 +102,7 @@ taskDef.addContainer('App', {
     streamPrefix: 'app',
     mode: ecs.AwsLogDriverMode.BLOCKING,
   }),
-});
+})
 ```
 
 ---
@@ -110,7 +110,7 @@ taskDef.addContainer('App', {
 ## SQS Worker
 
 ```typescript
-import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns'
 
 const worker = new ecsPatterns.QueueProcessingFargateService(this, 'Worker', {
   cluster,
@@ -129,7 +129,7 @@ const worker = new ecsPatterns.QueueProcessingFargateService(this, 'Worker', {
   cpu: 512,
   memoryLimitMiB: 1024,
   circuitBreaker: { rollback: true },
-});
+})
 ```
 
 Key points:
@@ -141,8 +141,8 @@ Key points:
 ## Scheduled Task
 
 ```typescript
-import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
-import * as appscaling from 'aws-cdk-lib/aws-applicationautoscaling';
+import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns'
+import * as appscaling from 'aws-cdk-lib/aws-applicationautoscaling'
 
 new ecsPatterns.ScheduledFargateTask(this, 'NightlyJob', {
   cluster,
@@ -156,7 +156,7 @@ new ecsPatterns.ScheduledFargateTask(this, 'NightlyJob', {
   },
   schedule: appscaling.Schedule.expression('cron(0 3 * * ? *)'),
   platformVersion: ecs.FargatePlatformVersion.LATEST,
-});
+})
 ```
 
 ---
@@ -164,22 +164,22 @@ new ecsPatterns.ScheduledFargateTask(this, 'NightlyJob', {
 ## Path-Based Routing
 
 ```typescript
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as ecs from 'aws-cdk-lib/aws-ecs'
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2'
 
 const alb = new elbv2.ApplicationLoadBalancer(this, 'ALB', {
   vpc,
   internetFacing: true,
-});
+})
 
-const listener = alb.addListener('Listener', { port: 80 });
+const listener = alb.addListener('Listener', { port: 80 })
 
 // Service A: /api/*
 const serviceA = new ecs.FargateService(this, 'ApiService', {
   cluster,
   taskDefinition: apiTaskDef,
   healthCheckGracePeriod: cdk.Duration.seconds(60),
-});
+})
 
 const targetGroupA = listener.addTargets('ApiTarget', {
   port: $CONTAINER_PORT,
@@ -190,14 +190,14 @@ const targetGroupA = listener.addTargets('ApiTarget', {
     path: '/api/health',
     interval: cdk.Duration.seconds(30),
   },
-});
+})
 
 // Service B: /* (default)
 const serviceB = new ecs.FargateService(this, 'WebService', {
   cluster,
   taskDefinition: webTaskDef,
   healthCheckGracePeriod: cdk.Duration.seconds(60),
-});
+})
 
 listener.addTargets('WebTarget', {
   port: $CONTAINER_PORT,
@@ -206,7 +206,7 @@ listener.addTargets('WebTarget', {
     path: '/health',
     interval: cdk.Duration.seconds(30),
   },
-});
+})
 ```
 
 Key points:
@@ -219,45 +219,45 @@ Key points:
 ## EFS Volume
 
 ```typescript
-import * as efs from 'aws-cdk-lib/aws-efs';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as efs from 'aws-cdk-lib/aws-efs'
+import * as ecs from 'aws-cdk-lib/aws-ecs'
 
 const fileSystem = new efs.FileSystem(this, 'SharedFS', {
   vpc,
   encrypted: true,
   performanceMode: efs.PerformanceMode.GENERAL_PURPOSE,
   removalPolicy: cdk.RemovalPolicy.RETAIN,
-});
+})
 
 const taskDef = new ecs.FargateTaskDefinition(this, 'TaskDef', {
   cpu: 512,
   memoryLimitMiB: 1024,
-});
+})
 
 taskDef.addVolume({
   name: 'efs-volume',
   efsVolumeConfiguration: {
     fileSystemId: fileSystem.fileSystemId,
   },
-});
+})
 
 const container = taskDef.addContainer('App', {
   image: ecs.ContainerImage.fromRegistry('$IMAGE_URI'),
-});
+})
 
 container.addMountPoints({
   sourceVolume: 'efs-volume',
   containerPath: '/mnt/data',
   readOnly: false,
-});
+})
 
 const service = new ecs.FargateService(this, 'Service', {
   cluster,
   taskDefinition: taskDef,
-});
+})
 
 // CRITICAL: Allow ECS tasks to connect to EFS on port 2049
-fileSystem.connections.allowDefaultPortFrom(service);
+fileSystem.connections.allowDefaultPortFrom(service)
 ```
 
 Key points:
@@ -273,13 +273,13 @@ Key points:
 const taskDef = new ecs.FargateTaskDefinition(this, 'TaskDef', {
   cpu: 512,
   memoryLimitMiB: 1024,
-});
+})
 
 const service = new ecs.FargateService(this, 'Service', {
   cluster,
   taskDefinition: taskDef,
   enableExecuteCommand: true, // Automatically grants the 4 required ssmmessages actions to the task role
-});
+})
 ```
 
 > **CRITICAL**: `enableExecuteCommand: true` automatically grants the task role the 4 required `ssmmessages` actions (`CreateControlChannel`, `CreateDataChannel`, `OpenControlChannel`, `OpenDataChannel`). No manual policy attachment is needed in CDK. For CloudFormation, add an inline policy with these 4 actions on the task role.
@@ -291,7 +291,7 @@ Common mistake:
 // WRONG — this will NOT work for ECS Exec
 taskDef.executionRole.addManagedPolicy(
   iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
-);
+)
 ```
 
 Verify ECS Exec after deployment:
@@ -316,38 +316,38 @@ When running ECS tasks in private subnets without a NAT gateway, operators MUST 
 // 1. ECR Docker — pull container images
 vpc.addInterfaceEndpoint('EcrDockerEndpoint', {
   service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
-});
+})
 
 // 2. ECR API — authenticate with ECR
 vpc.addInterfaceEndpoint('EcrApiEndpoint', {
   service: ec2.InterfaceVpcEndpointAwsService.ECR,
-});
+})
 
 // 3. CloudWatch Logs — push container logs
 vpc.addInterfaceEndpoint('CloudWatchLogsEndpoint', {
   service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
-});
+})
 
 // 4. S3 Gateway — ECR stores image layers in S3
 vpc.addGatewayEndpoint('S3Endpoint', {
   service: ec2.GatewayVpcEndpointAwsService.S3,
-});
+})
 ```
 
-| Endpoint | Type | Purpose |
-|---|---|---|
-| `ECR_DOCKER` | Interface | Pull container images |
-| `ECR` | Interface | ECR API authentication |
-| `CLOUDWATCH_LOGS` | Interface | Container log delivery |
-| `S3` | Gateway | ECR image layer storage (no cost) |
+| Endpoint          | Type      | Purpose                           |
+| ----------------- | --------- | --------------------------------- |
+| `ECR_DOCKER`      | Interface | Pull container images             |
+| `ECR`             | Interface | ECR API authentication            |
+| `CLOUDWATCH_LOGS` | Interface | Container log delivery            |
+| `S3`              | Gateway   | ECR image layer storage (no cost) |
 
 Additional endpoints MAY be needed:
 
-| Endpoint | When Required |
-|---|---|
-| `ssmmessages` | ECS Exec |
-| `secretsmanager` | Secrets Manager references in task definition |
-| `ssm` | SSM Parameter Store references in task definition |
+| Endpoint         | When Required                                     |
+| ---------------- | ------------------------------------------------- |
+| `ssmmessages`    | ECS Exec                                          |
+| `secretsmanager` | Secrets Manager references in task definition     |
+| `ssm`            | SSM Parameter Store references in task definition |
 
 ---
 
@@ -366,7 +366,7 @@ const logRouter = taskDef.addFirelensLogRouter('LogRouter', {
     streamPrefix: 'firelens',
     logGroup,
   }),
-});
+})
 
 // Application container uses awsfirelens driver
 const appContainer = taskDef.addContainer('App', {
@@ -381,7 +381,7 @@ const appContainer = taskDef.addContainer('App', {
       auto_create_group: 'true',
     },
   }),
-});
+})
 ```
 
 Key rules:
@@ -395,22 +395,22 @@ Key rules:
 ## Secrets with Explicit Role Separation
 
 ```typescript
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as iam from 'aws-cdk-lib/aws-iam';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
+import * as iam from 'aws-cdk-lib/aws-iam'
 
-const dbSecret = secretsmanager.Secret.fromSecretNameV2(this, 'DbSecret', '$SECRET_NAME');
+const dbSecret = secretsmanager.Secret.fromSecretNameV2(this, 'DbSecret', '$SECRET_NAME')
 
 const taskDef = new ecs.FargateTaskDefinition(this, 'TaskDef', {
   cpu: 512,
   memoryLimitMiB: 1024,
-});
+})
 
 const container = taskDef.addContainer('App', {
   image: ecs.ContainerImage.fromRegistry('$IMAGE_URI'),
   secrets: {
     DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
   },
-});
+})
 
 // CDK automatically grants the execution role read access to secrets
 // specified in the secrets block (via ContainerDefinition.addSecret).
@@ -420,10 +420,10 @@ const container = taskDef.addContainer('App', {
 
 Role separation:
 
-| Role | Purpose | Needs Secret Access When |
-|---|---|---|
+| Role               | Purpose                                                                       | Needs Secret Access When                                      |
+| ------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | **Execution role** | Used by ECS agent to pull images, push logs, and inject secrets at task start | Secrets are referenced in the task definition `secrets` block |
-| **Task role** | Used by the running application code | Application calls Secrets Manager API at runtime |
+| **Task role**      | Used by the running application code                                          | Application calls Secrets Manager API at runtime              |
 
 - If secrets are injected via the task definition `secrets` block, `grantRead` MUST target the **execution role**.
 - If the application fetches secrets at runtime via SDK calls, `grantRead` MUST target the **task role**.

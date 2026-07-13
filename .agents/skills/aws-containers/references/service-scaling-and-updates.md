@@ -38,12 +38,12 @@ aws ecs describe-services \
 
 ## Scaling Policy Types
 
-| Policy Type      | Use Case                                                    | Trigger                                    |
-|------------------|-------------------------------------------------------------|--------------------------------------------|
-| Target Tracking  | Maintain a metric at a target value (e.g., CPU at 70%).     | CloudWatch metric crosses target.          |
-| Step Scaling     | Scale in discrete steps based on alarm thresholds.          | CloudWatch alarm breaches.                 |
-| Predictive       | Pre-scale based on historical traffic patterns.             | ML forecast of future demand.              |
-| Scheduled        | Scale at known times (e.g., business hours, batch windows). | Cron, at, or rate expression.              |
+| Policy Type     | Use Case                                                    | Trigger                           |
+| --------------- | ----------------------------------------------------------- | --------------------------------- |
+| Target Tracking | Maintain a metric at a target value (e.g., CPU at 70%).     | CloudWatch metric crosses target. |
+| Step Scaling    | Scale in discrete steps based on alarm thresholds.          | CloudWatch alarm breaches.        |
+| Predictive      | Pre-scale based on historical traffic patterns.             | ML forecast of future demand.     |
+| Scheduled       | Scale at known times (e.g., business hours, batch windows). | Cron, at, or rate expression.     |
 
 The operator SHOULD use target tracking for most workloads. Step scaling MAY be used when finer control over scaling increments is needed.
 
@@ -87,11 +87,11 @@ aws application-autoscaling put-scaling-policy \
   --output json
 ```
 
-| Parameter          | Value | Rationale                                                    |
-|--------------------|-------|--------------------------------------------------------------|
-| `TargetValue`      | 70.0  | SHOULD be set as high as possible with a buffer for traffic spikes. AWS examples use 75.0. |
+| Parameter          | Value | Rationale                                                                                                                                                           |
+| ------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TargetValue`      | 70.0  | SHOULD be set as high as possible with a buffer for traffic spikes. AWS examples use 75.0.                                                                          |
 | `ScaleOutCooldown` | 60    | Seconds to wait for a previous scale-out to take effect. Default is 300s for ECS; 60s shown here for faster response. A larger scale-out CAN override the cooldown. |
-| `ScaleInCooldown`  | 300   | Seconds to wait after a scale-in. SHOULD be longer to avoid flapping. |
+| `ScaleInCooldown`  | 300   | Seconds to wait after a scale-in. SHOULD be longer to avoid flapping.                                                                                               |
 
 ---
 
@@ -114,7 +114,7 @@ Use metric math in the scaling policy to compute this inline — no custom metri
 The CDK L3 pattern uses **step scaling** on raw `ApproximateNumberOfMessagesVisible` (queue depth), NOT target tracking on backlog-per-task. This is simpler but less proportional.
 
 ```typescript
-import * as ecs_patterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as ecs_patterns from 'aws-cdk-lib/aws-ecs-patterns'
 
 const service = new ecs_patterns.QueueProcessingFargateService(this, 'Worker', {
   cluster,
@@ -130,7 +130,7 @@ const service = new ecs_patterns.QueueProcessingFargateService(this, 'Worker', {
   ],
   cpu: 512,
   memoryLimitMiB: 1024,
-});
+})
 ```
 
 The `scalingSteps` define step scaling increments based on the `ApproximateNumberOfMessagesVisible` metric. The `upper: 0` step scales in when the queue is empty.
@@ -145,13 +145,13 @@ ECS Auto Scaling natively supports scaling to zero. Set `minCapacity` to 0 and t
 
 When at 0 tasks, target tracking needs metric data to trigger scale-out. Whether this works depends on whether the metric continues to emit at 0 tasks:
 
-| Metric Type | Emitted at 0 Tasks? | Full Round-Trip (0→N→0)? |
-|---|---|---|
-| SQS queue depth (`ApproximateNumberOfMessagesVisible`) | Yes — SQS emits regardless of consumers | ✅ Works natively |
-| External custom metric (published by Lambda or external source) | Yes — publisher runs independently | ✅ Works natively |
-| CPU/Memory (`ECSServiceAverageCPUUtilization`) | No — no tasks, no metric data | ❌ Scale-out from 0 fails (`INSUFFICIENT_DATA`) |
-| ALB request count (`ALBRequestCountPerTarget`) | No — no registered targets | ❌ Scale-out from 0 fails |
-| Per-task custom metric (e.g., backlog/tasks) | No — division by zero at 0 tasks | ❌ Scale-out from 0 fails |
+| Metric Type                                                     | Emitted at 0 Tasks?                     | Full Round-Trip (0→N→0)?                        |
+| --------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------- |
+| SQS queue depth (`ApproximateNumberOfMessagesVisible`)          | Yes — SQS emits regardless of consumers | ✅ Works natively                               |
+| External custom metric (published by Lambda or external source) | Yes — publisher runs independently      | ✅ Works natively                               |
+| CPU/Memory (`ECSServiceAverageCPUUtilization`)                  | No — no tasks, no metric data           | ❌ Scale-out from 0 fails (`INSUFFICIENT_DATA`) |
+| ALB request count (`ALBRequestCountPerTarget`)                  | No — no registered targets              | ❌ Scale-out from 0 fails                       |
+| Per-task custom metric (e.g., backlog/tasks)                    | No — division by zero at 0 tasks        | ❌ Scale-out from 0 fails                       |
 
 ### EventBridge + Lambda Pattern (for task-dependent metrics)
 
@@ -177,11 +177,11 @@ aws ecs update-service \
 
 ## Deployment Types
 
-| Type                          | Mechanism                                                  | Availability         |
-|-------------------------------|------------------------------------------------------------|----------------------|
-| Rolling Update (ECS)          | Replaces tasks incrementally using `minimumHealthyPercent` and `maximumPercent`. | GA                   |
-| Native ECS Blue/Green         | ECS-managed blue/green with traffic shifting.              | GA (July 2025+)      |
-| CodeDeploy Blue/Green         | CodeDeploy-managed blue/green with traffic shifting.       | GA — native ECS blue/green recommended for new workloads. CodeDeploy remains valid for existing CodePipeline integrations. |
+| Type                  | Mechanism                                                                        | Availability                                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Rolling Update (ECS)  | Replaces tasks incrementally using `minimumHealthyPercent` and `maximumPercent`. | GA                                                                                                                         |
+| Native ECS Blue/Green | ECS-managed blue/green with traffic shifting.                                    | GA (July 2025+)                                                                                                            |
+| CodeDeploy Blue/Green | CodeDeploy-managed blue/green with traffic shifting.                             | GA — native ECS blue/green recommended for new workloads. CodeDeploy remains valid for existing CodePipeline integrations. |
 
 ---
 
@@ -189,12 +189,12 @@ aws ecs update-service \
 
 ### minimumHealthyPercent and maximumPercent
 
-| desiredCount | minimumHealthyPercent | maximumPercent | Behavior                                                  |
-|--------------|-----------------------|----------------|-----------------------------------------------------------|
+| desiredCount | minimumHealthyPercent | maximumPercent | Behavior                                                                                                                                                       |
+| ------------ | --------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1            | 0                     | 200            | Scheduler starts new task first (ceiling allows 2), then stops old. But if new task fails, service can drop to 0 tasks (downtime). No zero-downtime guarantee. |
-| 1            | 100                   | 200            | Starts new task first, waits for healthy, then stops old. Zero downtime. |
-| 2+           | 50                    | 200            | Stops half, starts replacements. Faster but reduced capacity during deploy. |
-| 2+           | 100                   | 200            | Starts new tasks first, then drains old. RECOMMENDED for zero downtime. |
+| 1            | 100                   | 200            | Starts new task first, waits for healthy, then stops old. Zero downtime.                                                                                       |
+| 2+           | 50                    | 200            | Stops half, starts replacements. Faster but reduced capacity during deploy.                                                                                    |
+| 2+           | 100                   | 200            | Starts new tasks first, then drains old. RECOMMENDED for zero downtime.                                                                                        |
 
 The operator SHOULD use `minimumHealthyPercent=100` and `maximumPercent=200` for services that require zero downtime.
 
@@ -222,12 +222,12 @@ Minimum threshold (3) <= ceil(0.5 * desired task count) => Maximum threshold (20
 
 The circuit breaker has a minimum threshold of **3** and a maximum threshold of **200**. You cannot change either value.
 
-| Desired Task Count | Calculation | Threshold |
-|---|---|---|
-| 1 | `ceil(0.5 * 1) = 1` → below minimum | 3 |
-| 25 | `ceil(0.5 * 25) = 13` | 13 |
-| 400 | `ceil(0.5 * 400) = 200` | 200 |
-| 800 | `ceil(0.5 * 800) = 400` → above maximum | 200 |
+| Desired Task Count | Calculation                             | Threshold |
+| ------------------ | --------------------------------------- | --------- |
+| 1                  | `ceil(0.5 * 1) = 1` → below minimum     | 3         |
+| 25                 | `ceil(0.5 * 25) = 13`                   | 13        |
+| 400                | `ceil(0.5 * 400) = 200`                 | 200       |
+| 800                | `ceil(0.5 * 800) = 400` → above maximum | 200       |
 
 When the number of consecutive failed tasks reaches the threshold, the circuit breaker marks the deployment as `FAILED` and (if `rollback=true`) automatically rolls back to the last `COMPLETED` deployment.
 

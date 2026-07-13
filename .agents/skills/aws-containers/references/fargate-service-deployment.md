@@ -97,17 +97,13 @@ The ALB security group MUST allow inbound traffic on the listener ports:
     "IpProtocol": "tcp",
     "FromPort": 443,
     "ToPort": 443,
-    "IpRanges": [
-      { "CidrIp": "$ALLOWED_CIDR", "Description": "Inbound HTTPS from allowed range" }
-    ]
+    "IpRanges": [{ "CidrIp": "$ALLOWED_CIDR", "Description": "Inbound HTTPS from allowed range" }]
   },
   {
     "IpProtocol": "tcp",
     "FromPort": 80,
     "ToPort": 80,
-    "IpRanges": [
-      { "CidrIp": "$ALLOWED_CIDR", "Description": "Inbound HTTP for HTTPS redirect" }
-    ]
+    "IpRanges": [{ "CidrIp": "$ALLOWED_CIDR", "Description": "Inbound HTTP for HTTPS redirect" }]
   }
 ]
 ```
@@ -149,13 +145,13 @@ aws elbv2 create-target-group \
 
 ### Health Check Configuration
 
-| Parameter                        | Recommended Value | Notes                                         |
-|----------------------------------|-------------------|-----------------------------------------------|
-| `health-check-path`             | `/health`         | MUST return HTTP 200 when the app is ready.   |
-| `health-check-interval-seconds` | 30                | SHOULD be 10–30s.                             |
-| `health-check-timeout-seconds`  | 5                 | SHOULD be less than the interval.             |
-| `healthy-threshold-count`       | 2                 | Minimum consecutive successes to mark healthy.|
-| `unhealthy-threshold-count`     | 2                 | Consecutive failures before marking unhealthy.|
+| Parameter                       | Recommended Value | Notes                                          |
+| ------------------------------- | ----------------- | ---------------------------------------------- |
+| `health-check-path`             | `/health`         | MUST return HTTP 200 when the app is ready.    |
+| `health-check-interval-seconds` | 30                | SHOULD be 10–30s.                              |
+| `health-check-timeout-seconds`  | 5                 | SHOULD be less than the interval.              |
+| `healthy-threshold-count`       | 2                 | Minimum consecutive successes to mark healthy. |
+| `unhealthy-threshold-count`     | 2                 | Consecutive failures before marking unhealthy. |
 
 ### Deregistration Delay
 
@@ -221,20 +217,20 @@ aws ecs create-service \
 
 ### Deployment Configuration
 
-| Parameter              | Recommended Value | Notes                                                   |
-|------------------------|-------------------|---------------------------------------------------------|
-| `minimumHealthyPercent`| 100               | Keeps all existing tasks running during deployment.     |
-| `maximumPercent`       | 200               | Allows double the desired count during rolling update.  |
+| Parameter               | Recommended Value | Notes                                                  |
+| ----------------------- | ----------------- | ------------------------------------------------------ |
+| `minimumHealthyPercent` | 100               | Keeps all existing tasks running during deployment.    |
+| `maximumPercent`        | 200               | Allows double the desired count during rolling update. |
 
 ### Health Check Grace Period
 
 The `healthCheckGracePeriodSeconds` SHOULD be set when using a load balancer to prevent ECS from marking tasks unhealthy before the application finishes starting. CDK defaults to 60 seconds when a load balancer is attached.
 
-| Application Type       | Recommended Value |
-|------------------------|-------------------|
-| Lightweight apps       | 60 seconds        |
-| JVM-based apps         | 90–120 seconds    |
-| Apps with DB migrations| 120+ seconds      |
+| Application Type        | Recommended Value |
+| ----------------------- | ----------------- |
+| Lightweight apps        | 60 seconds        |
+| JVM-based apps          | 90–120 seconds    |
+| Apps with DB migrations | 120+ seconds      |
 
 ### Circuit Breaker with Rollback
 
@@ -284,12 +280,12 @@ Tasks route through a NAT gateway in a public subnet. This is simpler but incurs
 
 The operator SHOULD create VPC endpoints to avoid NAT gateway costs for AWS service traffic:
 
-| Endpoint                          | Type      | Required For                   |
-|-----------------------------------|-----------|--------------------------------|
-| `com.amazonaws.$REGION.ecr.dkr`  | Interface | Pulling images from ECR        |
-| `com.amazonaws.$REGION.ecr.api`  | Interface | ECR API calls (auth, describe) |
-| `com.amazonaws.$REGION.s3`       | Gateway   | ECR image layer storage in S3  |
-| `com.amazonaws.$REGION.logs`     | Interface | CloudWatch Logs                |
+| Endpoint                        | Type      | Required For                   |
+| ------------------------------- | --------- | ------------------------------ |
+| `com.amazonaws.$REGION.ecr.dkr` | Interface | Pulling images from ECR        |
+| `com.amazonaws.$REGION.ecr.api` | Interface | ECR API calls (auth, describe) |
+| `com.amazonaws.$REGION.s3`      | Gateway   | ECR image layer storage in S3  |
+| `com.amazonaws.$REGION.logs`    | Interface | CloudWatch Logs                |
 
 Interface endpoints MUST have a security group allowing inbound HTTPS (port 443) from the task security group:
 
@@ -298,9 +294,7 @@ Interface endpoints MUST have a security group allowing inbound HTTPS (port 443)
   "IpProtocol": "tcp",
   "FromPort": 443,
   "ToPort": 443,
-  "UserIdGroupPairs": [
-    { "GroupId": "$TASK_SG_ID", "Description": "HTTPS from ECS tasks" }
-  ]
+  "UserIdGroupPairs": [{ "GroupId": "$TASK_SG_ID", "Description": "HTTPS from ECS tasks" }]
 }
 ```
 

@@ -182,7 +182,7 @@ const role = new iam.Role(this, 'AppRole', {
     iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
     // ... keep existing policies
   ],
-});
+})
 ```
 
 ### Step 4: Modify UserData - Add Prerequisites
@@ -201,9 +201,9 @@ If indentation is inconsistent, Terraform will NOT strip the whitespace, causing
 
 ```typescript
 instance.userData.addCommands(
-  'dnf install -y amazon-cloudwatch-agent',  // Use dnf for AL2023, yum for AL2
+  'dnf install -y amazon-cloudwatch-agent' // Use dnf for AL2023, yum for AL2
   // ... rest of UserData follows
-);
+)
 ```
 
 **Placement:** Add this command early in the UserData script:
@@ -243,8 +243,8 @@ instance.userData.addCommands(
   '  -a fetch-config \\',
   '  -m ec2 \\',
   '  -s \\',
-  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json',
-);
+  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json'
+)
 ```
 
 ### Step 6: Install ADOT Node.js Auto-Instrumentation SDK
@@ -283,8 +283,8 @@ For non-Docker deployments, add to UserData AFTER CloudWatch Agent configuration
 instance.userData.addCommands(
   '# Install ADOT Node.js auto-instrumentation (must run in the app directory so the',
   '# package lands in {{APP_DIR}}/node_modules where Node module resolution finds it)',
-  'cd {{APP_DIR}} && npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation',
-);
+  'cd {{APP_DIR}} && npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation'
+)
 ```
 
 **For ESM applications:**
@@ -292,8 +292,8 @@ instance.userData.addCommands(
 ```typescript
 instance.userData.addCommands(
   '# Install ADOT Node.js auto-instrumentation with ESM support (run in the app directory)',
-  'cd {{APP_DIR}} && npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation @opentelemetry/instrumentation',
-);
+  'cd {{APP_DIR}} && npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation @opentelemetry/instrumentation'
+)
 ```
 
 ### Step 7: Modify Application Startup to Load ADOT Agent
@@ -352,8 +352,8 @@ instance.userData.addCommands(
   `  -e OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4316/v1/traces \\`,
   `  -e OTEL_RESOURCE_ATTRIBUTES=service.name={{SERVICE_NAME}} \\`,
   `  --network host \\`,
-  `  {{IMAGE_URI}}`,
-);
+  `  {{IMAGE_URI}}`
+)
 ```
 
 #### Option B: Non-Docker Deployment
@@ -379,8 +379,8 @@ instance.userData.addCommands(
   '',
   '# Start application with ADOT agent',
   'cd {{APP_DIR}}',
-  'node --require "@aws/aws-distro-opentelemetry-node-autoinstrumentation/register" {{ENTRY_POINT}}',
-);
+  'node --require "@aws/aws-distro-opentelemetry-node-autoinstrumentation/register" {{ENTRY_POINT}}'
+)
 ```
 
 **For ESM applications:**
@@ -402,8 +402,8 @@ instance.userData.addCommands(
   'cd {{APP_DIR}}',
   'node --import "@aws/aws-distro-opentelemetry-node-autoinstrumentation/register" \\',
   '  --experimental-loader=@opentelemetry/instrumentation/hook.mjs \\',
-  '  {{ENTRY_POINT}}',
-);
+  '  {{ENTRY_POINT}}'
+)
 ```
 
 **Note for systemd services:** If the application uses systemd (look for `.service` files or `systemctl` commands in UserData), translate the `export` statements to `Environment=` directives in the service file, set `WorkingDirectory={{APP_DIR}}`, and update `ExecStart=` to use the appropriate node flags. After modifying the service file, add `systemctl daemon-reload` and `systemctl restart <service>` to UserData

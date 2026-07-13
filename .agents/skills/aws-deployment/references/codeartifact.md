@@ -6,12 +6,12 @@ CodeArtifact is a managed package repository for use in CI/CD pipelines. It stor
 
 ## Key Concepts
 
-| Concept | Description |
-|---------|-------------|
-| Domain | Top-level container for repositories. Applies cross-repo policies. One per organization typically. |
-| Repository | Stores packages. Can have upstream repositories (including external connections). |
+| Concept             | Description                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Domain              | Top-level container for repositories. Applies cross-repo policies. One per organization typically.                |
+| Repository          | Stores packages. Can have upstream repositories (including external connections).                                 |
 | External connection | Links a repository to a public registry (npmjs.com, pypi.org, Maven Central). Packages are cached on first fetch. |
-| Upstream repository | A repo can pull from another CodeArtifact repo (chaining). Packages flow downstream on demand. |
+| Upstream repository | A repo can pull from another CodeArtifact repo (chaining). Packages flow downstream on demand.                    |
 
 ## Using CodeArtifact in CodeBuild
 
@@ -30,14 +30,14 @@ phases:
 For pip:
 
 ```yaml
-      - aws codeartifact login --tool pip --domain MY_DOMAIN --domain-owner ACCOUNT_ID --repository MY_REPO
-      - pip install -r requirements.txt
+- aws codeartifact login --tool pip --domain MY_DOMAIN --domain-owner ACCOUNT_ID --repository MY_REPO
+- pip install -r requirements.txt
 ```
 
 For Maven/Gradle, use `get-authorization-token` and configure settings.xml/build.gradle:
 
 ```yaml
-      - export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain MY_DOMAIN --domain-owner ACCOUNT_ID --query authorizationToken --output text)
+- export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain MY_DOMAIN --domain-owner ACCOUNT_ID --query authorizationToken --output text)
 ```
 
 ### IAM Permissions for CodeBuild Role
@@ -79,10 +79,7 @@ Additional permission for publish:
 ```json
 {
   "Effect": "Allow",
-  "Action": [
-    "codeartifact:PublishPackageVersion",
-    "codeartifact:PutPackageMetadata"
-  ],
+  "Action": ["codeartifact:PublishPackageVersion", "codeartifact:PutPackageMetadata"],
   "Resource": "arn:aws:codeartifact:REGION:ACCOUNT:package/MY_DOMAIN/MY_REPO/*"
 }
 ```
@@ -129,13 +126,13 @@ Or use repository policies for finer-grained control.
 
 ## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Unable to get authorization token` | Missing `sts:GetServiceBearerToken` | Add to CodeBuild service role with condition key |
-| `401 Unauthorized` during npm install | Token expired or login not run | Add `codeartifact login` to pre_build phase |
-| `Package not found` | External connection not configured or repo not upstream | Check upstream chain configuration |
-| `AccessDeniedException` on cross-account | Missing domain policy OR repository policy | Configure both domain and repository policies |
-| `ResourceNotFoundException` on publish | Wrong repository name or domain | Verify domain/repo names match exactly |
+| Error                                    | Cause                                                   | Fix                                              |
+| ---------------------------------------- | ------------------------------------------------------- | ------------------------------------------------ |
+| `Unable to get authorization token`      | Missing `sts:GetServiceBearerToken`                     | Add to CodeBuild service role with condition key |
+| `401 Unauthorized` during npm install    | Token expired or login not run                          | Add `codeartifact login` to pre_build phase      |
+| `Package not found`                      | External connection not configured or repo not upstream | Check upstream chain configuration               |
+| `AccessDeniedException` on cross-account | Missing domain policy OR repository policy              | Configure both domain and repository policies    |
+| `ResourceNotFoundException` on publish   | Wrong repository name or domain                         | Verify domain/repo names match exactly           |
 
 ## Security
 

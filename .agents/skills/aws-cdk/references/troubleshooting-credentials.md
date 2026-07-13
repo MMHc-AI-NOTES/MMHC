@@ -135,7 +135,7 @@ new MyStack(app, 'MyStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
   },
-});
+})
 ```
 
 `CDK_DEFAULT_ACCOUNT` and `CDK_DEFAULT_REGION` are set automatically by the CDK CLI from your current credentials.
@@ -177,7 +177,7 @@ new MyStack(app, 'MyStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: 'us-east-1',
   },
-});
+})
 ```
 
 With an explicit env, synth-time conditionals work as expected. Without it, you MUST use `CfnCondition` for deploy-time branching instead of TypeScript `if` statements.

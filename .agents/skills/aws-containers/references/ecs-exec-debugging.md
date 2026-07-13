@@ -25,6 +25,7 @@ Before using ECS Exec, the operator MUST confirm:
    ```
 
    If installed, this returns: `The Session Manager plugin is installed successfully. Use the AWS CLI to start a session.`
+
 2. The ECS service uses Fargate platform version **1.4.0** or later (Linux) or **1.0.0** (Windows), or EC2 with ECS agent 1.50.2+.
 3. The task role has SSM permissions (see below).
 4. The container image includes `/bin/sh` (or the shell specified in the `--command` flag).
@@ -267,19 +268,19 @@ The task role MUST have write permissions to the configured logging destination.
 
 ## Considerations and Limitations
 
-| Consideration                  | Detail                                                                                     |
-|--------------------------------|--------------------------------------------------------------------------------------------|
-| `readonlyRootFilesystem`       | MUST NOT be set to `true`. ECS Exec requires a writable root filesystem because the SSM agent needs to write to the filesystem. Making the root file system read-only using `readonlyRootFilesystem` or any other method is not supported. |
-| `initProcessEnabled`           | SHOULD be set to `true`. This ensures proper signal handling and zombie process reaping. Without it, orphaned processes from exec sessions may accumulate. |
-| Idle timeout                   | Default 20 minutes of inactivity. Per [ECS Exec docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html), this value cannot be changed.                                                                 |
-| PID namespace                  | Only **one exec session** is supported per PID namespace. For tasks with `pidMode: "task"`, this means one session per task. For the default PID namespace, one session per container. |
-| Fargate platform version       | MUST be `1.4.0` or later (Linux) or `1.0.0` (Windows).                                    |
-| Shell requirement              | The container MUST have `/bin/sh` or the specified shell available in the image.           |
-| Runs as root                   | ECS Exec commands run as the `root` user regardless of the container's user configuration. The SSM agent and its child processes also run as root. |
-| CPU/memory overhead            | ECS Exec uses some CPU and memory. Account for this when specifying CPU and memory resource allocations in your task definition. |
-| `run-task` with managed scaling | Cannot use ECS Exec with `run-task` on clusters that use managed scaling with asynchronous placement (launch a task with no instance). |
-| IPv6-only not supported        | ECS Exec is not supported for tasks running in an IPv6-only network configuration. |
-| Nano Server not supported      | ECS Exec cannot be run against Microsoft Nano Server containers. |
+| Consideration                   | Detail                                                                                                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `readonlyRootFilesystem`        | MUST NOT be set to `true`. ECS Exec requires a writable root filesystem because the SSM agent needs to write to the filesystem. Making the root file system read-only using `readonlyRootFilesystem` or any other method is not supported. |
+| `initProcessEnabled`            | SHOULD be set to `true`. This ensures proper signal handling and zombie process reaping. Without it, orphaned processes from exec sessions may accumulate.                                                                                 |
+| Idle timeout                    | Default 20 minutes of inactivity. Per [ECS Exec docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html), this value cannot be changed.                                                                            |
+| PID namespace                   | Only **one exec session** is supported per PID namespace. For tasks with `pidMode: "task"`, this means one session per task. For the default PID namespace, one session per container.                                                     |
+| Fargate platform version        | MUST be `1.4.0` or later (Linux) or `1.0.0` (Windows).                                                                                                                                                                                     |
+| Shell requirement               | The container MUST have `/bin/sh` or the specified shell available in the image.                                                                                                                                                           |
+| Runs as root                    | ECS Exec commands run as the `root` user regardless of the container's user configuration. The SSM agent and its child processes also run as root.                                                                                         |
+| CPU/memory overhead             | ECS Exec uses some CPU and memory. Account for this when specifying CPU and memory resource allocations in your task definition.                                                                                                           |
+| `run-task` with managed scaling | Cannot use ECS Exec with `run-task` on clusters that use managed scaling with asynchronous placement (launch a task with no instance).                                                                                                     |
+| IPv6-only not supported         | ECS Exec is not supported for tasks running in an IPv6-only network configuration.                                                                                                                                                         |
+| Nano Server not supported       | ECS Exec cannot be run against Microsoft Nano Server containers.                                                                                                                                                                           |
 
 ---
 

@@ -13,10 +13,10 @@
 
 Operators MUST confirm the following before proceeding:
 
-| Dependency | Check Command |
-|---|---|
-| Correct account/region | `aws sts get-caller-identity --output json` |
-| ECS cluster exists | `aws ecs describe-clusters --clusters $CLUSTER --region $REGION --output json` |
+| Dependency                             | Check Command                                                                                                          |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Correct account/region                 | `aws sts get-caller-identity --output json`                                                                            |
+| ECS cluster exists                     | `aws ecs describe-clusters --clusters $CLUSTER --region $REGION --output json`                                         |
 | Cluster has Fargate capacity providers | `aws ecs describe-clusters --clusters $CLUSTER --region $REGION --output json --query 'clusters[0].capacityProviders'` |
 
 If the cluster does not have `FARGATE` and `FARGATE_SPOT` capacity providers, add them:
@@ -36,22 +36,22 @@ aws ecs put-cluster-capacity-providers \
 
 ### Good Fit (SHOULD Use)
 
-| Workload Type | Why |
-|---|---|
-| Development and test environments | Interruptions have no customer impact; up to 70% cost savings |
-| Batch processing jobs | Jobs can be retried; ECS restarts interrupted tasks automatically |
-| Queue workers (SQS, Kinesis) | Messages return to queue on interruption; natural retry mechanism |
-| Data processing pipelines | Checkpointing allows resume from last state |
-| CI/CD build tasks | Builds can be retried with minimal waste |
+| Workload Type                     | Why                                                               |
+| --------------------------------- | ----------------------------------------------------------------- |
+| Development and test environments | Interruptions have no customer impact; up to 70% cost savings     |
+| Batch processing jobs             | Jobs can be retried; ECS restarts interrupted tasks automatically |
+| Queue workers (SQS, Kinesis)      | Messages return to queue on interruption; natural retry mechanism |
+| Data processing pipelines         | Checkpointing allows resume from last state                       |
+| CI/CD build tasks                 | Builds can be retried with minimal waste                          |
 
 ### Poor Fit (MUST NOT Use)
 
-| Workload Type | Why |
-|---|---|
-| Latency-sensitive API endpoints | 2-minute interruption causes request failures and latency spikes |
-| Singleton services (exactly-one-task) | Interruption causes complete outage until replacement starts |
-| Long-running stateful tasks without checkpointing | Hours of work lost on interruption |
-| Services with slow startup (>2 minutes) | Replacement task may not be ready before next interruption |
+| Workload Type                                     | Why                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
+| Latency-sensitive API endpoints                   | 2-minute interruption causes request failures and latency spikes |
+| Singleton services (exactly-one-task)             | Interruption causes complete outage until replacement starts     |
+| Long-running stateful tasks without checkpointing | Hours of work lost on interruption                               |
+| Services with slow startup (>2 minutes)           | Replacement task may not be ready before next interruption       |
 
 ---
 
@@ -61,10 +61,10 @@ The capacity provider strategy controls the mix of FARGATE (on-demand) and FARGA
 
 ### Strategy Parameters
 
-| Parameter | Description |
-|---|---|
-| `base` | Minimum number of tasks that MUST run on this capacity provider. Only one provider in a strategy MAY have a non-zero base. |
-| `weight` | Relative proportion of tasks placed on this provider after `base` is satisfied. |
+| Parameter | Description                                                                                                                |
+| --------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `base`    | Minimum number of tasks that MUST run on this capacity provider. Only one provider in a strategy MAY have a non-zero base. |
+| `weight`  | Relative proportion of tasks placed on this provider after `base` is satisfied.                                            |
 
 ### Recommended Pattern: On-Demand Base + Spot Overflow
 
@@ -96,7 +96,7 @@ With this strategy and `desired-count=6`:
 ### CDK Example
 
 ```typescript
-import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as ecs from 'aws-cdk-lib/aws-ecs'
 
 const service = new ecs.FargateService(this, 'Service', {
   cluster,
@@ -113,7 +113,7 @@ const service = new ecs.FargateService(this, 'Service', {
       weight: 3,
     },
   ],
-});
+})
 ```
 
 ### Updating an Existing Service
@@ -142,7 +142,7 @@ When AWS reclaims Fargate Spot capacity, the following sequence occurs:
 ```
 Time 0:00  ─── AWS sends SIGTERM to all containers in the task
                 ECS fires a task state change event (stoppedReason: "Your Spot Task was interrupted.")
-                
+
 Time 0:00 to stopTimeout ─── Application performs graceful shutdown
                               (drain connections, flush buffers, save state)
 
@@ -155,11 +155,11 @@ Time stopTimeout ─── ECS sends SIGKILL — container is forcefully termina
 
 The 2-minute Spot interruption warning is the maximum time AWS guarantees between the SIGTERM and the task being forcefully removed. However, the container's `stopTimeout` setting controls when SIGKILL is sent:
 
-| stopTimeout | Behavior |
-|---|---|
+| stopTimeout           | Behavior                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Not set (default 30s) | Container gets SIGTERM, then SIGKILL after 30 seconds — only 30s for graceful shutdown despite 2-minute warning |
-| `120` (maximum) | Container gets SIGTERM, then SIGKILL after 120 seconds — full use of the 2-minute warning window |
-| `60` | Container gets SIGTERM, then SIGKILL after 60 seconds — 60s for graceful shutdown |
+| `120` (maximum)       | Container gets SIGTERM, then SIGKILL after 120 seconds — full use of the 2-minute warning window                |
+| `60`                  | Container gets SIGTERM, then SIGKILL after 60 seconds — 60s for graceful shutdown                               |
 
 Operators MUST set `stopTimeout` to match their application's graceful shutdown needs, up to a maximum of 120 seconds:
 
@@ -197,13 +197,13 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 ```javascript
 // Node.js example
 process.on('SIGTERM', () => {
-  console.log('Received SIGTERM — starting graceful shutdown');
+  console.log('Received SIGTERM — starting graceful shutdown')
   // Stop accepting new requests
   server.close(() => {
     // Flush buffers, save state
-    cleanup().then(() => process.exit(0));
-  });
-});
+    cleanup().then(() => process.exit(0))
+  })
+})
 ```
 
 ### Monitoring Spot Interruptions

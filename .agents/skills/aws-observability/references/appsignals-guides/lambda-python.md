@@ -50,9 +50,11 @@ const role = new iam.Role(this, 'LambdaRole', {
   assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   managedPolicies: [
     iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-    iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLambdaApplicationSignalsExecutionRolePolicy'),
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      'CloudWatchLambdaApplicationSignalsExecutionRolePolicy'
+    ),
   ],
-});
+})
 ```
 
 **Terraform:**
@@ -78,7 +80,7 @@ ManagedPolicyArns:
 ```typescript
 const myFunction = new lambda.Function(this, 'MyFunction', {
   tracing: lambda.Tracing.ACTIVE,
-});
+})
 ```
 
 **Terraform:**
@@ -107,13 +109,11 @@ Use the layer name `AWSOpenTelemetryDistroPython` with automatic region detectio
 ```typescript
 const layerArns: { [region: string]: string } = {
   // ... (see Region-Specific Layer ARNs section above for complete mapping)
-};
+}
 
 const myFunction = new lambda.Function(this, 'MyFunction', {
-  layers: [
-    lambda.LayerVersion.fromLayerVersionArn(this, 'AdotLayer', layerArns[this.region]),
-  ],
-});
+  layers: [lambda.LayerVersion.fromLayerVersionArn(this, 'AdotLayer', layerArns[this.region])],
+})
 ```
 
 **Terraform:**

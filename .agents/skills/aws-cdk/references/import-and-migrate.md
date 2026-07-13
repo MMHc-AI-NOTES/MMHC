@@ -3,7 +3,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
-- [Read-Only References (from* Methods)](#read-only-references-from-methods)
+- [Read-Only References (from\* Methods)](#read-only-references-from-methods)
 - [Full Resource Adoption (cdk import)](#full-resource-adoption-cdk-import)
 - [CI-Friendly Import (--import-existing-resources)](#ci-friendly-import---import-existing-resources)
 - [Migrating with cdk migrate](#migrating-with-cdk-migrate)
@@ -24,24 +24,24 @@ plus a migration tool for converting existing CloudFormation stacks or live
 infrastructure into CDK code. The right mechanism depends on whether you need
 read-only access or full lifecycle management.
 
-| Mechanism                        | Use Case                          | Lifecycle Control |
-|----------------------------------|-----------------------------------|-------------------|
-| `from*` methods                  | Reference existing resources      | Read-only         |
-| `cdk import`                     | Adopt resources into a stack      | Full (interactive)|
-| `--import-existing-resources`    | Adopt resources in CI             | Full (automated)  |
-| `cdk migrate`                    | Convert stacks/infra to CDK code  | Full              |
+| Mechanism                     | Use Case                         | Lifecycle Control  |
+| ----------------------------- | -------------------------------- | ------------------ |
+| `from*` methods               | Reference existing resources     | Read-only          |
+| `cdk import`                  | Adopt resources into a stack     | Full (interactive) |
+| `--import-existing-resources` | Adopt resources in CI            | Full (automated)   |
+| `cdk migrate`                 | Convert stacks/infra to CDK code | Full               |
 
 ---
 
-## Read-Only References (from* Methods)
+## Read-Only References (from\* Methods)
 
 Use `from*` static methods (e.g., `Bucket.fromBucketName()`,
 `Vpc.fromLookup()`) to reference existing resources without managing their
 lifecycle:
 
 ```typescript
-const bucket = s3.Bucket.fromBucketName(this, 'ImportedBucket', '$BUCKET_NAME');
-const vpc = ec2.Vpc.fromLookup(this, 'ImportedVpc', { vpcId: '$VPC_ID' });
+const bucket = s3.Bucket.fromBucketName(this, 'ImportedBucket', '$BUCKET_NAME')
+const vpc = ec2.Vpc.fromLookup(this, 'ImportedVpc', { vpcId: '$VPC_ID' })
 ```
 
 Constraints:

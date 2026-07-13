@@ -38,15 +38,15 @@ aws ecs describe-clusters \
 
 Fargate enforces specific CPU/memory pairings. The operator MUST select a valid combination.
 
-| CPU (cpu units) | Valid Memory Values (MiB)                                |
-|-----------------|----------------------------------------------------------|
-| 256 (.25 vCPU)  | 512, 1024, 2048                                          |
-| 512 (.5 vCPU)   | 1024, 2048, 3072, 4096                                   |
-| 1024 (1 vCPU)   | 2048, 3072, 4096, 5120, 6144, 7168, 8192                 |
-| 2048 (2 vCPU)   | 4096 through 16384 in 1024 increments                    |
-| 4096 (4 vCPU)   | 8192 through 30720 in 1024 increments                    |
-| 8192 (8 vCPU)   | 16384 through 61440 in 4096 increments                   |
-| 16384 (16 vCPU) | 32768 through 122880 in 8192 increments                  |
+| CPU (cpu units) | Valid Memory Values (MiB)                |
+| --------------- | ---------------------------------------- |
+| 256 (.25 vCPU)  | 512, 1024, 2048                          |
+| 512 (.5 vCPU)   | 1024, 2048, 3072, 4096                   |
+| 1024 (1 vCPU)   | 2048, 3072, 4096, 5120, 6144, 7168, 8192 |
+| 2048 (2 vCPU)   | 4096 through 16384 in 1024 increments    |
+| 4096 (4 vCPU)   | 8192 through 30720 in 1024 increments    |
+| 8192 (8 vCPU)   | 16384 through 61440 in 4096 increments   |
+| 16384 (16 vCPU) | 32768 through 122880 in 8192 increments  |
 
 > An invalid combination causes a `ClientException` at task definition registration.
 
@@ -54,13 +54,13 @@ Fargate enforces specific CPU/memory pairings. The operator MUST select a valid 
 
 ## Networking Modes
 
-| Mode     | Launch Type | Description                                                    |
-|----------|-------------|----------------------------------------------------------------|
-| `awsvpc` | Fargate     | MUST be used for Fargate. Each task gets its own ENI.          |
-| `awsvpc` | EC2         | MAY be used on EC2 for per-task ENI networking.                |
-| `bridge` | EC2 only    | Docker built-in virtual network. Not available on Fargate.     |
-| `host`   | EC2 only    | Maps container ports directly to the host. Not on Fargate.     |
-| `none`   | EC2 only    | No external networking. Not available on Fargate.              |
+| Mode     | Launch Type | Description                                                |
+| -------- | ----------- | ---------------------------------------------------------- |
+| `awsvpc` | Fargate     | MUST be used for Fargate. Each task gets its own ENI.      |
+| `awsvpc` | EC2         | MAY be used on EC2 for per-task ENI networking.            |
+| `bridge` | EC2 only    | Docker built-in virtual network. Not available on Fargate. |
+| `host`   | EC2 only    | Maps container ports directly to the host. Not on Fargate. |
+| `none`   | EC2 only    | No external networking. Not available on Fargate.          |
 
 The operator MUST set `networkMode` to `awsvpc` for any Fargate task definition.
 
@@ -70,22 +70,22 @@ The operator MUST set `networkMode` to `awsvpc` for any Fargate task definition.
 
 ### Execution Role vs Task Role
 
-| Aspect              | Execution Role (`executionRoleArn`)                  | Task Role (`taskRoleArn`)                          |
-|---------------------|------------------------------------------------------|----------------------------------------------------|
-| Used by             | ECS agent / Fargate runtime                          | Application containers at runtime                  |
-| Purpose             | Pull images, push logs, fetch secrets                | Call AWS APIs from application code                 |
-| Required for Fargate| MUST be set                                          | SHOULD be set if the app calls AWS APIs             |
-| Common permissions  | `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, `logs:CreateLogStream`, `logs:PutLogEvents` | Application-specific (e.g., `s3:GetObject`, `dynamodb:PutItem`) |
+| Aspect               | Execution Role (`executionRoleArn`)                                                                                         | Task Role (`taskRoleArn`)                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Used by              | ECS agent / Fargate runtime                                                                                                 | Application containers at runtime                               |
+| Purpose              | Pull images, push logs, fetch secrets                                                                                       | Call AWS APIs from application code                             |
+| Required for Fargate | MUST be set                                                                                                                 | SHOULD be set if the app calls AWS APIs                         |
+| Common permissions   | `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, `logs:CreateLogStream`, `logs:PutLogEvents` | Application-specific (e.g., `s3:GetObject`, `dynamodb:PutItem`) |
 
 ### Execution Role Permission Mapping
 
-| Feature                  | Required Permission                                      |
-|--------------------------|----------------------------------------------------------|
-| Pull from ECR            | `ecr:GetAuthorizationToken` (Resource: `"*"`), `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`. Note: the managed policy `AmazonECSTaskExecutionRolePolicy` also includes `ecr:BatchCheckLayerAvailability` but the minimal custom policy does not require it. |
-| CloudWatch Logs          | `logs:CreateLogStream`, `logs:PutLogEvents`              |
-| Secrets Manager secrets  | `secretsmanager:GetSecretValue`                          |
-| SSM Parameter Store      | `ssm:GetParameters`                                      |
-| KMS-encrypted secrets    | `kms:Decrypt` (on the relevant KMS key)                  |
+| Feature                 | Required Permission                                                                                                                                                                                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pull from ECR           | `ecr:GetAuthorizationToken` (Resource: `"*"`), `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`. Note: the managed policy `AmazonECSTaskExecutionRolePolicy` also includes `ecr:BatchCheckLayerAvailability` but the minimal custom policy does not require it. |
+| CloudWatch Logs         | `logs:CreateLogStream`, `logs:PutLogEvents`                                                                                                                                                                                                                      |
+| Secrets Manager secrets | `secretsmanager:GetSecretValue`                                                                                                                                                                                                                                  |
+| SSM Parameter Store     | `ssm:GetParameters`                                                                                                                                                                                                                                              |
+| KMS-encrypted secrets   | `kms:Decrypt` (on the relevant KMS key)                                                                                                                                                                                                                          |
 
 ---
 
@@ -188,9 +188,7 @@ Security group rule for EFS:
   "IpProtocol": "tcp",
   "FromPort": 2049,
   "ToPort": 2049,
-  "UserIdGroupPairs": [
-    { "GroupId": "$TASK_SG_ID", "Description": "NFS from ECS tasks" }
-  ]
+  "UserIdGroupPairs": [{ "GroupId": "$TASK_SG_ID", "Description": "NFS from ECS tasks" }]
 }
 ```
 
@@ -216,12 +214,12 @@ Fargate tasks receive 20 GiB of ephemeral storage by default. This MAY be expand
 
 The `dependsOn` field controls container startup and shutdown ordering.
 
-| Condition   | Behavior                                                                 |
-|-------------|--------------------------------------------------------------------------|
-| `START`     | Dependency container has started.                                        |
-| `COMPLETE`  | Dependency container has run to completion (exited).                     |
-| `SUCCESS`   | Dependency container has completed with exit code 0.                     |
-| `HEALTHY`   | Dependency container health check reports healthy. MUST have a `healthCheck` defined. |
+| Condition  | Behavior                                                                              |
+| ---------- | ------------------------------------------------------------------------------------- |
+| `START`    | Dependency container has started.                                                     |
+| `COMPLETE` | Dependency container has run to completion (exited).                                  |
+| `SUCCESS`  | Dependency container has completed with exit code 0.                                  |
+| `HEALTHY`  | Dependency container health check reports healthy. MUST have a `healthCheck` defined. |
 
 ```json
 "containerDefinitions": [
@@ -274,10 +272,10 @@ The operator SHOULD set `stopTimeout` to allow the application to drain connecti
 
 The operator MUST use platform version `LATEST` or `1.4.0` for new task definitions.
 
-| Version | Status                                      |
-|---------|---------------------------------------------|
-| LATEST  | Recommended. Currently resolves to `1.4.0`. |
-| 1.4.0   | Stable. Required for EFS, ECS Exec, ephemeral storage expansion. |
+| Version | Status                                                                                                                                                                                                |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LATEST  | Recommended. Currently resolves to `1.4.0`.                                                                                                                                                           |
+| 1.4.0   | Stable. Required for EFS, ECS Exec, ephemeral storage expansion.                                                                                                                                      |
 | 1.3.0   | **Retired June 15, 2026** (no new tasks/services). **Terminated June 30, 2026** (all running tasks killed). MUST NOT be used for new workloads. Existing tasks MUST be migrated before June 30, 2026. |
 
 ---

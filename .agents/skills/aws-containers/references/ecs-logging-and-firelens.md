@@ -13,8 +13,8 @@
 
 ## Verify Dependencies
 
-| Dependency | Check Command |
-|---|---|
+| Dependency                         | Check Command                                                           |
+| ---------------------------------- | ----------------------------------------------------------------------- |
 | Execution role has log permissions | Execution role MUST have `logs:CreateLogStream` and `logs:PutLogEvents` |
 
 ---
@@ -25,14 +25,14 @@ The `awslogs` driver sends container stdout/stderr directly to CloudWatch Logs.
 
 ### Required and Optional Options
 
-| Option | Required | Default | Description |
-|---|---|---|---|
-| `awslogs-group` | Yes | — | CloudWatch Logs log group name |
-| `awslogs-region` | Yes | — | Region for the log group. Required for all launch types. |
-| `awslogs-stream-prefix` | Yes (Fargate) | — | Prefix for log stream names. Required for Fargate, optional for EC2. Stream format: `$PREFIX/$CONTAINER_NAME/$TASK_ID` |
-| `awslogs-create-group` | No | `false` | Auto-create the log group if it does not exist. Execution role MUST have `logs:CreateLogGroup` permission. |
-| `mode` | No | `non-blocking` (ECS service default; overridable via `defaultLogDriverMode` account setting) | `blocking` or `non-blocking`. See [Blocking vs Non-Blocking Mode](#blocking-vs-non-blocking-mode). |
-| `max-buffer-size` | No | `10m` | Buffer size for non-blocking mode. Only applies when `mode` is `non-blocking`. |
+| Option                  | Required      | Default                                                                                      | Description                                                                                                            |
+| ----------------------- | ------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `awslogs-group`         | Yes           | —                                                                                            | CloudWatch Logs log group name                                                                                         |
+| `awslogs-region`        | Yes           | —                                                                                            | Region for the log group. Required for all launch types.                                                               |
+| `awslogs-stream-prefix` | Yes (Fargate) | —                                                                                            | Prefix for log stream names. Required for Fargate, optional for EC2. Stream format: `$PREFIX/$CONTAINER_NAME/$TASK_ID` |
+| `awslogs-create-group`  | No            | `false`                                                                                      | Auto-create the log group if it does not exist. Execution role MUST have `logs:CreateLogGroup` permission.             |
+| `mode`                  | No            | `non-blocking` (ECS service default; overridable via `defaultLogDriverMode` account setting) | `blocking` or `non-blocking`. See [Blocking vs Non-Blocking Mode](#blocking-vs-non-blocking-mode).                     |
+| `max-buffer-size`       | No            | `10m`                                                                                        | Buffer size for non-blocking mode. Only applies when `mode` is `non-blocking`.                                         |
 
 ### CLI Example
 
@@ -73,13 +73,13 @@ aws ecs register-task-definition \
 
 ### Behavior Comparison
 
-| Aspect | `blocking` | `non-blocking` |
-|---|---|---|
-| **Delivery guarantee** | All logs delivered | Logs MAY be dropped when buffer fills |
-| **Application impact** | Application pauses if CloudWatch is slow/unavailable | Application continues; logs silently dropped |
-| **Buffer** | No buffer — writes are synchronous | Ring buffer (`max-buffer-size`, default 10m) |
-| **Default (ECS service)** | No | Yes — logs may be dropped when buffer fills |
-| **Explicit `blocking`** | Yes — app may stall if CloudWatch is slow | No |
+| Aspect                    | `blocking`                                           | `non-blocking`                               |
+| ------------------------- | ---------------------------------------------------- | -------------------------------------------- |
+| **Delivery guarantee**    | All logs delivered                                   | Logs MAY be dropped when buffer fills        |
+| **Application impact**    | Application pauses if CloudWatch is slow/unavailable | Application continues; logs silently dropped |
+| **Buffer**                | No buffer — writes are synchronous                   | Ring buffer (`max-buffer-size`, default 10m) |
+| **Default (ECS service)** | No                                                   | Yes — logs may be dropped when buffer fills  |
+| **Explicit `blocking`**   | Yes — app may stall if CloudWatch is slow            | No                                           |
 
 ### Recommendation
 
@@ -145,11 +145,11 @@ Matches the timestamp at the start of each log entry. Lines without a matching t
 
 Common datetime patterns:
 
-| Pattern | Matches |
-|---|---|
-| `%Y-%m-%d %H:%M:%S` | `2026-04-26 14:30:00` |
-| `%Y-%m-%dT%H:%M:%S` | `2026-04-26T14:30:00` |
-| `%d/%b/%Y:%H:%M:%S` | `26/Apr/2026:14:30:00` (Apache) |
+| Pattern                | Matches                            |
+| ---------------------- | ---------------------------------- |
+| `%Y-%m-%d %H:%M:%S`    | `2026-04-26 14:30:00`              |
+| `%Y-%m-%dT%H:%M:%S`    | `2026-04-26T14:30:00`              |
+| `%d/%b/%Y:%H:%M:%S`    | `26/Apr/2026:14:30:00` (Apache)    |
 | `\\[%Y-%m-%d %H:%M:%S` | `[2026-04-26 14:30:00` (bracketed) |
 
 ### awslogs-multiline-pattern
@@ -260,11 +260,11 @@ FireLens routes container logs through a Fluent Bit (or Fluentd) sidecar, enabli
 
 ## When to Use Which
 
-| Scenario | Recommended Driver | Reason |
-|---|---|---|
-| CloudWatch Logs only, simple setup | `awslogs` | Simplest configuration, no sidecar overhead |
-| Multiple log destinations | FireLens (`awsfirelens`) | Route to CloudWatch + S3 + third-party simultaneously |
-| Log transformation/filtering needed | FireLens (`awsfirelens`) | Fluent Bit supports parsing, filtering, enrichment |
-| Minimal resource overhead | `awslogs` | No sidecar container consuming CPU/memory |
-| Third-party log aggregator (Datadog, Splunk) | FireLens (`awsfirelens`) | Native output plugins for third-party services |
-| Compliance requiring guaranteed delivery | `awslogs` with `mode: blocking` | Simplest path to guaranteed delivery |
+| Scenario                                     | Recommended Driver              | Reason                                                |
+| -------------------------------------------- | ------------------------------- | ----------------------------------------------------- |
+| CloudWatch Logs only, simple setup           | `awslogs`                       | Simplest configuration, no sidecar overhead           |
+| Multiple log destinations                    | FireLens (`awsfirelens`)        | Route to CloudWatch + S3 + third-party simultaneously |
+| Log transformation/filtering needed          | FireLens (`awsfirelens`)        | Fluent Bit supports parsing, filtering, enrichment    |
+| Minimal resource overhead                    | `awslogs`                       | No sidecar container consuming CPU/memory             |
+| Third-party log aggregator (Datadog, Splunk) | FireLens (`awsfirelens`)        | Native output plugins for third-party services        |
+| Compliance requiring guaranteed delivery     | `awslogs` with `mode: blocking` | Simplest path to guaranteed delivery                  |

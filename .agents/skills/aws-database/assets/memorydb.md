@@ -3,7 +3,7 @@
 - **Docs**: https://docs.aws.amazon.com/memorydb/
 - **Docs (llms.txt)**: https://docs.aws.amazon.com/memorydb/latest/devguide/llms.txt
 - **Data model**: In-memory key-value and data structures (durable primary store)
-- **Query language**: Valkey/Redis commands (GET, SET, HSET, ZADD, XADD, JSON.*, FT.SEARCH, etc.)
+- **Query language**: Valkey/Redis commands (GET, SET, HSET, ZADD, XADD, JSON.\*, FT.SEARCH, etc.)
 - **Compatibility**: Valkey/Redis OSS protocol (open-source, same drivers and tools)
 - **Serverless**: No (provisioned node clusters with sharding)
 - **Scale to zero**: No

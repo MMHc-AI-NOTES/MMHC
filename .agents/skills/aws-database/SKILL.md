@@ -34,32 +34,32 @@ This skill works with or without the AWS MCP server. When available, the AWS MCP
 
 ## Sub-skill registry
 
-| ID | Name | Trigger Phrases | When to Route Here | Next Steps |
-|----|------|-----------------|-------------------|------------|
-| `select` | Database Selection | "which database", "help me choose", "recommend", "what should I use", "starting a new project", "picking a database", "I need a database", "I'm building", "build a", "how should I store", "best way to handle", "need to support", "design for" | User hasn't chosen a service yet, is comparing options, or describes a workload/data problem without naming a specific service | `handoff` |
-| `handoff` | Service Handoff | "how do I", "configure", "optimize", "troubleshoot", "set up", "migrate to", "connect to", "scale", "upgrade", "monitor", "backup", "restore", "build", "create", "deploy", "provision", + named service | User names a specific AWS database service and has an operational, advisory, or action question | — |
-| `report-issue` | Report Issue | "that's wrong", "incorrect", "bad recommendation", "you should have said", "missing", "skill is wrong", "report this", "file a bug", "report an issue" | User reports that the skill gave incorrect or incomplete guidance | — |
+| ID             | Name               | Trigger Phrases                                                                                                                                                                                                                                   | When to Route Here                                                                                                             | Next Steps |
+| -------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| `select`       | Database Selection | "which database", "help me choose", "recommend", "what should I use", "starting a new project", "picking a database", "I need a database", "I'm building", "build a", "how should I store", "best way to handle", "need to support", "design for" | User hasn't chosen a service yet, is comparing options, or describes a workload/data problem without naming a specific service | `handoff`  |
+| `handoff`      | Service Handoff    | "how do I", "configure", "optimize", "troubleshoot", "set up", "migrate to", "connect to", "scale", "upgrade", "monitor", "backup", "restore", "build", "create", "deploy", "provision", + named service                                          | User names a specific AWS database service and has an operational, advisory, or action question                                | —          |
+| `report-issue` | Report Issue       | "that's wrong", "incorrect", "bad recommendation", "you should have said", "missing", "skill is wrong", "report this", "file a bug", "report an issue"                                                                                            | User reports that the skill gave incorrect or incomplete guidance                                                              | —          |
 
 ## Service reference
 
 Load knowledge cards on demand — only when the current turn requires verifying or stating facts about a service. Read `assets/{filename}` for the relevant service(s). Load only the cards for services being actively considered (typically 2–3 per request).
 
-| Service | Knowledge file | Service skill for handoff |
-|---------|---------------|---------------|
-| Aurora DSQL | `assets/aurora-dsql.md` | `aurora-dsql` |
-| Aurora MySQL | `assets/aurora-mysql.md` | `amazon-aurora-mysql` |
-| Aurora PostgreSQL | `assets/aurora-postgresql.md` | `amazon-aurora-postgresql` |
-| DocumentDB | `assets/documentdb.md` | `amazon-documentdb` |
-| DynamoDB | `assets/dynamodb.md` | — |
-| ElastiCache | `assets/elasticache.md` | `amazon-elasticache` |
-| Keyspaces | `assets/keyspaces.md` | `amazon-keyspaces` |
-| MemoryDB | `assets/memorydb.md` | — |
-| Neptune | `assets/neptune.md` | — |
-| ODB @ AWS | `assets/odb-aws.md` | — |
-| RDS for Db2 | `assets/rds-db2.md` | `rds-db2` |
-| RDS for MariaDB | `assets/rds-mariadb.md` | `rds-oss` |
-| RDS for MySQL | `assets/rds-mysql.md` | `rds-oss` |
-| RDS for Oracle | `assets/rds-oracle.md` | `rds-oracle` |
-| RDS for PostgreSQL | `assets/rds-postgresql.md` | `rds-oss` |
-| RDS for SQL Server | `assets/rds-sqlserver.md` | `rds-sqlserver` |
-| Timestream | `assets/timestream.md` | — |
+| Service            | Knowledge file                | Service skill for handoff  |
+| ------------------ | ----------------------------- | -------------------------- |
+| Aurora DSQL        | `assets/aurora-dsql.md`       | `aurora-dsql`              |
+| Aurora MySQL       | `assets/aurora-mysql.md`      | `amazon-aurora-mysql`      |
+| Aurora PostgreSQL  | `assets/aurora-postgresql.md` | `amazon-aurora-postgresql` |
+| DocumentDB         | `assets/documentdb.md`        | `amazon-documentdb`        |
+| DynamoDB           | `assets/dynamodb.md`          | —                          |
+| ElastiCache        | `assets/elasticache.md`       | `amazon-elasticache`       |
+| Keyspaces          | `assets/keyspaces.md`         | `amazon-keyspaces`         |
+| MemoryDB           | `assets/memorydb.md`          | —                          |
+| Neptune            | `assets/neptune.md`           | —                          |
+| ODB @ AWS          | `assets/odb-aws.md`           | —                          |
+| RDS for Db2        | `assets/rds-db2.md`           | `rds-db2`                  |
+| RDS for MariaDB    | `assets/rds-mariadb.md`       | `rds-oss`                  |
+| RDS for MySQL      | `assets/rds-mysql.md`         | `rds-oss`                  |
+| RDS for Oracle     | `assets/rds-oracle.md`        | `rds-oracle`               |
+| RDS for PostgreSQL | `assets/rds-postgresql.md`    | `rds-oss`                  |
+| RDS for SQL Server | `assets/rds-sqlserver.md`     | `rds-sqlserver`            |
+| Timestream         | `assets/timestream.md`        | —                          |

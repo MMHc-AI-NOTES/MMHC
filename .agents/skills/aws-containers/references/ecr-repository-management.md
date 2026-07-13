@@ -123,15 +123,15 @@ Lifecycle policies automatically expire old images. ECR evaluates rules approxim
 
 ### Key Fields
 
-| Field            | Description                                                              |
-|------------------|--------------------------------------------------------------------------|
-| `rulePriority`   | Integer. Lower numbers are evaluated first. MUST be unique per rule.     |
-| `tagStatus`      | `tagged`, `untagged`, or `any`.                                          |
-| `tagPrefixList`  | Required when `tagStatus` is `tagged` and `tagPatternList` is not specified. Matches image tags by prefix. |
+| Field            | Description                                                                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rulePriority`   | Integer. Lower numbers are evaluated first. MUST be unique per rule.                                                                                            |
+| `tagStatus`      | `tagged`, `untagged`, or `any`.                                                                                                                                 |
+| `tagPrefixList`  | Required when `tagStatus` is `tagged` and `tagPatternList` is not specified. Matches image tags by prefix.                                                      |
 | `tagPatternList` | Alternative to `tagPrefixList` when `tagStatus` is `tagged`; supports wildcards (`*`, max 4 per pattern). AWS recommends `tagPatternList` over `tagPrefixList`. |
-| `countType`      | `imageCountMoreThan`, `sinceImagePushed`, `sinceImagePulled`, or `sinceImageTransitioned`. |
-| `countNumber`    | Threshold count or age in days.                                          |
-| `action.type`    | `expire` (delete images) or `transition` (move to archive storage; requires `targetStorageClass: "archive"`). |
+| `countType`      | `imageCountMoreThan`, `sinceImagePushed`, `sinceImagePulled`, or `sinceImageTransitioned`.                                                                      |
+| `countNumber`    | Threshold count or age in days.                                                                                                                                 |
+| `action.type`    | `expire` (delete images) or `transition` (move to archive storage; requires `targetStorageClass: "archive"`).                                                   |
 
 ### Apply a Lifecycle Policy
 
@@ -180,25 +180,25 @@ Lifecycle policies do not delete images referenced by a manifest list (multi-arc
 ### CDK addLifecycleRule
 
 ```typescript
-import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as ecr from 'aws-cdk-lib/aws-ecr'
 
 const repo = new ecr.Repository(this, 'Repo', {
   repositoryName: '$REPO_NAME',
   imageScanOnPush: true,
   imageTagMutability: ecr.TagMutability.IMMUTABLE,
-});
+})
 
 repo.addLifecycleRule({
   tagPrefixList: ['v'],
   maxImageCount: 10,
   description: 'Keep only the last 10 tagged images',
-});
+})
 
 repo.addLifecycleRule({
   maxImageAge: cdk.Duration.days(7),
   tagStatus: ecr.TagStatus.UNTAGGED,
   description: 'Expire untagged images older than 7 days',
-});
+})
 ```
 
 ---
@@ -283,13 +283,13 @@ The ECS execution role in the consumer account MUST have `ecr:GetAuthorizationTo
 
 ## Common Image Pull Errors
 
-| Error                        | Cause                                                        | Resolution                                                                                  |
-|------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| `CannotPullContainerError`   | Task cannot reach ECR or lacks permissions.                  | Verify networking (NAT gateway or VPC endpoints for private subnets). Verify execution role has ECR pull permissions. |
-| `AccessDeniedException`      | Execution role lacks `ecr:GetAuthorizationToken` or pull actions. | Add `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer` to the execution role. |
-| `invalid reference format`   | Malformed image URI in the task definition.                  | Verify the image URI format: `$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME:$TAG`.  |
-| `manifest unknown`           | The specified tag or digest does not exist in the repository.| Verify the image tag exists with `describe-images`. Check for typos in the tag.             |
-| `toomanyrequests`            | Docker Hub pull rate limit exceeded (most common cause per [ECS troubleshooting docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_cannot_pull_image.html)). Can also occur if ECR API rate limits are hit (see [ECR service quotas](https://docs.aws.amazon.com/AmazonECR/latest/userguide/service-quotas.html)). | For Docker Hub: authenticate pulls, use an ECR pull-through cache, or keep a private copy in ECR. For ECR throttling: implement exponential backoff and request a quota increase if needed. |
+| Error                      | Cause                                                                                                                                                                                                                                                                                                                                  | Resolution                                                                                                                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CannotPullContainerError` | Task cannot reach ECR or lacks permissions.                                                                                                                                                                                                                                                                                            | Verify networking (NAT gateway or VPC endpoints for private subnets). Verify execution role has ECR pull permissions.                                                                       |
+| `AccessDeniedException`    | Execution role lacks `ecr:GetAuthorizationToken` or pull actions.                                                                                                                                                                                                                                                                      | Add `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer` to the execution role.                                                                                   |
+| `invalid reference format` | Malformed image URI in the task definition.                                                                                                                                                                                                                                                                                            | Verify the image URI format: `$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME:$TAG`.                                                                                                   |
+| `manifest unknown`         | The specified tag or digest does not exist in the repository.                                                                                                                                                                                                                                                                          | Verify the image tag exists with `describe-images`. Check for typos in the tag.                                                                                                             |
+| `toomanyrequests`          | Docker Hub pull rate limit exceeded (most common cause per [ECS troubleshooting docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_cannot_pull_image.html)). Can also occur if ECR API rate limits are hit (see [ECR service quotas](https://docs.aws.amazon.com/AmazonECR/latest/userguide/service-quotas.html)). | For Docker Hub: authenticate pulls, use an ECR pull-through cache, or keep a private copy in ECR. For ECR throttling: implement exponential backoff and request a quota increase if needed. |
 
 ---
 

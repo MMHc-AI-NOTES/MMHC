@@ -13,13 +13,13 @@ Use this when the user reports that the skill gave incorrect guidance, a wrong r
 
 2. **Categorize.** Determine which type of feedback this is:
 
-   | Category | Signals | Example |
-   |----------|---------|---------|
-   | Wrong recommendation | "you should have said X not Y", "that's the wrong service" | Skill recommended DynamoDB but the user needed SQL joins |
-   | Outdated fact | "that's not true anymore", "pricing changed", "that feature launched" | Knowledge card says no free tier but one exists now |
-   | Missing service or feature | "you didn't mention X", "what about Y" | Skill didn't consider MemoryDB for a vector search workload |
-   | Unclear guidance | "I don't understand", "that's confusing", "contradicts itself" | Selection logic was ambiguous about serverless |
-   | Handoff failure | "it didn't load the skill", "I got stuck after choosing", "no service skill" | Skill chose Aurora PostgreSQL but couldn't hand off to the service skill |
+   | Category                   | Signals                                                                      | Example                                                                  |
+   | -------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+   | Wrong recommendation       | "you should have said X not Y", "that's the wrong service"                   | Skill recommended DynamoDB but the user needed SQL joins                 |
+   | Outdated fact              | "that's not true anymore", "pricing changed", "that feature launched"        | Knowledge card says no free tier but one exists now                      |
+   | Missing service or feature | "you didn't mention X", "what about Y"                                       | Skill didn't consider MemoryDB for a vector search workload              |
+   | Unclear guidance           | "I don't understand", "that's confusing", "contradicts itself"               | Selection logic was ambiguous about serverless                           |
+   | Handoff failure            | "it didn't load the skill", "I got stuck after choosing", "no service skill" | Skill chose Aurora PostgreSQL but couldn't hand off to the service skill |
 
 3. **Capture as an assertion.** Structure the feedback as a test case — this is the most actionable format for improving the skill:
 

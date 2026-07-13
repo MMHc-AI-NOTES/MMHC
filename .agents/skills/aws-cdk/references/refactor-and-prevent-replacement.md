@@ -166,10 +166,10 @@ prevents accidental ID changes from reaching deployment:
 
 ```typescript
 test('stateful resource logical IDs are stable', () => {
-  const template = Template.fromStack($STACK);
-  const tables = template.findResources('AWS::DynamoDB::Table');
-  expect(Object.keys(tables)).toContain('$EXPECTED_LOGICAL_ID');
-});
+  const template = Template.fromStack($STACK)
+  const tables = template.findResources('AWS::DynamoDB::Table')
+  expect(Object.keys(tables)).toContain('$EXPECTED_LOGICAL_ID')
+})
 ```
 
 ### Isolate Stateful Resources with RETAIN
@@ -180,7 +180,7 @@ This ensures that even if the stack is deleted, the resources are preserved:
 ```typescript
 new s3.Bucket(this, 'DataBucket', {
   removalPolicy: RemovalPolicy.RETAIN,
-});
+})
 ```
 
 ---

@@ -64,15 +64,15 @@ The retrieval output is JSON. Snapshot records are under `results[*]`, each with
 `@message` that is itself a JSON string — `json.loads` it again to reach `body.captures.*`.
 The parser already extracts the common debugging fields; key ones from a parsed snapshot:
 
-| Field | Meaning |
-| --- | --- |
-| `entry_argument_names` / `entry_arguments` | method/function-entry argument names + values |
-| `entry_local_names` / `entry_locals` | locals captured at entry |
-| `return_value` / `throwable` | method return value or thrown exception |
-| `line_numbers` / `line_locals` | line-level captured locals, keyed by line |
-| `stack_preview` / `stack_frame_count` | call stack (frames use `file_path`/`line_number`) |
-| `trace` | traceId/spanId for correlation |
-| `duration_ms` | method duration (method-level only) |
+| Field                                      | Meaning                                           |
+| ------------------------------------------ | ------------------------------------------------- |
+| `entry_argument_names` / `entry_arguments` | method/function-entry argument names + values     |
+| `entry_local_names` / `entry_locals`       | locals captured at entry                          |
+| `return_value` / `throwable`               | method return value or thrown exception           |
+| `line_numbers` / `line_locals`             | line-level captured locals, keyed by line         |
+| `stack_preview` / `stack_frame_count`      | call stack (frames use `file_path`/`line_number`) |
+| `trace`                                    | traceId/spanId for correlation                    |
+| `duration_ms`                              | method duration (method-level only)               |
 
 **Java `Map`/`HashMap`** values appear as key/value `entries` (not flat `fields`); raise object
 depth / collection width if map contents are truncated.

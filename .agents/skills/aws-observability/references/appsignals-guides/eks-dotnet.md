@@ -22,21 +22,19 @@ This guide shows how to modify existing CDK and Terraform infrastructure code to
 ### 1. Install CloudWatch Observability Add-on
 
 ```typescript
-import * as eks from 'aws-cdk-lib/aws-eks';
-import * as iam from 'aws-cdk-lib/aws-iam';
+import * as eks from 'aws-cdk-lib/aws-eks'
+import * as iam from 'aws-cdk-lib/aws-iam'
 
 const cloudwatchRole = new iam.Role(this, 'CloudWatchAgentAddOnRole', {
   assumedBy: new iam.OpenIdConnectPrincipal(cluster.openIdConnectProvider),
-  managedPolicies: [
-    iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy')
-  ],
-});
+  managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy')],
+})
 
 new eks.CfnAddon(this, 'CloudWatchAddon', {
   addonName: 'amazon-cloudwatch-observability',
   clusterName: cluster.clusterName,
-  serviceAccountRoleArn: cloudwatchRole.roleArn
-});
+  serviceAccountRoleArn: cloudwatchRole.roleArn,
+})
 ```
 
 ### 2. Add .NET Instrumentation Annotation

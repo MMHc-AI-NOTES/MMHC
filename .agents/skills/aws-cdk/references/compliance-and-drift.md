@@ -42,12 +42,12 @@ resources from ever reaching production.
 
 ### Available Rule Packs
 
-| Rule Pack               | Use Case                                    |
-|-------------------------|---------------------------------------------|
-| `AwsSolutionsChecks`    | General AWS best practices                  |
-| `HIPAASecurityChecks`   | HIPAA compliance                            |
-| `NIST80053R5Checks`     | NIST 800-53 Rev 5 compliance                |
-| `PCIDSS321Checks`       | PCI DSS 3.2.1 compliance                    |
+| Rule Pack             | Use Case                     |
+| --------------------- | ---------------------------- |
+| `AwsSolutionsChecks`  | General AWS best practices   |
+| `HIPAASecurityChecks` | HIPAA compliance             |
+| `NIST80053R5Checks`   | NIST 800-53 Rev 5 compliance |
+| `PCIDSS321Checks`     | PCI DSS 3.2.1 compliance     |
 
 For SOX compliance, apply both `NIST80053R5Checks` and `AwsSolutionsChecks` together.
 
@@ -56,17 +56,17 @@ For SOX compliance, apply both `NIST80053R5Checks` and `AwsSolutionsChecks` toge
 Rule packs are applied as CDK Aspects:
 
 ```typescript
-import { Aspects } from 'aws-cdk-lib';
-import { AwsSolutionsChecks } from 'cdk-nag';
+import { Aspects } from 'aws-cdk-lib'
+import { AwsSolutionsChecks } from 'cdk-nag'
 
-Aspects.of($APP).add(new AwsSolutionsChecks());
+Aspects.of($APP).add(new AwsSolutionsChecks())
 ```
 
 Multiple rule packs MAY be applied simultaneously:
 
 ```typescript
-Aspects.of($APP).add(new AwsSolutionsChecks());
-Aspects.of($APP).add(new NIST80053R5Checks());
+Aspects.of($APP).add(new AwsSolutionsChecks())
+Aspects.of($APP).add(new NIST80053R5Checks())
 ```
 
 ---
@@ -78,14 +78,14 @@ When a finding is intentionally accepted, suppress it with
 documented reason:
 
 ```typescript
-import { NagSuppressions } from 'cdk-nag';
+import { NagSuppressions } from 'cdk-nag'
 
 NagSuppressions.addResourceSuppressions($CONSTRUCT, [
   {
     id: '$RULE_ID',
     reason: '$DOCUMENTED_JUSTIFICATION',
   },
-]);
+])
 ```
 
 Suppressions MUST NOT be used to bypass findings without genuine justification.

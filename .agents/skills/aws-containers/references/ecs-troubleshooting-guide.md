@@ -18,24 +18,24 @@
 
 Operators MUST confirm the following before proceeding:
 
-| Dependency | Check Command |
-|---|---|
-| Correct account/region | `aws sts get-caller-identity --output json` |
-| ECS cluster exists | `aws ecs describe-clusters --clusters $CLUSTER --region $REGION --output json` |
-| Sufficient IAM permissions | Caller MUST have `ecs:Describe*`, `ecs:List*`, `logs:GetLogEvents` at minimum |
+| Dependency                 | Check Command                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| Correct account/region     | `aws sts get-caller-identity --output json`                                    |
+| ECS cluster exists         | `aws ecs describe-clusters --clusters $CLUSTER --region $REGION --output json` |
+| Sufficient IAM permissions | Caller MUST have `ecs:Describe*`, `ecs:List*`, `logs:GetLogEvents` at minimum  |
 
 ---
 
 ## Exit Code Reference
 
-| Exit Code | Signal | Meaning | Common Cause |
-|---|---|---|---|
-| 0 | — | Normal exit | Application completed successfully |
-| 1 | — | Application error | Unhandled exception, startup failure, config error |
-| 134 | SIGABRT | Abort | `abort()` called, assertion failure, corrupted heap |
-| 137 | SIGKILL | Killed | **OOM kill** or **SIGTERM timeout** (container did not exit within `stopTimeout` and was forcefully killed). Also: manual `docker kill`. |
-| 139 | SIGSEGV | Segmentation fault | Null pointer dereference, memory corruption, native library crash |
-| 143 | SIGTERM | Graceful termination | Container handled SIGTERM and exited on its own during ECS task stop, scaling in, or deployment replacement |
+| Exit Code | Signal  | Meaning              | Common Cause                                                                                                                             |
+| --------- | ------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 0         | —       | Normal exit          | Application completed successfully                                                                                                       |
+| 1         | —       | Application error    | Unhandled exception, startup failure, config error                                                                                       |
+| 134       | SIGABRT | Abort                | `abort()` called, assertion failure, corrupted heap                                                                                      |
+| 137       | SIGKILL | Killed               | **OOM kill** or **SIGTERM timeout** (container did not exit within `stopTimeout` and was forcefully killed). Also: manual `docker kill`. |
+| 139       | SIGSEGV | Segmentation fault   | Null pointer dereference, memory corruption, native library crash                                                                        |
+| 143       | SIGTERM | Graceful termination | Container handled SIGTERM and exited on its own during ECS task stop, scaling in, or deployment replacement                              |
 
 ### Key Diagnostic Rules
 
@@ -51,11 +51,11 @@ Exit code 137 commonly indicates the container exceeded its memory limit and was
 
 ### Container Memory Hard Limit vs Task-Level Memory
 
-| Scope | Setting | Behavior |
-|---|---|---|
-| **Container hard limit** (`memory` in container definition) | Per-container ceiling | Container is killed immediately when it exceeds this limit |
-| **Container soft limit** (`memoryReservation`) | Per-container reservation | Used for task placement; container MAY exceed this up to the hard limit |
-| **Task-level memory** (`memory` in task definition) | Total for all containers | On Fargate, this is the only **required** memory setting. Container-level `memory` hard limits are optional but enforced if set. Without per-container limits, all containers share this pool. |
+| Scope                                                       | Setting                   | Behavior                                                                                                                                                                                       |
+| ----------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Container hard limit** (`memory` in container definition) | Per-container ceiling     | Container is killed immediately when it exceeds this limit                                                                                                                                     |
+| **Container soft limit** (`memoryReservation`)              | Per-container reservation | Used for task placement; container MAY exceed this up to the hard limit                                                                                                                        |
+| **Task-level memory** (`memory` in task definition)         | Total for all containers  | On Fargate, this is the only **required** memory setting. Container-level `memory` hard limits are optional but enforced if set. Without per-container limits, all containers share this pool. |
 
 On Fargate, the task-level memory is the overall ceiling. If a container definition sets a `memory` hard limit, Fargate enforces it — the container is killed if it exceeds that limit. If no per-container `memory` is set, a single container MAY consume all task memory, starving sidecars.
 
@@ -109,13 +109,13 @@ aws ecs describe-services \
 
 When ECS cannot place a task, the service event log shows the reason. Common failures:
 
-| Error Message | Cause | Resolution |
-|---|---|---|
-| `no container instances were found in your cluster` | EC2 launch type: no instances registered | Register EC2 instances to the cluster or switch to Fargate |
-| `...has insufficient CPU units available` | EC2: closest matching instance lacks free CPU units for the task | Add larger instances, reduce task CPU, or enable more instances via ASG |
-| `...was unable to place a task because no container instance met all of its requirements` (cause: Not enough memory) | EC2: instances lack free memory for the task | Add larger instances, reduce task memory, or enable more instances via ASG |
-| `RESOURCE:ENI` | `awsvpc` mode: instance ENI limit reached | Enable ENI trunking (see [ENI Trunking](#eni-trunking-for-ec2-awsvpc-density)) or use more/larger instances |
-| `RESOURCE:PORTS` | `bridge`/`host` mode: requested host port already in use | Use dynamic port mapping, reduce tasks per instance, or switch to `awsvpc` |
+| Error Message                                                                                                                                     | Cause                                                                                                                     | Resolution                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `no container instances were found in your cluster`                                                                                               | EC2 launch type: no instances registered                                                                                  | Register EC2 instances to the cluster or switch to Fargate                                                                               |
+| `...has insufficient CPU units available`                                                                                                         | EC2: closest matching instance lacks free CPU units for the task                                                          | Add larger instances, reduce task CPU, or enable more instances via ASG                                                                  |
+| `...was unable to place a task because no container instance met all of its requirements` (cause: Not enough memory)                              | EC2: instances lack free memory for the task                                                                              | Add larger instances, reduce task memory, or enable more instances via ASG                                                               |
+| `RESOURCE:ENI`                                                                                                                                    | `awsvpc` mode: instance ENI limit reached                                                                                 | Enable ENI trunking (see [ENI Trunking](#eni-trunking-for-ec2-awsvpc-density)) or use more/larger instances                              |
+| `RESOURCE:PORTS`                                                                                                                                  | `bridge`/`host` mode: requested host port already in use                                                                  | Use dynamic port mapping, reduce tasks per instance, or switch to `awsvpc`                                                               |
 | `...was unable to place a task because no container instance met all of its requirements` (generic — check service events for specific sub-cause) | Multiple possible causes: placement constraints, missing attributes, insufficient resources, or wrong subnet for `awsvpc` | Run `describe-services` to see events; check placement constraints, instance attributes, subnet configuration, and resource availability |
 
 ### Diagnosing Placement Failures
@@ -211,14 +211,14 @@ The application MUST listen on `0.0.0.0` (all interfaces), not `127.0.0.1` (loca
 
 ## Image Pull Errors
 
-| Error | Cause | Resolution |
-|---|---|---|
-| `CannotPullContainerError: pull image manifest has been retried N time(s)` | Image/tag resolution failure — image name or tag doesn't match repository, or image version stability enforcement removed the original image. Can also be caused by network connectivity issues. | 1. Verify image URI and tag match the repository. 2. Avoid `:latest` — use a specific tag. 3. If image is correct, check VPC endpoints (private subnet) or NAT gateway (public subnet). |
-| `AccessDeniedException` or `is not authorized to perform ecr:GetAuthorizationToken` | Execution role lacks ECR permissions | Attach `AmazonECSTaskExecutionRolePolicy` to the execution role |
-| `invalid reference format` | Malformed image URI (typo, missing tag, wrong registry) | Verify image URI: `$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO:$TAG` |
-| `manifest unknown` or `manifest for $IMAGE not found` | Image tag does not exist in the repository | Verify the tag exists: `aws ecr describe-images --repository-name $REPO --image-ids imageTag=$TAG --region $REGION --output json` |
-| `no space left on device` | Disk full — on EC2: instance storage exhausted. On Fargate: image exceeds ephemeral storage (default 20 GiB). | EC2: clean unused images (`docker system prune`) or increase instance storage. Fargate: increase `ephemeralStorage` in task definition (up to 200 GiB). |
-| `CannotPullContainerError: ref pull has been retried ... httpReaderSeeker: failed open` | ECR image layers stored in S3 — S3 endpoint missing | Add S3 gateway endpoint to VPC |
+| Error                                                                                   | Cause                                                                                                                                                                                            | Resolution                                                                                                                                                                              |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CannotPullContainerError: pull image manifest has been retried N time(s)`              | Image/tag resolution failure — image name or tag doesn't match repository, or image version stability enforcement removed the original image. Can also be caused by network connectivity issues. | 1. Verify image URI and tag match the repository. 2. Avoid `:latest` — use a specific tag. 3. If image is correct, check VPC endpoints (private subnet) or NAT gateway (public subnet). |
+| `AccessDeniedException` or `is not authorized to perform ecr:GetAuthorizationToken`     | Execution role lacks ECR permissions                                                                                                                                                             | Attach `AmazonECSTaskExecutionRolePolicy` to the execution role                                                                                                                         |
+| `invalid reference format`                                                              | Malformed image URI (typo, missing tag, wrong registry)                                                                                                                                          | Verify image URI: `$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO:$TAG`                                                                                                                |
+| `manifest unknown` or `manifest for $IMAGE not found`                                   | Image tag does not exist in the repository                                                                                                                                                       | Verify the tag exists: `aws ecr describe-images --repository-name $REPO --image-ids imageTag=$TAG --region $REGION --output json`                                                       |
+| `no space left on device`                                                               | Disk full — on EC2: instance storage exhausted. On Fargate: image exceeds ephemeral storage (default 20 GiB).                                                                                    | EC2: clean unused images (`docker system prune`) or increase instance storage. Fargate: increase `ephemeralStorage` in task definition (up to 200 GiB).                                 |
+| `CannotPullContainerError: ref pull has been retried ... httpReaderSeeker: failed open` | ECR image layers stored in S3 — S3 endpoint missing                                                                                                                                              | Add S3 gateway endpoint to VPC                                                                                                                                                          |
 
 ### Diagnosing Image Pull Failures
 
@@ -240,20 +240,20 @@ When ECS tasks run in private subnets (no internet gateway route), the following
 
 ### Required Endpoints (Minimum for ECS Fargate)
 
-| Endpoint | Service Name | Type | Purpose |
-|---|---|---|---|
-| ECR Docker | `com.amazonaws.$REGION.ecr.dkr` | Interface | Pull container images |
-| ECR API | `com.amazonaws.$REGION.ecr.api` | Interface | ECR authentication |
-| CloudWatch Logs | `com.amazonaws.$REGION.logs` | Interface | Container log delivery |
-| S3 | `com.amazonaws.$REGION.s3` | Gateway | ECR image layer storage |
+| Endpoint        | Service Name                    | Type      | Purpose                 |
+| --------------- | ------------------------------- | --------- | ----------------------- |
+| ECR Docker      | `com.amazonaws.$REGION.ecr.dkr` | Interface | Pull container images   |
+| ECR API         | `com.amazonaws.$REGION.ecr.api` | Interface | ECR authentication      |
+| CloudWatch Logs | `com.amazonaws.$REGION.logs`    | Interface | Container log delivery  |
+| S3              | `com.amazonaws.$REGION.s3`      | Gateway   | ECR image layer storage |
 
 ### Additional Endpoints by Feature
 
-| Endpoint | Service Name | Type | When Required |
-|---|---|---|---|
-| SSM Messages | `com.amazonaws.$REGION.ssmmessages` | Interface | ECS Exec (`execute-command`) |
-| Secrets Manager | `com.amazonaws.$REGION.secretsmanager` | Interface | Secrets referenced in task definition |
-| SSM Parameter Store | `com.amazonaws.$REGION.ssm` | Interface | SSM parameters referenced in task definition |
+| Endpoint            | Service Name                           | Type      | When Required                                |
+| ------------------- | -------------------------------------- | --------- | -------------------------------------------- |
+| SSM Messages        | `com.amazonaws.$REGION.ssmmessages`    | Interface | ECS Exec (`execute-command`)                 |
+| Secrets Manager     | `com.amazonaws.$REGION.secretsmanager` | Interface | Secrets referenced in task definition        |
+| SSM Parameter Store | `com.amazonaws.$REGION.ssm`            | Interface | SSM parameters referenced in task definition |
 
 ### Verifying Endpoint Connectivity
 
@@ -331,10 +331,10 @@ aws ecs describe-container-instances \
 
 ### Task Density Comparison (Example: c5.large)
 
-| Setting | Max ENIs | Tasks per Instance (awsvpc) |
-|---|---|---|
-| Trunking **disabled** | 3 | 2 (3 ENIs - 1 for host) |
-| Trunking **enabled** | 12 (trunk + branch ENIs) | 10 (12 - 1 primary - 1 trunk = 10 branch) |
+| Setting               | Max ENIs                 | Tasks per Instance (awsvpc)               |
+| --------------------- | ------------------------ | ----------------------------------------- |
+| Trunking **disabled** | 3                        | 2 (3 ENIs - 1 for host)                   |
+| Trunking **enabled**  | 12 (trunk + branch ENIs) | 10 (12 - 1 primary - 1 trunk = 10 branch) |
 
 Exact limits vary by instance type — see [Supported instance types for ENI trunking](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/container-instance-eni.html).
 

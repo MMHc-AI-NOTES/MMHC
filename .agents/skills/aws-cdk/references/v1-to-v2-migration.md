@@ -35,14 +35,14 @@ Replace v1 imports with v2 equivalents:
 
 ```typescript
 // Wrong (v1)
-import * as ec2 from '@aws-cdk/aws-ec2';
-import * as s3 from '@aws-cdk/aws-s3';
-import { Construct } from '@aws-cdk/core';
+import * as ec2 from '@aws-cdk/aws-ec2'
+import * as s3 from '@aws-cdk/aws-s3'
+import { Construct } from '@aws-cdk/core'
 
 // Correct (v2)
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import { Construct } from 'constructs';
+import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import * as s3 from 'aws-cdk-lib/aws-s3'
+import { Construct } from 'constructs'
 ```
 
 You MUST also remove all `@aws-cdk/*` packages from `package.json` dependencies and replace with a single `aws-cdk-lib` dependency.
@@ -67,11 +67,11 @@ This error appears even though the code looks correct — the types have the sam
 
 ```typescript
 // Wrong
-import { Construct } from 'aws-cdk-lib';
-import { Construct } from '@aws-cdk/core';
+import { Construct } from 'aws-cdk-lib'
+import { Construct } from '@aws-cdk/core'
 
 // Correct
-import { Construct } from 'constructs';
+import { Construct } from 'constructs'
 ```
 
 You MUST ensure `constructs` is listed as a dependency in `package.json`.

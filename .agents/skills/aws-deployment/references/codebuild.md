@@ -41,14 +41,14 @@ phases:
       - npm run package
 ```
 
-| Strategy | Behavior |
-|----------|----------|
-| `ABORT` | Stop build immediately (default for install, pre_build, build) |
-| `CONTINUE` | Move to next phase even if commands fail |
-| `RETRY` | Retry failed command (default settings) |
-| `RETRY-n` | Retry up to n times (e.g., `RETRY-3`) |
-| `RETRY-regex` | Retry only if error matches regex pattern |
-| `RETRY-n-regex` | Retry up to n times only for matching errors |
+| Strategy        | Behavior                                                       |
+| --------------- | -------------------------------------------------------------- |
+| `ABORT`         | Stop build immediately (default for install, pre_build, build) |
+| `CONTINUE`      | Move to next phase even if commands fail                       |
+| `RETRY`         | Retry failed command (default settings)                        |
+| `RETRY-n`       | Retry up to n times (e.g., `RETRY-3`)                          |
+| `RETRY-regex`   | Retry only if error matches regex pattern                      |
+| `RETRY-n-regex` | Retry up to n times only for matching errors                   |
 
 Use `RETRY-3-.*timeout.*` for transient network failures during dependency install.
 
@@ -67,12 +67,12 @@ aws codebuild create-project --name my-project \
 
 **CRITICAL: CodeBuild CANNOT assign public IPs in VPC.** Without a NAT gateway, builds hang silently at DOWNLOAD_SOURCE or dependency install with no error message.
 
-| Requirement | Consequence if Missing |
-|-------------|----------------------|
+| Requirement                    | Consequence if Missing                                    |
+| ------------------------------ | --------------------------------------------------------- |
 | NAT gateway on private subnets | Build hangs indefinitely — no timeout error, just silence |
-| Private subnets only | Public subnets not supported for CodeBuild VPC |
-| S3 VPC endpoint | Artifact operations route through NAT (slow, costly) |
-| CloudWatch Logs VPC endpoint | Logs missing or delayed |
+| Private subnets only           | Public subnets not supported for CodeBuild VPC            |
+| S3 VPC endpoint                | Artifact operations route through NAT (slow, costly)      |
+| CloudWatch Logs VPC endpoint   | Logs missing or delayed                                   |
 
 Service role needs: `ec2:CreateNetworkInterface`, `ec2:DescribeNetworkInterfaces`, `ec2:DeleteNetworkInterface`, `ec2:CreateNetworkInterfacePermission`.
 
@@ -80,12 +80,12 @@ Service role needs: `ec2:CreateNetworkInterface`, `ec2:DescribeNetworkInterfaces
 
 ## Caching
 
-| Cache Type | Scope | Best For | Constraint |
-|------------|-------|----------|------------|
-| S3 | Across builds | Dependencies (node_modules, .m2, pip) | Network transfer cost |
-| Local - docker_layer_cache | Same host | Docker rebuilds | Best-effort on-demand; reliable on fleet |
-| Local - source_cache | Same host | Incremental git fetch | Best-effort on-demand; reliable on fleet |
-| Local - custom_cache | Same host | Arbitrary paths | Best-effort on-demand; reliable on fleet |
+| Cache Type                 | Scope         | Best For                              | Constraint                               |
+| -------------------------- | ------------- | ------------------------------------- | ---------------------------------------- |
+| S3                         | Across builds | Dependencies (node_modules, .m2, pip) | Network transfer cost                    |
+| Local - docker_layer_cache | Same host     | Docker rebuilds                       | Best-effort on-demand; reliable on fleet |
+| Local - source_cache       | Same host     | Incremental git fetch                 | Best-effort on-demand; reliable on fleet |
+| Local - custom_cache       | Same host     | Arbitrary paths                       | Best-effort on-demand; reliable on fleet |
 
 S3 caching (works on-demand and fleet):
 
@@ -134,9 +134,9 @@ Secrets Manager format in buildspec: `secret-id:json-key:version-stage:version-i
 ```yaml
 env:
   parameter-store:
-    API_KEY: "/myapp/api-key"
+    API_KEY: '/myapp/api-key'
   secrets-manager:
-    DB_PASS: "myapp/db-creds:password"
+    DB_PASS: 'myapp/db-creds:password'
 ```
 
 IAM: `ssm:GetParameters` for Parameter Store, `secretsmanager:GetSecretValue` for Secrets Manager.
@@ -153,19 +153,19 @@ Encrypt the log group: `aws logs associate-kms-key --log-group-name /aws/codebui
 
 ## Timeouts
 
-| Setting | Default | Maximum |
-|---------|---------|---------|
-| Build timeout | 60 min | 480 min (8 hours) |
-| Queued timeout | 480 min | 480 min |
+| Setting        | Default | Maximum           |
+| -------------- | ------- | ----------------- |
+| Build timeout  | 60 min  | 480 min (8 hours) |
+| Queued timeout | 480 min | 480 min           |
 
 ## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| Build hangs in VPC | No NAT gateway on private subnet | Add NAT gateway to route table |
-| `Cannot connect to Docker daemon` | Privileged mode off or dockerd not started | Set `privilegedMode=true` AND start dockerd |
-| `CODEBUILD_CLONE_REF` auth failure | CodeBuild role missing UseConnection | Add `codeconnections:UseConnection` to CodeBuild service role |
-| `AccessDenied` on artifacts | Cross-region bucket | Artifact bucket MUST be same region as project |
+| Error                              | Cause                                      | Fix                                                           |
+| ---------------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| Build hangs in VPC                 | No NAT gateway on private subnet           | Add NAT gateway to route table                                |
+| `Cannot connect to Docker daemon`  | Privileged mode off or dockerd not started | Set `privilegedMode=true` AND start dockerd                   |
+| `CODEBUILD_CLONE_REF` auth failure | CodeBuild role missing UseConnection       | Add `codeconnections:UseConnection` to CodeBuild service role |
+| `AccessDenied` on artifacts        | Cross-region bucket                        | Artifact bucket MUST be same region as project                |
 
 ## Security
 

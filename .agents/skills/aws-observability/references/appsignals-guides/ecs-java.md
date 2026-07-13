@@ -1,6 +1,7 @@
 # Enable AWS Application Signals for Java on ECS
 
 ## Overview
+
 This guide provides complete steps to enable AWS Application Signals for ECS services (both EC2 and Fargate launch types), including distributed tracing, performance monitoring, and service mapping.
 
 ## Prerequisites
@@ -24,7 +25,7 @@ const taskRole = new iam.Role(this, 'EcsTaskRole', {
     iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXRayDaemonWriteAccess'),
     iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
   ],
-});
+})
 ```
 
 #### 1.2 Create CloudWatch Agent Log Group
@@ -34,7 +35,7 @@ const cwAgentLogGroup = new logs.LogGroup(this, 'CwAgentLogGroup', {
   logGroupName: '/ecs/ecs-cwagent',
   removalPolicy: cdk.RemovalPolicy.DESTROY,
   retention: logs.RetentionDays.ONE_MONTH,
-});
+})
 ```
 
 #### 1.3 Add CloudWatch Agent Container to Each Task Definition
@@ -47,23 +48,23 @@ const cwAgentContainer = taskDefinition.addContainer('ecs-cwagent-{{SERVICE_NAME
   cpu: 64,
   environment: {
     CW_CONFIG_CONTENT: JSON.stringify({
-      "traces": {
-        "traces_collected": {
-          "application_signals": {}
-        }
+      traces: {
+        traces_collected: {
+          application_signals: {},
+        },
       },
-      "logs": {
-        "metrics_collected": {
-          "application_signals": {}
-        }
-      }
+      logs: {
+        metrics_collected: {
+          application_signals: {},
+        },
+      },
     }),
   },
   logging: ecs.LogDrivers.awsLogs({
     streamPrefix: 'ecs',
     logGroup: cwAgentLogGroup,
   }),
-});
+})
 ```
 
 ### Step 2: Add AWS Distro for OpenTelemetry Zero-Code Auto-Instrumentation to Main Service
@@ -75,17 +76,19 @@ const taskDefinition = new ecs.FargateTaskDefinition(this, '{{SERVICE_NAME}}Task
   // Existing configuration...
   volumes: [
     {
-      name: "opentelemetry-auto-instrumentation-java"
-    }
+      name: 'opentelemetry-auto-instrumentation-java',
+    },
   ],
-});
+})
 ```
 
 #### 2.2 Add ADOT Auto-instrumentation Init Container
 
 ```typescript
 const initContainer = taskDefinition.addContainer('init', {
-  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/adot-autoinstrumentation-java:v2.28.2'), // Minimum version for ServiceEvents. Check ../application-signals-onboarding.md for how to query the latest version.
+  image: ecs.ContainerImage.fromRegistry(
+    'public.ecr.aws/aws-observability/adot-autoinstrumentation-java:v2.28.2'
+  ), // Minimum version for ServiceEvents. Check ../application-signals-onboarding.md for how to query the latest version.
   essential: false,
   memoryReservationMiB: 64,
   cpu: 32,
@@ -94,13 +97,13 @@ const initContainer = taskDefinition.addContainer('init', {
     streamPrefix: 'init-{{SERVICE_NAME}}',
     logGroup: serviceLogGroup,
   }),
-});
+})
 
 initContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-java',
   containerPath: '/otel-auto-instrumentation-java',
   readOnly: false,
-});
+})
 ```
 
 #### 2.3 Configure Main Application Container OpenTelemetry Environment Variables
@@ -122,7 +125,7 @@ const mainContainer = taskDefinition.addContainer('{{SERVICE_NAME}}-container', 
     OTEL_AWS_APPLICATION_SIGNALS_EXPORTER_ENDPOINT: 'http://localhost:4316/v1/metrics',
     OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
   },
-});
+})
 ```
 
 #### 2.4 Add Mount Point to Main Container
@@ -132,7 +135,7 @@ mainContainer.addMountPoints({
   sourceVolume: 'opentelemetry-auto-instrumentation-java',
   containerPath: '/otel-auto-instrumentation-java',
   readOnly: false,
-});
+})
 ```
 
 #### 2.5 Configure Container Dependencies
@@ -141,12 +144,12 @@ mainContainer.addMountPoints({
 mainContainer.addContainerDependencies({
   container: initContainer,
   condition: ecs.ContainerDependencyCondition.SUCCESS,
-});
+})
 
 mainContainer.addContainerDependencies({
   container: cwAgentContainer,
   condition: ecs.ContainerDependencyCondition.START,
-});
+})
 ```
 
 ## Completion

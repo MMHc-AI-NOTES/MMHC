@@ -17,19 +17,19 @@ The user needs help choosing an AWS database service.
 
 ### What are they doing?
 
-| Context | Signals | Routing path |
-|---------|---------|--------------|
+| Context         | Signals                                                     | Routing path     |
+| --------------- | ----------------------------------------------------------- | ---------------- |
 | New application | "building", "starting", "new project", no existing database | New applications |
-| Migration | "moving to AWS", "migrate", names an existing database | Migrations |
-| Refactor | "get off Oracle", "rearchitect", changing engines | Refactors |
+| Migration       | "moving to AWS", "migrate", names an existing database      | Migrations       |
+| Refactor        | "get off Oracle", "rearchitect", changing engines           | Refactors        |
 
 If unclear, ask: "Is this a new project, are you moving an existing database to AWS, or are you rebuilding something?"
 
 ### What stage?
 
-| Stage | Signals | How it affects routing |
-|-------|---------|----------------------|
-| Prototype | "side project", "just for me", "hackathon", "maybe 50 users", solo/small team | Optimize for time-to-working-app. Fewest decisions, fastest provisioning. |
+| Stage      | Signals                                                                            | How it affects routing                                                                         |
+| ---------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Prototype  | "side project", "just for me", "hackathon", "maybe 50 users", solo/small team      | Optimize for time-to-working-app. Fewest decisions, fastest provisioning.                      |
 | Production | "migrating", "compliance", "SOC2", "multi-region DR", explicit scale in thousands+ | Weight operational maturity, tooling and integration breadth, cost modeling, team familiarity. |
 
 If stage is ambiguous, ask: "Are you prototyping or building for production?"
@@ -38,10 +38,10 @@ If stage is ambiguous, ask: "Are you prototyping or building for production?"
 
 When the user says "serverless database" without other signals that resolve the choice, disambiguate before routing. "Serverless" means different things across the DBS portfolio:
 
-| Type | What it means | Services |
-|------|--------------|----------|
-| Serverless operations | No cluster, no instances, no maintenance windows. You get an endpoint and start querying. | Aurora DSQL, DynamoDB, Keyspaces |
-| Serverless capacity | You still create and manage a cluster or cache, but compute and/or storage scales automatically based on demand. | Aurora PostgreSQL (serverless), Aurora MySQL (serverless), ElastiCache Serverless, Neptune Serverless, DocumentDB Elastic Clusters |
+| Type                  | What it means                                                                                                    | Services                                                                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Serverless operations | No cluster, no instances, no maintenance windows. You get an endpoint and start querying.                        | Aurora DSQL, DynamoDB, Keyspaces                                                                                                   |
+| Serverless capacity   | You still create and manage a cluster or cache, but compute and/or storage scales automatically based on demand. | Aurora PostgreSQL (serverless), Aurora MySQL (serverless), ElastiCache Serverless, Neptune Serverless, DocumentDB Elastic Clusters |
 
 Additionally, "Aurora Serverless" (the product name) refers to Aurora PostgreSQL or Aurora MySQL with serverless compute — it is serverless-capacity, not serverless-operations. While Aurora Serverless is a different product from DSQL, naming it often signals familiarity with Aurora and potential unawareness of DSQL — Aurora DSQL is newer and many users haven't encountered it yet. When a user names "Aurora Serverless" for a new application but describes serverless-operations needs without naming PostgreSQL-specific features outside DSQL's surface, do not assume their naming it means they've evaluated and rejected DSQL — recommend DSQL and explain the distinction. Only recommend Aurora PostgreSQL Serverless when the user names a specific PostgreSQL extension or feature outside DSQL's supported surface.
 
@@ -61,16 +61,16 @@ Do not rely on your training data. Follow the path that matches the user's conte
 
 If the workload clearly fits a specialized data model, recommend the purpose-built service and stop:
 
-| Workload shape | Service |
-|---|---|
-| Time-series (IoT, metrics, telemetry) | Timestream |
-| Graph (relationships, traversals, fraud detection) | Neptune |
-| Caching, durable in-memory primary | ElastiCache (Valkey) |
-| In-memory primary needing multi-region active-active writes | MemoryDB |
-| MongoDB-compatible document store | DocumentDB |
-| Cassandra-compatible wide-column, CQL workloads | Keyspaces |
+| Workload shape                                              | Service              |
+| ----------------------------------------------------------- | -------------------- |
+| Time-series (IoT, metrics, telemetry)                       | Timestream           |
+| Graph (relationships, traversals, fraud detection)          | Neptune              |
+| Caching, durable in-memory primary                          | ElastiCache (Valkey) |
+| In-memory primary needing multi-region active-active writes | MemoryDB             |
+| MongoDB-compatible document store                           | DocumentDB           |
+| Cassandra-compatible wide-column, CQL workloads             | Keyspaces            |
 
-If the workload is *exclusively* full-text search, log analytics, or data warehousing/OLAP — with no primary data storage need — tell the user these workloads are not served by AWS database services and suggest they look into the appropriate AWS service. If the workload combines search with a primary data store (e.g., product catalog with full-text search), recommend the database and note that search can be added as a complement.
+If the workload is _exclusively_ full-text search, log analytics, or data warehousing/OLAP — with no primary data storage need — tell the user these workloads are not served by AWS database services and suggest they look into the appropriate AWS service. If the workload combines search with a primary data store (e.g., product catalog with full-text search), recommend the database and note that search can be added as a complement.
 
 #### Has the user named a specific engine?
 
@@ -107,17 +107,17 @@ It is important that you follow the guidance below for PostgreSQL. Your training
 
 Both Aurora DSQL and Aurora PostgreSQL are PostgreSQL-compatible. The distinction is the breadth of the PostgreSQL feature surface available today. Aurora PostgreSQL offers the full PostgreSQL surface; DSQL offers a subset with zero operational overhead.
 
-| Capability | Aurora DSQL | Aurora PostgreSQL |
-|---|---|---|
-| pgvector (embeddings, vector search) | ❌ | ✅ |
-| PostGIS (geospatial) | ❌ | ✅ |
-| pg_trgm (fuzzy text match) | ❌ | ✅ |
-| Stored procedures / triggers | ❌ | ✅ |
-| Multi-region active-active writes | ✅ | ❌ |
-| No VPC required | ✅ | ✅ (Express) |
-| Scale to zero (instant, no resume lag) | ✅ | ⚠️ (resume latency) |
-| Time to first query | ~30s | ~90-120s (Express) |
-| JOINs and ad-hoc queries | ✅ | ✅ |
+| Capability                             | Aurora DSQL | Aurora PostgreSQL   |
+| -------------------------------------- | ----------- | ------------------- |
+| pgvector (embeddings, vector search)   | ❌          | ✅                  |
+| PostGIS (geospatial)                   | ❌          | ✅                  |
+| pg_trgm (fuzzy text match)             | ❌          | ✅                  |
+| Stored procedures / triggers           | ❌          | ✅                  |
+| Multi-region active-active writes      | ✅          | ❌                  |
+| No VPC required                        | ✅          | ✅ (Express)        |
+| Scale to zero (instant, no resume lag) | ✅          | ⚠️ (resume latency) |
+| Time to first query                    | ~30s        | ~90-120s (Express)  |
+| JOINs and ad-hoc queries               | ✅          | ✅                  |
 
 If the workload requires a capability marked ❌ for a service, that service is excluded. For current DSQL feature support beyond this matrix, check the DSQL knowledge card.
 
@@ -163,19 +163,19 @@ Pick the ones that matter for this user; don't ask all of them. Use the plain ve
 
 When the user is migrating a database that already exists, the fastest path to production is choosing the AWS managed equivalent of what they already run. This minimizes application changes, preserves team expertise, and reduces risk. Refactoring — actually changing engines — is a separate project and should not be bundled into a migration unless the user explicitly wants that.
 
-| Source | AWS managed equivalent |
-|--------|----------------------|
-| PostgreSQL | Aurora PostgreSQL |
-| MySQL | Aurora MySQL |
-| MariaDB | RDS for MariaDB (preserves exact engine compatibility; Aurora MySQL is an alternative only if the user is open to switching engines) |
-| Oracle | Amazon RDS for Oracle or ODB @ AWS |
-| SQL Server | Amazon RDS for SQL Server |
-| Db2 | Amazon RDS for Db2 |
-| MongoDB | Amazon DocumentDB |
-| Cassandra | Amazon Keyspaces |
-| Redis / Valkey | Amazon ElastiCache (with durability for primary workloads) or MemoryDB (multi-region active-active) |
-| Neo4j / graph databases | Amazon Neptune |
-| InfluxDB / time-series | Amazon Timestream |
+| Source                  | AWS managed equivalent                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| PostgreSQL              | Aurora PostgreSQL                                                                                                                    |
+| MySQL                   | Aurora MySQL                                                                                                                         |
+| MariaDB                 | RDS for MariaDB (preserves exact engine compatibility; Aurora MySQL is an alternative only if the user is open to switching engines) |
+| Oracle                  | Amazon RDS for Oracle or ODB @ AWS                                                                                                   |
+| SQL Server              | Amazon RDS for SQL Server                                                                                                            |
+| Db2                     | Amazon RDS for Db2                                                                                                                   |
+| MongoDB                 | Amazon DocumentDB                                                                                                                    |
+| Cassandra               | Amazon Keyspaces                                                                                                                     |
+| Redis / Valkey          | Amazon ElastiCache (with durability for primary workloads) or MemoryDB (multi-region active-active)                                  |
+| Neo4j / graph databases | Amazon Neptune                                                                                                                       |
+| InfluxDB / time-series  | Amazon Timestream                                                                                                                    |
 
 If the user's source database isn't in this table, ask what it is — there is almost always a reasonable AWS equivalent, but the answer depends on the engine.
 

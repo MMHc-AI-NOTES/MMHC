@@ -50,9 +50,11 @@ const role = new iam.Role(this, 'LambdaRole', {
   assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   managedPolicies: [
     iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-    iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLambdaApplicationSignalsExecutionRolePolicy'),
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      'CloudWatchLambdaApplicationSignalsExecutionRolePolicy'
+    ),
   ],
-});
+})
 ```
 
 **Terraform:**

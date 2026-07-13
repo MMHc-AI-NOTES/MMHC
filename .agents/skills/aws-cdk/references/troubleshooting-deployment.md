@@ -16,11 +16,11 @@ This reference covers deployment-time failures — errors that occur after `cdk 
 
 Three error categories exist:
 
-| Category | Meaning |
-|---|---|
-| `DeployFailed` | CloudFormation resource-level failure |
-| `DeploymentError` | Asset publishing or IAM permission failure before CFN executes |
-| `EarlyValidationFailure` | Pre-deploy check failed (e.g., bootstrap version mismatch) |
+| Category                 | Meaning                                                        |
+| ------------------------ | -------------------------------------------------------------- |
+| `DeployFailed`           | CloudFormation resource-level failure                          |
+| `DeploymentError`        | Asset publishing or IAM permission failure before CFN executes |
+| `EarlyValidationFailure` | Pre-deploy check failed (e.g., bootstrap version mismatch)     |
 
 ---
 
@@ -56,17 +56,17 @@ aws cloudformation describe-events --stack-name $STACK --filters FailedEvents=tr
 
 ### Step 4: Read the `ResourceStatusReason`
 
-| Reason | Likely cause → fix |
-|---|---|
-| `... already exists` | Physical-name collision — remove `bucketName`/`tableName`/`roleName` and let CDK auto-generate. |
-| `resource creation cancelled` | Not the root — another resource failed first; find that event. |
-| `... in the WAITING state for approximately ... seconds` | Stabilization timeout (RDS, ASG signals, long-running Lambda). |
-| `Export X cannot be deleted as it is in use by Stack Y` | Cross-stack deadlock — see [Deadly Embrace](#deadly-embrace-cross-stack-reference-deadlock). |
-| `is not authorized to perform ...` | The default CDK bootstrap grants AdministratorAccess to the execution role — this error means you're using a customized bootstrap with a restricted execution role, a permissions boundary, or an SCP. Check which specific action/resource is denied, then add only that permission to your custom execution role or permissions boundary. Do NOT widen to `*` — grant the minimum action on the minimum resource ARN. |
+| Reason                                                   | Likely cause → fix                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `... already exists`                                     | Physical-name collision — remove `bucketName`/`tableName`/`roleName` and let CDK auto-generate.                                                                                                                                                                                                                                                                                                                         |
+| `resource creation cancelled`                            | Not the root — another resource failed first; find that event.                                                                                                                                                                                                                                                                                                                                                          |
+| `... in the WAITING state for approximately ... seconds` | Stabilization timeout (RDS, ASG signals, long-running Lambda).                                                                                                                                                                                                                                                                                                                                                          |
+| `Export X cannot be deleted as it is in use by Stack Y`  | Cross-stack deadlock — see [Deadly Embrace](#deadly-embrace-cross-stack-reference-deadlock).                                                                                                                                                                                                                                                                                                                            |
+| `is not authorized to perform ...`                       | The default CDK bootstrap grants AdministratorAccess to the execution role — this error means you're using a customized bootstrap with a restricted execution role, a permissions boundary, or an SCP. Check which specific action/resource is denied, then add only that permission to your custom execution role or permissions boundary. Do NOT widen to `*` — grant the minimum action on the minimum resource ARN. |
 
 ### Step 5: Service logs for Lambda / API Gateway / custom resources
 
-CloudFormation only reports *that* a resource failed. The actual reason (e.g. a custom-resource Lambda threw) is in CloudWatch Logs:
+CloudFormation only reports _that_ a resource failed. The actual reason (e.g. a custom-resource Lambda threw) is in CloudWatch Logs:
 
 - Lambda: `/aws/lambda/<function-name>`
 - CodeBuild-in-pipeline: `/aws/codebuild/<project>`
@@ -103,13 +103,13 @@ CDK supports weakening the reference before removing the resource, with no manua
 **Weaken all references to a resource** — `CrossStackReferences.of(resource).produce()`:
 
 ```typescript
-import { CrossStackReferences, ReferenceStrength } from 'aws-cdk-lib';
+import { CrossStackReferences, ReferenceStrength } from 'aws-cdk-lib'
 
 // Deploy 1 — consumers move to Fn::GetStackOutput; the strong export stays
-CrossStackReferences.of(bucket).produce(ReferenceStrength.BOTH);
+CrossStackReferences.of(bucket).produce(ReferenceStrength.BOTH)
 
 // Deploy 2 — drop the strong export now that no consumer uses Fn::ImportValue
-CrossStackReferences.of(bucket).produce(ReferenceStrength.WEAK);
+CrossStackReferences.of(bucket).produce(ReferenceStrength.WEAK)
 
 // Deploy 3 — remove the resource or the reference entirely
 ```
@@ -117,15 +117,15 @@ CrossStackReferences.of(bucket).produce(ReferenceStrength.WEAK);
 **Weaken a single reference** — `Stack.consumeReference()`:
 
 ```typescript
-import { Stack, ReferenceStrength } from 'aws-cdk-lib';
+import { Stack, ReferenceStrength } from 'aws-cdk-lib'
 
 // Deploy 1 — wrap with consumeReference (defaults to BOTH)
-new CfnOutput(consumer, 'BucketArn', { value: Stack.consumeReference(bucket.bucketArn) });
+new CfnOutput(consumer, 'BucketArn', { value: Stack.consumeReference(bucket.bucketArn) })
 
 // Deploy 2 — switch to WEAK
 new CfnOutput(consumer, 'BucketArn', {
   value: Stack.consumeReference(bucket.bucketArn, ReferenceStrength.WEAK),
-});
+})
 
 // Deploy 3 — remove the resource or reference
 ```
@@ -232,7 +232,7 @@ You MUST add `autoDeleteObjects: true` alongside the removal policy:
 new s3.Bucket(this, 'MyBucket', {
   removalPolicy: cdk.RemovalPolicy.DESTROY,
   autoDeleteObjects: true,
-});
+})
 ```
 
 `autoDeleteObjects` installs a custom resource Lambda that deletes all object versions and delete markers before CloudFormation attempts to delete the bucket.
@@ -285,9 +285,9 @@ Creating a `RestApi` produces only one stage. Adding extra `Stage` objects cause
 Set `deploy: false` on the `RestApi`, then create `Deployment` and `Stage` objects explicitly:
 
 ```typescript
-const api = new apigateway.RestApi(this, 'Api', { deploy: false });
+const api = new apigateway.RestApi(this, 'Api', { deploy: false })
 // ... define resources and methods ...
-const deployment = new apigateway.Deployment(this, 'Deployment', { api });
-new apigateway.Stage(this, 'Dev', { deployment, stageName: 'dev' });
-new apigateway.Stage(this, 'Prod', { deployment, stageName: 'prod' });
+const deployment = new apigateway.Deployment(this, 'Deployment', { api })
+new apigateway.Stage(this, 'Dev', { deployment, stageName: 'dev' })
+new apigateway.Stage(this, 'Prod', { deployment, stageName: 'prod' })
 ```

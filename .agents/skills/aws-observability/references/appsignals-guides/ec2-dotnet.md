@@ -71,7 +71,7 @@ const role = new iam.Role(this, 'AppRole', {
     iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
     // ... keep existing policies
   ],
-});
+})
 ```
 
 ### Step 4: Modify UserData - Install CloudWatch Agent
@@ -80,8 +80,8 @@ const role = new iam.Role(this, 'AppRole', {
 
 ```typescript
 instance.userData.addCommands(
-  'dnf install -y amazon-cloudwatch-agent',  // Use dnf for AL2023, yum for AL2, apt-get for Ubuntu
-);
+  'dnf install -y amazon-cloudwatch-agent' // Use dnf for AL2023, yum for AL2, apt-get for Ubuntu
+)
 ```
 
 **For Windows instances:**
@@ -90,8 +90,8 @@ instance.userData.addCommands(
 instance.userData.addCommands(
   'Invoke-WebRequest -Uri "https://amazoncloudwatch-agent.s3.amazonaws.com/windows/amd64/latest/amazon-cloudwatch-agent.msi" -OutFile "C:\\amazon-cloudwatch-agent.msi"',
   'Start-Process msiexec.exe -Wait -ArgumentList "/i C:\\amazon-cloudwatch-agent.msi /quiet"',
-  'Remove-Item "C:\\amazon-cloudwatch-agent.msi"',
-);
+  'Remove-Item "C:\\amazon-cloudwatch-agent.msi"'
+)
 ```
 
 ### Step 5: Modify UserData - Configure CloudWatch Agent
@@ -116,8 +116,8 @@ instance.userData.addCommands(
   'EOF',
   '/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \\',
   '  -a fetch-config -m ec2 -s \\',
-  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json',
-);
+  '  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json'
+)
 ```
 
 **For Windows instances:**
@@ -127,8 +127,8 @@ instance.userData.addCommands(
   '@"',
   '{ "traces": { "traces_collected": { "application_signals": {} } }, "logs": { "metrics_collected": { "application_signals": {} } } }',
   '"@ | Out-File -FilePath "C:\\ProgramData\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.json" -Encoding ASCII',
-  '& "C:\\Program Files\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent-ctl.ps1" -a fetch-config -m ec2 -s -c file:"C:\\ProgramData\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.json"',
-);
+  '& "C:\\Program Files\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent-ctl.ps1" -a fetch-config -m ec2 -s -c file:"C:\\ProgramData\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.json"'
+)
 ```
 
 ### Step 6: Install ADOT .NET Auto-Instrumentation
@@ -158,8 +158,8 @@ instance.userData.addCommands(
   'curl -L -O https://github.com/aws-observability/aws-otel-dotnet-instrumentation/releases/latest/download/aws-otel-dotnet-install.sh',
   'chmod +x ./aws-otel-dotnet-install.sh',
   'OTEL_DOTNET_AUTO_HOME="/opt/otel-dotnet-auto" ./aws-otel-dotnet-install.sh',
-  'chmod -R 755 /opt/otel-dotnet-auto',
-);
+  'chmod -R 755 /opt/otel-dotnet-auto'
+)
 ```
 
 **For Windows instances:**
@@ -170,8 +170,8 @@ instance.userData.addCommands(
   '$download_path = Join-Path $env:temp "AWS.Otel.DotNet.Auto.psm1"',
   'Invoke-WebRequest -Uri $module_url -OutFile $download_path',
   'Import-Module $download_path',
-  'Install-OpenTelemetryCore',
-);
+  'Install-OpenTelemetryCore'
+)
 ```
 
 ### Step 7: Modify UserData - Configure Application
@@ -201,8 +201,8 @@ instance.userData.addCommands(
   `  -e OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4316/v1/traces \\`,
   `  -e OTEL_RESOURCE_ATTRIBUTES=service.name={{SERVICE_NAME}} \\`,
   `  --network host \\`,
-  `  {{IMAGE_URI}}`,
-);
+  `  {{IMAGE_URI}}`
+)
 ```
 
 #### Option B: Non-Docker Deployment
@@ -221,8 +221,8 @@ instance.userData.addCommands(
   'export OTEL_RESOURCE_ATTRIBUTES=service.name={{SERVICE_NAME}}',
   '',
   '# Start application (existing command remains unchanged)',
-  '# The OTEL environment variables will automatically enable instrumentation',
-);
+  '# The OTEL environment variables will automatically enable instrumentation'
+)
 ```
 
 > The `export ...` / `. instrument.sh` form above only instruments an app **launched in the same shell session**. If the application runs as a **systemd service** (the app is started by an `ExecStart=` in a `.service` unit), those exports do **not** reach the service process — `ExecStart` is a fresh process that does not inherit the userdata shell's environment, and sourcing `instrument.sh` in `ExecStartPre=` does not propagate either. You must put the variables on the unit itself. The CoreCLR profiler env vars are required because the .NET profiler is loaded by the runtime at process start from these variables.
@@ -278,8 +278,8 @@ instance.userData.addCommands(
   '[Environment]::SetEnvironmentVariable("OTEL_TRACES_SAMPLER", "xray", "Machine")',
   '[Environment]::SetEnvironmentVariable("OTEL_TRACES_SAMPLER_ARG", "http://127.0.0.1:2000", "Machine")',
   '# The command below is optional. It registers Application signals in IIS',
-  'Register-OpenTelemetryForIIS',
-);
+  'Register-OpenTelemetryForIIS'
+)
 ```
 
 ## Completion

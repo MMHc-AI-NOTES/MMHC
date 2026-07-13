@@ -253,19 +253,25 @@ $ aws cloudformation update-stack \
 ## Troubleshooting
 
 ### Resources not ready to serve traffic after stack completes
+
 This is expected behavior with Express mode. Resources receive their configuration immediately but may still be starting up, propagating, or cleaning up. Monitor resource-specific readiness through CloudWatch, health checks, or service dashboards. If a resource does not stabilize, redeploy the stack to retry.
 
 ### `--deployment-config` not recognized
+
 The `--deployment-config` parameter requires a CLI version that supports Express mode. Update the AWS CLI to the latest version. If using CDK, use `--express` instead.
 
 ### `deploy` command does not accept `--deployment-config`
+
 The `aws cloudformation deploy` command does not support `--deployment-config`. Use `create-stack` or `update-stack` directly. In CDK, use `cdk deploy --express`.
 
 ### Custom resources do not complete faster
+
 Custom resources always follow default completion behavior regardless of Express mode. This is by design — custom resources define their own completion logic.
 
 ### StackSets error with Express mode
+
 Express mode is not supported for StackSet operations. Remove `--deployment-config` when working with StackSets.
 
 ### Rollback not happening on failure
+
 Express mode disables rollback by default. To re-enable, add `"disableRollback": false` to the deployment configuration JSON, or use `cdk deploy --express --rollback` in CDK.

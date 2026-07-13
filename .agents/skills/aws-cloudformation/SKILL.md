@@ -3,6 +3,7 @@ name: aws-cloudformation
 description: Author, validate, and troubleshoot AWS CloudFormation templates. Covers template authoring with secure defaults, pre-deployment validation (cfn-lint, cfn-guard, change sets), and root-cause diagnosis of failed stacks using CloudFormation events and CloudTrail correlation.
 version: 1
 ---
+
 # CloudFormation
 
 ## Overview
@@ -60,13 +61,13 @@ Key points:
 
 ## Decision Guide
 
-| User intent | Action |
-|-------------|--------|
-| Write or modify a template | Author task + best-practices checklist |
-| Check a template before deploying | Validation pipeline (3 layers) |
-| Deploy faster during development | Deploy-with-express-mode SOP |
-| Stack failed or is stuck | Troubleshoot-deployment SOP |
-| Unsure about a resource property | Resource property lookup SOP |
+| User intent                       | Action                                 |
+| --------------------------------- | -------------------------------------- |
+| Write or modify a template        | Author task + best-practices checklist |
+| Check a template before deploying | Validation pipeline (3 layers)         |
+| Deploy faster during development  | Deploy-with-express-mode SOP           |
+| Stack failed or is stuck          | Troubleshoot-deployment SOP            |
+| Unsure about a resource property  | Resource property lookup SOP           |
 
 ### CloudFormation vs CDK
 
@@ -74,12 +75,12 @@ Recommend CloudFormation when: existing templates are YAML/JSON, workload is sim
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Action |
-|---------|-------------|--------|
-| Template validates but deployment fails | Runtime issue (IAM, quotas, AMI availability) | Use troubleshoot-deployment SOP |
-| `describe-events` returns empty | CLI may be outdated, or change set still creating | Upgrade CLI; wait for terminal status |
-| Agent uses `describe-stack-events` | Legacy API — does not support filters or return validation errors | Switch to `describe-events` (see validation and troubleshooting SOPs for correct parameters) |
-| Stack stuck in `UPDATE_ROLLBACK_FAILED` | Resource in inconsistent state | Use troubleshoot-deployment SOP to identify stuck resource(s) before `continue-update-rollback` |
+| Symptom                                 | Likely cause                                                      | Action                                                                                          |
+| --------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Template validates but deployment fails | Runtime issue (IAM, quotas, AMI availability)                     | Use troubleshoot-deployment SOP                                                                 |
+| `describe-events` returns empty         | CLI may be outdated, or change set still creating                 | Upgrade CLI; wait for terminal status                                                           |
+| Agent uses `describe-stack-events`      | Legacy API — does not support filters or return validation errors | Switch to `describe-events` (see validation and troubleshooting SOPs for correct parameters)    |
+| Stack stuck in `UPDATE_ROLLBACK_FAILED` | Resource in inconsistent state                                    | Use troubleshoot-deployment SOP to identify stuck resource(s) before `continue-update-rollback` |
 
 ## Additional Resources
 

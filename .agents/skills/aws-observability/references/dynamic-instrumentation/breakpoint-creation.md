@@ -66,8 +66,8 @@ capture). `capture_stack_trace` toggles stack capture (on by default). For trunc
 
 - `code_unit` = the target's **importable dotted module name** — the exact string you would put in
   an `import` statement for that module. The SDK resolves it with `importlib.import_module(code_unit)`
-  and then looks up `method_name` on the result, so it must be the module *as the running app
-  imports it*, not just the filename.
+  and then looks up `method_name` on the result, so it must be the module _as the running app
+  imports it_, not just the filename.
   - Derive it from the file path **relative to the import root** (the `sys.path` entry / working
     dir the app runs from): drop the `.py` and replace `/` with `.`, keeping every package segment.
   - Use `"__main__"` only for the script entrypoint (the file run as `python foo.py`).
@@ -76,8 +76,8 @@ capture). `capture_stack_trace` toggles stack capture (on by default). For trunc
 - `method_name` = function name; `class_name` = class name if the method is in a class.
 - Line numbers start at 1.
 
-**What "import root" means.** Dotted module names are resolved *relative to the directory the app
-is launched from* (the `sys.path` entry that holds your code), not from the filesystem root. The
+**What "import root" means.** Dotted module names are resolved _relative to the directory the app
+is launched from_ (the `sys.path` entry that holds your code), not from the filesystem root. The
 same file gets a different `code_unit` depending on that root:
 
 ```text
@@ -91,8 +91,8 @@ same file gets a different `code_unit` depending on that root:
 # import root = /srv/checkout/services -> `import billing`     -> code_unit "billing"
 ```
 
-The absolute path (`/srv/checkout/services/billing.py`) is irrelevant; only the path *from the
-import root down to the file* becomes the dotted name. A truncated `code_unit` (e.g. just
+The absolute path (`/srv/checkout/services/billing.py`) is irrelevant; only the path _from the
+import root down to the file_ becomes the dotted name. A truncated `code_unit` (e.g. just
 `services`, the package) imports successfully but lacks the function, so the breakpoint never
 installs.
 
@@ -101,7 +101,8 @@ installs.
 // import root /srv/checkout, file services/billing.py, function generate_invoice(...)
 //   -> code_unit "services.billing"
 {
-  "instrumentation_type": "BREAKPOINT", "language": "Python",
+  "instrumentation_type": "BREAKPOINT",
+  "language": "Python",
   "file_path": "services/billing.py",
   "code_unit": "services.billing",
   "method_name": "generate_invoice",
@@ -133,7 +134,8 @@ on the defining module may never fire. Instead, target the **importing** module:
 // Given: package com.amazon.sampleapp; public class OrderContext { ... }
 // create arguments (Java method-level)
 {
-  "instrumentation_type": "BREAKPOINT", "language": "Java",
+  "instrumentation_type": "BREAKPOINT",
+  "language": "Java",
   "file_path": "/path/to/OrderContext.java",
   "code_unit": "com.amazon.sampleapp",
   "class_name": "OrderContext",
@@ -212,7 +214,7 @@ separate phases and the names differ between them. Do not confuse them:
    use those exact names. **Never pass `arg0`/`arg1` to `create`** — positional placeholders are
    not valid breakpoint inputs and will not match the method's parameters.
 2. **When reading the resulting snapshot:** Java bytecode does not always preserve parameter names,
-   so the *captured values* may come back under **positional** keys (`arg0`, `arg1`, ...) no matter
+   so the _captured values_ may come back under **positional** keys (`arg0`, `arg1`, ...) no matter
    which real names you created with. Map those positional keys back to the signature by order:
 
 ```
@@ -237,7 +239,7 @@ appear in the captured data:
 @message like /"arg1"/ and @message like /"10"/          # filter by quantity
 ```
 
-(Filters match what is *in the snapshot* — `arg0`/`arg1` — not the real names you created with.)
+(Filters match what is _in the snapshot_ — `arg0`/`arg1` — not the real names you created with.)
 
 ## max_hits and DISABLED
 

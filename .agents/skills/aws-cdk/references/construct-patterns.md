@@ -30,16 +30,16 @@ Inside a construct's `constructor`, you MUST pass `this` as the scope of child c
 // ❌ INCORRECT — child parented to the wrong node
 export class MyConstruct extends Construct {
   constructor(scope: Construct, id: string) {
-    super(scope, id);
-    new ChildConstruct(scope, 'Child');   // wrong: uses 'scope'
+    super(scope, id)
+    new ChildConstruct(scope, 'Child') // wrong: uses 'scope'
   }
 }
 
 // ✅ CORRECT
 export class MyConstruct extends Construct {
   constructor(scope: Construct, id: string) {
-    super(scope, id);
-    new ChildConstruct(this, 'Child');     // 'this' is the parent
+    super(scope, id)
+    new ChildConstruct(this, 'Child') // 'this' is the parent
   }
 }
 ```
@@ -84,17 +84,19 @@ Use this escalation ladder — prefer the first option that works:
 1. **Cfn<Resource>PropsMixin** (preferred) — type-safe, applied via `.with()`:
 
    ```typescript
-   import { CfnBucketPropsMixin } from '@aws-cdk/cfn-property-mixins/aws-s3';
-   new s3.Bucket(this, 'Bucket').with(new CfnBucketPropsMixin({
-     analyticsConfigurations: [{ id: 'full', prefix: '' }],
-   }));
+   import { CfnBucketPropsMixin } from '@aws-cdk/cfn-property-mixins/aws-s3'
+   new s3.Bucket(this, 'Bucket').with(
+     new CfnBucketPropsMixin({
+       analyticsConfigurations: [{ id: 'full', prefix: '' }],
+     })
+   )
    ```
 
 2. **`addPropertyOverride`** — untyped, string-keyed last resort:
 
    ```typescript
-   const cfnBucket = bucket.node.defaultChild as s3.CfnBucket;
-   cfnBucket.addPropertyOverride('AnalyticsConfigurations', [{ Id: 'full', Prefix: '' }]);
+   const cfnBucket = bucket.node.defaultChild as s3.CfnBucket
+   cfnBucket.addPropertyOverride('AnalyticsConfigurations', [{ Id: 'full', Prefix: '' }])
    ```
 
 ---
@@ -109,7 +111,7 @@ Both L1 and L2 constructs implement `I<Resource>Ref`-style interfaces (e.g., `IB
 
 ```typescript
 interface MyProps {
-  readonly bucket: s3.IBucketRef;
+  readonly bucket: s3.IBucketRef
 }
 ```
 
@@ -118,9 +120,11 @@ interface MyProps {
 L1 constructs lack `grant*()` methods. You SHOULD wrap them with `fromCfn<Resource>()` or `from<Resource>Attributes()` to get an L2 interface:
 
 ```typescript
-const cfnTable = new dynamodb.CfnTable(this, 'Table', { /* ... */ });
-const table = dynamodb.Table.fromTableArn(this, 'TableRef', cfnTable.attrArn);
-table.grantReadData(myFunction);
+const cfnTable = new dynamodb.CfnTable(this, 'Table', {
+  /* ... */
+})
+const table = dynamodb.Table.fromTableArn(this, 'TableRef', cfnTable.attrArn)
+table.grantReadData(myFunction)
 ```
 
 ### Escalation ladder
@@ -145,13 +149,13 @@ Pass construct references via stack props. CDK automatically creates CloudFormat
 
 ```typescript
 interface ConsumerProps extends cdk.StackProps {
-  readonly bucket: s3.IBucket;
+  readonly bucket: s3.IBucket
 }
 
 class ConsumerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ConsumerProps) {
-    super(scope, id, props);
-    props.bucket.grantRead(myFunction);
+    super(scope, id, props)
+    props.bucket.grantRead(myFunction)
   }
 }
 ```
@@ -165,7 +169,7 @@ new ConsumerStack(app, 'Consumer', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
   crossRegionReferences: true,
   bucket: producerStack.bucket,
-});
+})
 ```
 
 ### Different apps
@@ -176,10 +180,10 @@ When stacks are in different CDK apps, automatic exports do not work. You MUST u
 
   ```typescript
   // Producer app
-  new cdk.CfnOutput(this, 'BucketArn', { value: bucket.bucketArn, exportName: '$EXPORT_NAME' });
+  new cdk.CfnOutput(this, 'BucketArn', { value: bucket.bucketArn, exportName: '$EXPORT_NAME' })
 
   // Consumer app
-  const arn = cdk.Fn.importValue('$EXPORT_NAME');
+  const arn = cdk.Fn.importValue('$EXPORT_NAME')
   ```
 
 - SSM Parameter Store for decoupled lookups.
@@ -204,7 +208,7 @@ export class SecureBucket extends s3.Bucket {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
       ...props,
-    });
+    })
   }
 }
 ```
@@ -215,11 +219,11 @@ Use when you combine multiple resources behind a single API:
 
 ```typescript
 export class ApiWithQueue extends Construct {
-  public readonly queue: sqs.Queue;
+  public readonly queue: sqs.Queue
 
   constructor(scope: Construct, id: string) {
-    super(scope, id);
-    this.queue = new sqs.Queue(this, 'Queue');
+    super(scope, id)
+    this.queue = new sqs.Queue(this, 'Queue')
     // ... additional resources
   }
 }
@@ -234,8 +238,8 @@ The default child ID determines the CloudFormation logical ID. You MUST NOT chan
 When extending an L2, you can access the underlying CFN resource:
 
 ```typescript
-const cfn = this.node.defaultChild as s3.CfnBucket;
-cfn.addPropertyOverride('$PROPERTY_PATH', '$VALUE');
+const cfn = this.node.defaultChild as s3.CfnBucket
+cfn.addPropertyOverride('$PROPERTY_PATH', '$VALUE')
 ```
 
 ---
@@ -247,11 +251,11 @@ cfn.addPropertyOverride('$PROPERTY_PATH', '$VALUE');
 Use `Template.fromStack()` to assert on specific resources:
 
 ```typescript
-const template = Template.fromStack(myStack);
+const template = Template.fromStack(myStack)
 
 template.hasResourceProperties('AWS::SQS::Queue', {
   VisibilityTimeout: 300,
-});
+})
 ```
 
 ### Partial matching
@@ -266,7 +270,7 @@ template.hasResourceProperties('AWS::Lambda::Function', {
       TABLE_NAME: Match.anyValue(),
     }),
   }),
-});
+})
 ```
 
 ### Snapshot tests
@@ -274,7 +278,7 @@ template.hasResourceProperties('AWS::Lambda::Function', {
 Capture the full template and compare against a stored baseline:
 
 ```typescript
-expect(template.toJSON()).toMatchSnapshot();
+expect(template.toJSON()).toMatchSnapshot()
 ```
 
 You SHOULD use snapshot tests to detect unintended drift but MUST NOT rely on them as the sole testing strategy — they are brittle and hard to review.
@@ -286,7 +290,7 @@ Assert that critical resource logical IDs remain stable to prevent accidental re
 ```typescript
 template.hasResource('AWS::DynamoDB::Table', {
   // Verifying the resource exists with this logical ID
-});
+})
 ```
 
 ### Integration tests
@@ -296,11 +300,11 @@ Use `@aws-cdk/integ-tests-alpha` for tests that deploy real infrastructure:
 ```typescript
 const integ = new IntegTest(app, 'MyIntegTest', {
   testCases: [myStack],
-});
+})
 
 integ.assertions
   .awsApiCall('DynamoDB', 'DescribeTable', { TableName: '$TABLE_NAME' })
-  .assertAtPath('Table.TableStatus', ExpectedResult.stringLikeRegexp('ACTIVE'));
+  .assertAtPath('Table.TableStatus', ExpectedResult.stringLikeRegexp('ACTIVE'))
 ```
 
 Integration tests SHOULD be run in a dedicated test account. They MUST NOT run against production.

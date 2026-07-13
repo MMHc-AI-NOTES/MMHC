@@ -82,32 +82,32 @@ aws codepipeline create-pipeline --pipeline '{
 
 CodePipeline supports multiple deploy providers beyond CodeDeploy:
 
-| Provider | Use Case |
-|----------|----------|
-| CodeDeploy | EC2/ECS/Lambda with traffic shifting strategies |
-| CloudFormation | Deploy CDK/SAM/CloudFormation stacks (action modes: CREATE_UPDATE, CHANGE_SET_*) |
-| S3 | Static asset uploads (web apps, config files) |
-| ECS | Direct ECS service update (rolling, no CodeDeploy) |
-| EKS | Kubernetes deployments |
-| AppConfig | Feature flags and configuration deployment |
+| Provider       | Use Case                                                                          |
+| -------------- | --------------------------------------------------------------------------------- |
+| CodeDeploy     | EC2/ECS/Lambda with traffic shifting strategies                                   |
+| CloudFormation | Deploy CDK/SAM/CloudFormation stacks (action modes: CREATE*UPDATE, CHANGE_SET*\*) |
+| S3             | Static asset uploads (web apps, config files)                                     |
+| ECS            | Direct ECS service update (rolling, no CodeDeploy)                                |
+| EKS            | Kubernetes deployments                                                            |
+| AppConfig      | Feature flags and configuration deployment                                        |
 
 ## V1 vs V2
 
-| Feature | V1 | V2 |
-|---------|----|----|
-| Execution modes | SUPERSEDED only | SUPERSEDED, QUEUED, PARALLEL |
-| Triggers | Polling or webhook | Push/PR filtering with globs |
-| Variables | Action output only | Pipeline-level + action output |
-| Stage conditions | Not available | Entry/success/failure conditions |
-| Rollback | Not available | Stage-level rollback |
+| Feature          | V1                 | V2                               |
+| ---------------- | ------------------ | -------------------------------- |
+| Execution modes  | SUPERSEDED only    | SUPERSEDED, QUEUED, PARALLEL     |
+| Triggers         | Polling or webhook | Push/PR filtering with globs     |
+| Variables        | Action output only | Pipeline-level + action output   |
+| Stage conditions | Not available      | Entry/success/failure conditions |
+| Rollback         | Not available      | Stage-level rollback             |
 
 ## Execution Modes
 
-| Mode | Behavior | Max Concurrent | Use When |
-|------|----------|----------------|----------|
-| SUPERSEDED | Newer replaces older at stage boundaries | 1 active | Only latest matters (default V1 behavior) |
-| QUEUED | FIFO order, each completes before next starts | 50 queued | Order matters (migrations, sequential deploys) |
-| PARALLEL | All run independently, no waiting | 50 concurrent | Independent feature branches, no shared state |
+| Mode       | Behavior                                      | Max Concurrent | Use When                                       |
+| ---------- | --------------------------------------------- | -------------- | ---------------------------------------------- |
+| SUPERSEDED | Newer replaces older at stage boundaries      | 1 active       | Only latest matters (default V1 behavior)      |
+| QUEUED     | FIFO order, each completes before next starts | 50 queued      | Order matters (migrations, sequential deploys) |
+| PARALLEL   | All run independently, no waiting             | 50 concurrent  | Independent feature branches, no shared state  |
 
 **Pitfalls:**
 
@@ -166,12 +166,12 @@ CodePipeline supports multiple deploy providers beyond CodeDeploy:
 
 ### Trigger Limits
 
-| Limit | Value |
-|-------|-------|
-| Triggers per pipeline | 50 |
-| Filters per trigger | 3 |
-| Glob patterns per includes/excludes | 8 each |
-| **File path evaluation limit** | **100 files** — commits exceeding this skip path filtering entirely |
+| Limit                               | Value                                                               |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| Triggers per pipeline               | 50                                                                  |
+| Filters per trigger                 | 3                                                                   |
+| Glob patterns per includes/excludes | 8 each                                                              |
+| **File path evaluation limit**      | **100 files** — commits exceeding this skip path filtering entirely |
 
 ## Pipeline Variables
 
@@ -200,24 +200,24 @@ aws codepipeline start-pipeline-execution \
 
 Add `"namespace": "BuildVars"` to an action to expose its outputs.
 
-| Provider | Output Variables |
-|----------|-----------------|
+| Provider                 | Output Variables                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------- |
 | CodeStarSourceConnection | CommitId, CommitMessage, BranchName, AuthorDate, ConnectionArn, FullRepositoryName |
-| CodeBuild | BuildId, BuildTag, ResolvedSourceVersion |
-| CloudFormation | StackId, all stack Outputs |
-| Lambda | FunctionOutput (custom JSON) |
-| Manual Approval | ApprovalStatus, ApprovalSummary, CustomData |
+| CodeBuild                | BuildId, BuildTag, ResolvedSourceVersion                                           |
+| CloudFormation           | StackId, all stack Outputs                                                         |
+| Lambda                   | FunctionOutput (custom JSON)                                                       |
+| Manual Approval          | ApprovalStatus, ApprovalSummary, CustomData                                        |
 
 Reference: `#{Namespace.VariableName}` — e.g., `#{SourceVariables.CommitId}`
 
 ### Variable Limits
 
-| Limit | Value |
-|-------|-------|
-| Pipeline-level variables | 50 |
-| Variable value length | 1000 characters |
-| Output variables per compute action | 15 |
-| Total output size per action | 122,880 bytes (silently truncates if exceeded) |
+| Limit                               | Value                                          |
+| ----------------------------------- | ---------------------------------------------- |
+| Pipeline-level variables            | 50                                             |
+| Variable value length               | 1000 characters                                |
+| Output variables per compute action | 15                                             |
+| Total output size per action        | 122,880 bytes (silently truncates if exceeded) |
 
 ## Cross-Account Deployment
 
@@ -233,8 +233,14 @@ Key policy grants target account:
 {
   "Sid": "AllowTargetAccountDecrypt",
   "Effect": "Allow",
-  "Principal": {"AWS": "arn:aws:iam::TARGET_ACCOUNT_ID:root"},
-  "Action": ["kms:Decrypt", "kms:DescribeKey", "kms:Encrypt", "kms:GenerateDataKey*", "kms:ReEncrypt*"],
+  "Principal": { "AWS": "arn:aws:iam::TARGET_ACCOUNT_ID:root" },
+  "Action": [
+    "kms:Decrypt",
+    "kms:DescribeKey",
+    "kms:Encrypt",
+    "kms:GenerateDataKey*",
+    "kms:ReEncrypt*"
+  ],
   "Resource": "*",
   "Condition": {
     "ArnLike": {
@@ -251,7 +257,7 @@ Key policy grants target account:
   {
     "Sid": "AllowTargetAccountAccess",
     "Effect": "Allow",
-    "Principal": {"AWS": "arn:aws:iam::TARGET_ACCOUNT_ID:role/cross-account-deploy-role"},
+    "Principal": { "AWS": "arn:aws:iam::TARGET_ACCOUNT_ID:role/cross-account-deploy-role" },
     "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketVersioning", "s3:PutObject"],
     "Resource": ["arn:aws:s3:::BUCKET", "arn:aws:s3:::BUCKET/*"]
   },
@@ -261,7 +267,7 @@ Key policy grants target account:
     "Principal": "*",
     "Action": "s3:*",
     "Resource": ["arn:aws:s3:::BUCKET", "arn:aws:s3:::BUCKET/*"],
-    "Condition": {"Bool": {"aws:SecureTransport": "false"}}
+    "Condition": { "Bool": { "aws:SecureTransport": "false" } }
   }
 ]
 ```
@@ -273,10 +279,10 @@ Trust policy:
 ```json
 {
   "Effect": "Allow",
-  "Principal": {"AWS": "arn:aws:iam::SOURCE_ACCOUNT_ID:root"},
+  "Principal": { "AWS": "arn:aws:iam::SOURCE_ACCOUNT_ID:root" },
   "Action": "sts:AssumeRole",
   "Condition": {
-    "ArnLike": {"aws:PrincipalArn": "arn:aws:iam::SOURCE_ACCOUNT_ID:role/pipeline-service-role"}
+    "ArnLike": { "aws:PrincipalArn": "arn:aws:iam::SOURCE_ACCOUNT_ID:role/pipeline-service-role" }
   }
 }
 ```
@@ -302,7 +308,7 @@ For cross-region: use `artifactStores` (plural) with per-region bucket and KMS k
 ```json
 {
   "name": "DeploymentApproval",
-  "actionTypeId": {"category": "Approval", "owner": "AWS", "provider": "Manual", "version": "1"},
+  "actionTypeId": { "category": "Approval", "owner": "AWS", "provider": "Manual", "version": "1" },
   "configuration": {
     "NotificationArn": "arn:aws:sns:REGION:ACCOUNT_ID:pipeline-approvals",
     "CustomData": "Deploy #{SourceVariables.CommitId}?",
@@ -328,13 +334,13 @@ aws codepipeline put-approval-result \
 
 ## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `InvalidStructureException` | Missing required field or bad JSON | Validate with `--cli-input-json file://pipeline.json` |
-| `StageNotRetryableException` | Stage not in Failed state | Only failed stages can be retried |
-| `InvalidActionDeclarationException` with KMS | Using alias cross-account | Use full key ARN |
-| Trigger fires on unrelated commits | >100 files touched, path filter skipped | Use branch filter as primary gate |
-| `PipelineExecutionNotStoppableException` | Execution in terminal state | Already finished, no action needed |
+| Error                                        | Cause                                   | Fix                                                   |
+| -------------------------------------------- | --------------------------------------- | ----------------------------------------------------- |
+| `InvalidStructureException`                  | Missing required field or bad JSON      | Validate with `--cli-input-json file://pipeline.json` |
+| `StageNotRetryableException`                 | Stage not in Failed state               | Only failed stages can be retried                     |
+| `InvalidActionDeclarationException` with KMS | Using alias cross-account               | Use full key ARN                                      |
+| Trigger fires on unrelated commits           | >100 files touched, path filter skipped | Use branch filter as primary gate                     |
+| `PipelineExecutionNotStoppableException`     | Execution in terminal state             | Already finished, no action needed                    |
 
 ## Security
 

@@ -39,7 +39,7 @@ Run these via the local shell to inform your plan. Report what you find, but do 
 2. `aws sts get-caller-identity` — check current credentials.
    - **Succeeds**: Show the user their Account and Arn. Ask whether to keep these or set up different credentials. If they want to switch, recommend `aws login --profile <name>` so the existing default isn't overwritten.
    - **Fails** (missing or expired): proceed with `aws login` on the default profile.
-3. *(Only if Step 2 succeeded and the user wants different credentials)* `aws configure list` — if `access_key` starts with `AKIA`, explain that long-term access keys are less secure (never expire, persist on disk as secrets, grant indefinite access if leaked) and that `aws login` provides short-term credentials that auto-rotate every 15 minutes, expire automatically, and require no manual rotation.
+3. _(Only if Step 2 succeeded and the user wants different credentials)_ `aws configure list` — if `access_key` starts with `AKIA`, explain that long-term access keys are less secure (never expire, persist on disk as secrets, grant indefinite access if leaked) and that `aws login` provides short-term credentials that auto-rotate every 15 minutes, expire automatically, and require no manual rotation.
 
 ### Confirm and run aws login
 

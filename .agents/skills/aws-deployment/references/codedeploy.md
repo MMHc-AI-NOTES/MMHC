@@ -2,13 +2,13 @@
 
 ## Deployment Strategy Comparison
 
-| Strategy | EC2/On-Premises | ECS | Lambda | Best For |
-|----------|----------------|-----|--------|----------|
-| In-place | Yes | No | No | Simple apps with acceptable downtime |
-| Blue/green | Yes (new ASG) | Yes (task set swap) | Yes (alias shift) | Zero-downtime with instant rollback |
-| Canary | No | Yes | Yes | High-risk changes needing validation window |
-| Linear | No | Yes | Yes | Gradual rollout with steady monitoring |
-| All-at-once | Yes | Yes | Yes | Non-production or low-risk changes |
+| Strategy    | EC2/On-Premises | ECS                 | Lambda            | Best For                                    |
+| ----------- | --------------- | ------------------- | ----------------- | ------------------------------------------- |
+| In-place    | Yes             | No                  | No                | Simple apps with acceptable downtime        |
+| Blue/green  | Yes (new ASG)   | Yes (task set swap) | Yes (alias shift) | Zero-downtime with instant rollback         |
+| Canary      | No              | Yes                 | Yes               | High-risk changes needing validation window |
+| Linear      | No              | Yes                 | Yes               | Gradual rollout with steady monitoring      |
+| All-at-once | Yes             | Yes                 | Yes               | Non-production or low-risk changes          |
 
 **Recommendation**: Blue/green for production EC2. Canary for ECS/Lambda production where you need a validation window.
 
@@ -25,7 +25,7 @@ files:
     overwrite: true
 permissions:
   - object: /opt/myapp/bin
-    pattern: "*.sh"
+    pattern: '*.sh'
     owner: appuser
     mode: 755
     type:
@@ -66,19 +66,19 @@ hooks:
 1. **BeforeBlockTraffic** — Pre-deregistration on original instances
 2. **BlockTraffic** — Agent-only; deregisters from ELB
 3. **AfterBlockTraffic** — Cleanup on original instances
-4. *(Standard hooks 1-7 on replacement instances)*
+4. _(Standard hooks 1-7 on replacement instances)_
 5. **BeforeAllowTraffic** — Pre-registration on replacement instances
 6. **AllowTraffic** — Agent-only; registers with ELB
 7. **AfterAllowTraffic** — Post-registration validation
 
 ### EC2 Deployment Configurations
 
-| Configuration | Behavior |
-|---------------|----------|
-| CodeDeployDefault.OneAtATime | One instance at a time |
-| CodeDeployDefault.HalfAtATime | Up to half simultaneously |
-| CodeDeployDefault.AllAtOnce | All simultaneously |
-| Custom | Specify HOST_COUNT or FLEET_PERCENT threshold |
+| Configuration                 | Behavior                                      |
+| ----------------------------- | --------------------------------------------- |
+| CodeDeployDefault.OneAtATime  | One instance at a time                        |
+| CodeDeployDefault.HalfAtATime | Up to half simultaneously                     |
+| CodeDeployDefault.AllAtOnce   | All simultaneously                            |
+| Custom                        | Specify HOST_COUNT or FLEET_PERCENT threshold |
 
 ### EC2 Pitfalls
 
@@ -102,17 +102,17 @@ Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: "arn:aws:ecs:REGION:ACCOUNT:task-definition/my-task:3"
+        TaskDefinition: 'arn:aws:ecs:REGION:ACCOUNT:task-definition/my-task:3'
         LoadBalancerInfo:
-          ContainerName: "my-container"
+          ContainerName: 'my-container'
           ContainerPort: 8080
-        PlatformVersion: "LATEST"
+        PlatformVersion: 'LATEST'
 Hooks:
-  - BeforeInstall: "arn:aws:lambda:REGION:ACCOUNT:function:BeforeInstallHook"
-  - AfterInstall: "arn:aws:lambda:REGION:ACCOUNT:function:AfterInstallHook"
-  - AfterAllowTestTraffic: "arn:aws:lambda:REGION:ACCOUNT:function:TestTrafficHook"
-  - BeforeAllowTraffic: "arn:aws:lambda:REGION:ACCOUNT:function:BeforeTrafficHook"
-  - AfterAllowTraffic: "arn:aws:lambda:REGION:ACCOUNT:function:AfterTrafficHook"
+  - BeforeInstall: 'arn:aws:lambda:REGION:ACCOUNT:function:BeforeInstallHook'
+  - AfterInstall: 'arn:aws:lambda:REGION:ACCOUNT:function:AfterInstallHook'
+  - AfterAllowTestTraffic: 'arn:aws:lambda:REGION:ACCOUNT:function:TestTrafficHook'
+  - BeforeAllowTraffic: 'arn:aws:lambda:REGION:ACCOUNT:function:BeforeTrafficHook'
+  - AfterAllowTraffic: 'arn:aws:lambda:REGION:ACCOUNT:function:AfterTrafficHook'
 ```
 
 ### ECS Lifecycle Hooks (Ordered)
@@ -130,13 +130,13 @@ Scriptable hooks: BeforeInstall, AfterInstall, AfterAllowTestTraffic, BeforeAllo
 
 ### ECS Deployment Configurations
 
-| Configuration | Behavior |
-|---------------|----------|
-| CodeDeployDefault.ECSAllAtOnce | 100% immediately |
-| CodeDeployDefault.ECSCanary10Percent5Minutes | 10% for 5 min, then 100% |
-| CodeDeployDefault.ECSCanary10Percent15Minutes | 10% for 15 min, then 100% |
-| CodeDeployDefault.ECSLinear10PercentEvery1Minutes | 10% every 1 min |
-| CodeDeployDefault.ECSLinear10PercentEvery3Minutes | 10% every 3 min |
+| Configuration                                     | Behavior                  |
+| ------------------------------------------------- | ------------------------- |
+| CodeDeployDefault.ECSAllAtOnce                    | 100% immediately          |
+| CodeDeployDefault.ECSCanary10Percent5Minutes      | 10% for 5 min, then 100%  |
+| CodeDeployDefault.ECSCanary10Percent15Minutes     | 10% for 15 min, then 100% |
+| CodeDeployDefault.ECSLinear10PercentEvery1Minutes | 10% every 1 min           |
+| CodeDeployDefault.ECSLinear10PercentEvery3Minutes | 10% every 3 min           |
 
 ### ECS Pitfalls
 
@@ -158,13 +158,13 @@ Resources:
   - MyFunction:
       Type: AWS::Lambda::Function
       Properties:
-        Name: "my-function"
-        Alias: "live"
-        CurrentVersion: "1"
-        TargetVersion: "2"
+        Name: 'my-function'
+        Alias: 'live'
+        CurrentVersion: '1'
+        TargetVersion: '2'
 Hooks:
-  - BeforeAllowTraffic: "arn:aws:lambda:REGION:ACCOUNT:function:PreTrafficHook"
-  - AfterAllowTraffic: "arn:aws:lambda:REGION:ACCOUNT:function:PostTrafficHook"
+  - BeforeAllowTraffic: 'arn:aws:lambda:REGION:ACCOUNT:function:PreTrafficHook'
+  - AfterAllowTraffic: 'arn:aws:lambda:REGION:ACCOUNT:function:PostTrafficHook'
 ```
 
 ### Lambda Lifecycle Hooks
@@ -175,14 +175,14 @@ Hooks:
 
 ### Lambda Deployment Configurations
 
-| Configuration | Behavior |
-|---------------|----------|
-| CodeDeployDefault.LambdaAllAtOnce | 100% immediately |
-| CodeDeployDefault.LambdaCanary10Percent5Minutes | 10% for 5 min, then 100% |
-| CodeDeployDefault.LambdaCanary10Percent10Minutes | 10% for 10 min, then 100% |
-| CodeDeployDefault.LambdaLinear10PercentEvery1Minute | 10% every 1 min |
-| CodeDeployDefault.LambdaLinear10PercentEvery2Minutes | 10% every 2 min |
-| CodeDeployDefault.LambdaLinear10PercentEvery10Minutes | 10% every 10 min |
+| Configuration                                         | Behavior                  |
+| ----------------------------------------------------- | ------------------------- |
+| CodeDeployDefault.LambdaAllAtOnce                     | 100% immediately          |
+| CodeDeployDefault.LambdaCanary10Percent5Minutes       | 10% for 5 min, then 100%  |
+| CodeDeployDefault.LambdaCanary10Percent10Minutes      | 10% for 10 min, then 100% |
+| CodeDeployDefault.LambdaLinear10PercentEvery1Minute   | 10% every 1 min           |
+| CodeDeployDefault.LambdaLinear10PercentEvery2Minutes  | 10% every 2 min           |
+| CodeDeployDefault.LambdaLinear10PercentEvery10Minutes | 10% every 10 min          |
 
 ## Rollback Configuration
 
@@ -193,11 +193,11 @@ aws deploy update-deployment-group \
   --auto-rollback-configuration enabled=true,events=DEPLOYMENT_FAILURE,DEPLOYMENT_STOP_ON_ALARM
 ```
 
-| Trigger | When |
-|---------|------|
-| DEPLOYMENT_FAILURE | Any deployment fails |
-| DEPLOYMENT_STOP_ON_ALARM | CloudWatch alarm breaches during deployment |
-| DEPLOYMENT_STOP_ON_REQUEST | Manual stop triggers rollback |
+| Trigger                    | When                                        |
+| -------------------------- | ------------------------------------------- |
+| DEPLOYMENT_FAILURE         | Any deployment fails                        |
+| DEPLOYMENT_STOP_ON_ALARM   | CloudWatch alarm breaches during deployment |
+| DEPLOYMENT_STOP_ON_REQUEST | Manual stop triggers rollback               |
 
 ECS/Lambda: rollback re-routes traffic to original task set/version. EC2: rollback creates a NEW deployment with last known good revision.
 
@@ -233,13 +233,13 @@ aws deploy create-deployment-group \
 
 ## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| "no instances were found" | Tag filters match zero instances | Verify EC2 tags match deployment group filters |
-| "too many individual instances failed" | MinimumHealthyHosts impossible | Recalculate threshold for fleet size |
-| "file already exists" | file_exists_behavior not set | Set OVERWRITE in CreateDeployment |
-| "agent was not able to receive the lifecycle event" | Agent not running | `sudo service codedeploy-agent status` |
-| "HEALTH_CONSTRAINTS" | Not enough healthy instances | Reduce minimumHealthyHosts or fix failing instances |
+| Error                                               | Cause                            | Fix                                                 |
+| --------------------------------------------------- | -------------------------------- | --------------------------------------------------- |
+| "no instances were found"                           | Tag filters match zero instances | Verify EC2 tags match deployment group filters      |
+| "too many individual instances failed"              | MinimumHealthyHosts impossible   | Recalculate threshold for fleet size                |
+| "file already exists"                               | file_exists_behavior not set     | Set OVERWRITE in CreateDeployment                   |
+| "agent was not able to receive the lifecycle event" | Agent not running                | `sudo service codedeploy-agent status`              |
+| "HEALTH_CONSTRAINTS"                                | Not enough healthy instances     | Reduce minimumHealthyHosts or fix failing instances |
 
 ## Security
 

@@ -154,8 +154,8 @@ Construct props interfaces SHOULD use `readonly` on all properties:
 
 ```typescript
 interface MyConstructProps {
-  readonly bucketName: string;
-  readonly enableVersioning: boolean;
+  readonly bucketName: string
+  readonly enableVersioning: boolean
 }
 ```
 
@@ -222,6 +222,7 @@ cdk doctor          # Check for potential problems
   ```
 
   Teams that prefer exact pinning for stricter reproducibility SHOULD pair it with automated upgrade tooling (Dependabot, Renovate) to avoid falling behind.
+
 - **For construct libraries**, declare `aws-cdk-lib` and `constructs` as `peerDependencies` (caret, widest compatible) and as `devDependencies` at the oldest supported exact version.
 - **Experimental / alpha modules** (e.g. `@aws-cdk/aws-*-alpha`) SHOULD use exact versions — their APIs can change between releases without SemVer guarantees.
 - **Automate upgrades**: a weekly job that bumps `aws-cdk-lib`, runs `cdk synth` to catch breaking changes, deploys to a test environment, and opens a PR on success.

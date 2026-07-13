@@ -18,6 +18,7 @@ Configure and manage CloudWatch alarms including metric, composite, and anomaly 
 ## Alarm types
 
 ### Metric Alarm
+
 Watches a single metric or metric math expression.
 
 - **States**: OK, ALARM, INSUFFICIENT_DATA
@@ -26,6 +27,7 @@ Watches a single metric or metric math expression.
 - **Rate limit**: PutMetricAlarm = 3 TPS (adjustable)
 
 ### Composite Alarm
+
 Combines states of other alarms with Boolean logic.
 
 - **Rule operators**: `AND`, `OR`, `NOT`, `AT_LEAST(M, STATE, (alarms...))`
@@ -36,6 +38,7 @@ Combines states of other alarms with Boolean logic.
 - **Action suppression**: `ActionsSuppressor` alarm can suppress composite alarm actions during known events (deployments, maintenance)
 
 ### PromQL Alarm (OpenTelemetry metrics)
+
 Monitors OTel metrics using PromQL instant queries with duration-based pending/recovery periods. Use for metrics sent via OTLP (150 labels, 30-day retention).
 
 ---
@@ -44,12 +47,12 @@ Monitors OTel metrics using PromQL instant queries with duration-based pending/r
 
 Four options — the most misunderstood CloudWatch feature.
 
-| Value | Behavior | Use when |
-|-------|----------|----------|
-| `missing` (DEFAULT) | All missing → INSUFFICIENT_DATA | EC2 stop/terminate/reboot actions |
-| `notBreaching` | Missing = within threshold | Error-count metrics (absence = no errors) |
-| `breaching` | Missing = violating threshold | Heartbeat/health-check metrics |
-| `ignore` | Maintain current state | DynamoDB metrics (service overrides default to `ignore`) |
+| Value               | Behavior                        | Use when                                                 |
+| ------------------- | ------------------------------- | -------------------------------------------------------- |
+| `missing` (DEFAULT) | All missing → INSUFFICIENT_DATA | EC2 stop/terminate/reboot actions                        |
+| `notBreaching`      | Missing = within threshold      | Error-count metrics (absence = no errors)                |
+| `breaching`         | Missing = violating threshold   | Heartbeat/health-check metrics                           |
+| `ignore`            | Maintain current state          | DynamoDB metrics (service overrides default to `ignore`) |
 
 **Note**: The CloudWatch console defaults DynamoDB alarms to `ignore` instead of the usual `missing`. The API stores whatever you specify.
 
@@ -132,14 +135,14 @@ AT_LEAST(50%, ALARM, (a1, a2, a3, a4))
 
 ## Recommended defaults
 
-| Parameter | Common mistake | Recommendation |
-|-----------|---------------|----------------|
-| `evaluationPeriods` | 1 | **3–5** |
-| `datapointsToAlarm` | 1 | **2–3** (M-of-N) |
-| `treatMissingData` | `missing` | **Explicitly choose** based on metric type |
-| `period` | 300s (5 min) | **60s** (1 min) for faster detection |
-| Error rate threshold | 1% | **5%** (then tune down with data) |
-| Latency threshold | 1s | **P99 of baseline + 2×** (data-driven) |
+| Parameter            | Common mistake | Recommendation                             |
+| -------------------- | -------------- | ------------------------------------------ |
+| `evaluationPeriods`  | 1              | **3–5**                                    |
+| `datapointsToAlarm`  | 1              | **2–3** (M-of-N)                           |
+| `treatMissingData`   | `missing`      | **Explicitly choose** based on metric type |
+| `period`             | 300s (5 min)   | **60s** (1 min) for faster detection       |
+| Error rate threshold | 1%             | **5%** (then tune down with data)          |
+| Latency threshold    | 1s             | **P99 of baseline + 2×** (data-driven)     |
 
 **WARNING**: Never use `Average` for duration/latency alarms. Average hides tail latency — use `p99` or `p90`. A function averaging 100ms but with p99 at 5s has a serious problem that Average won't catch.
 
@@ -188,8 +191,13 @@ aws cloudwatch put-metric-alarm --alarm-name MyFunc-ErrorRate \
 For CDK:
 
 ```typescript
-import { Alarm, ComparisonOperator, MathExpression, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
-import { Duration } from 'aws-cdk-lib';
+import {
+  Alarm,
+  ComparisonOperator,
+  MathExpression,
+  TreatMissingData,
+} from 'aws-cdk-lib/aws-cloudwatch'
+import { Duration } from 'aws-cdk-lib'
 
 const errorRateAlarm = new Alarm(this, 'ErrorRateAlarm', {
   metric: new MathExpression({
@@ -204,7 +212,7 @@ const errorRateAlarm = new Alarm(this, 'ErrorRateAlarm', {
   datapointsToAlarm: 2,
   comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
   treatMissingData: TreatMissingData.NOT_BREACHING,
-});
+})
 ```
 
 ### Duration/latency alarm (use p99, never Average)
@@ -217,7 +225,7 @@ const durationAlarm = new Alarm(this, 'DurationP99Alarm', {
   datapointsToAlarm: 2,
   comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
   treatMissingData: TreatMissingData.NOT_BREACHING,
-});
+})
 ```
 
 For CLI:
@@ -235,15 +243,15 @@ aws cloudwatch put-metric-alarm --alarm-name MyFunc-Duration-P99 \
 ### Composite alarm
 
 ```typescript
-import { CompositeAlarm, AlarmRule, AlarmState } from 'aws-cdk-lib/aws-cloudwatch';
+import { CompositeAlarm, AlarmRule, AlarmState } from 'aws-cdk-lib/aws-cloudwatch'
 
 const serviceHealthAlarm = new CompositeAlarm(this, 'ServiceHealth', {
   alarmRule: AlarmRule.anyOf(
     AlarmRule.fromAlarm(errorRateAlarm, AlarmState.ALARM),
     AlarmRule.fromAlarm(latencyAlarm, AlarmState.ALARM),
-    AlarmRule.fromAlarm(throttleAlarm, AlarmState.ALARM),
+    AlarmRule.fromAlarm(throttleAlarm, AlarmState.ALARM)
   ),
-});
+})
 ```
 
 ### Anomaly detection alarm (CloudFormation)

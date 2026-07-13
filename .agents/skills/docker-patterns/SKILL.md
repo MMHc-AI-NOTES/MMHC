@@ -27,12 +27,12 @@ services:
   app:
     build:
       context: .
-      target: dev                     # Use dev stage of multi-stage Dockerfile
+      target: dev # Use dev stage of multi-stage Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
-      - .:/app                        # Bind mount for hot reload
-      - /app/node_modules             # Anonymous volume -- preserves container deps
+      - .:/app # Bind mount for hot reload
+      - /app/node_modules # Anonymous volume -- preserves container deps
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/app_dev
       - REDIS_URL=redis://redis:6379/0
@@ -47,7 +47,7 @@ services:
   db:
     image: postgres:16-alpine
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -56,7 +56,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -64,15 +64,15 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redisdata:/data
 
-  mailpit:                            # Local email testing
+  mailpit: # Local email testing
     image: axllent/mailpit
     ports:
-      - "8025:8025"                   # Web UI
-      - "1025:1025"                   # SMTP
+      - '8025:8025' # Web UI
+      - '1025:1025' # SMTP
 
 volumes:
   pgdata:
@@ -155,6 +155,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ### Service Discovery
 
 Services in the same Compose network resolve by service name:
+
 ```
 # From "app" container:
 postgres://postgres:postgres@db:5432/app_dev    # "db" resolves to the db container
@@ -176,7 +177,7 @@ services:
 
   db:
     networks:
-      - backend-net              # Only reachable from api, not frontend
+      - backend-net # Only reachable from api, not frontend
 
 networks:
   frontend-net:
@@ -189,7 +190,7 @@ networks:
 services:
   db:
     ports:
-      - "127.0.0.1:5432:5432"   # Only accessible from host, not network
+      - '127.0.0.1:5432:5432' # Only accessible from host, not network
     # Omit ports entirely in production -- accessible only within Docker network
 ```
 
@@ -213,14 +214,14 @@ volumes:
 services:
   app:
     volumes:
-      - .:/app                   # Source code (bind mount for hot reload)
-      - /app/node_modules        # Protect container's node_modules from host
-      - /app/.next               # Protect build cache
+      - .:/app # Source code (bind mount for hot reload)
+      - /app/node_modules # Protect container's node_modules from host
+      - /app/.next # Protect build cache
 
   db:
     volumes:
-      - pgdata:/var/lib/postgresql/data          # Persistent data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql  # Init scripts
+      - pgdata:/var/lib/postgresql/data # Persistent data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql # Init scripts
 ```
 
 ## Container Security
@@ -254,7 +255,7 @@ services:
     cap_drop:
       - ALL
     cap_add:
-      - NET_BIND_SERVICE          # Only if binding to ports < 1024
+      - NET_BIND_SERVICE # Only if binding to ports < 1024
 ```
 
 ### Secret Management
