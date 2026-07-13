@@ -88,11 +88,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   | Google BigQuery Configuration
   |----------------------------------------------------------
   */
-  BIGQUERY_PROJECT_ID: Env.schema.string.optional(),
-  BIGQUERY_CLIENT_EMAIL: Env.schema.string.optional(),
-  BIGQUERY_PRIVATE_KEY: Env.schema.string.optional(),
-  BIGQUERY_NOTES_TABLE: Env.schema.string.optional(),
-  BIGQUERY_APPOINTMENT_TABLE: Env.schema.string.optional(),
+  BIGQUERY_PROJECT_ID: Env.schema.string(),
+  BIGQUERY_CLIENT_EMAIL: Env.schema.string(),
+  BIGQUERY_PRIVATE_KEY: Env.schema.string(),
+  BIGQUERY_NOTES_TABLE: Env.schema.string(),
+  BIGQUERY_APPOINTMENT_TABLE: Env.schema.string(),
 
   /*
   |----------------------------------------------------------
