@@ -46,10 +46,7 @@ export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewVali
 
     console.log('[MCP Session Review] MCP response:', JSON.stringify(mcpResponse, null, 2))
 
-    return sendSuccess('MCP session review response (playground, not saved)', {
-      isPlayground: true,
-      mcp_response: mcpResponse,
-    })
+    return sendSuccess('MCP session review response', mcpResponse)
   } catch (error: any) {
     console.log('Error in invokeMcpSessionReview:', error.message)
     throw error
