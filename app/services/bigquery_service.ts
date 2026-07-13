@@ -8,12 +8,6 @@ function getBigQueryClient(): BigQuery {
     return bigQueryClient
   }
 
-  if (!bigQueryConfig.clientEmail || !bigQueryConfig.privateKey) {
-    throw new Error(
-      'BigQuery credentials are not configured. Set BIGQUERY_CLIENT_EMAIL and BIGQUERY_PRIVATE_KEY.'
-    )
-  }
-
   bigQueryClient = new BigQuery({
     projectId: bigQueryConfig.projectId,
     credentials: {
@@ -76,7 +70,7 @@ export async function fetchAppointmentTypeIdFromBigQuery(noteId: string): Promis
   const [rows] = await job.getQueryResults()
 
   const appointmentTypeId = rows[0]?.AppointmentTypeId
-  if (appointmentTypeId === undefined || appointmentTypeId === null) {
+  if (!appointmentTypeId) {
     return null
   }
 
