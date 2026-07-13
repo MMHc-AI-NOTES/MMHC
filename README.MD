@@ -94,3 +94,10 @@ When you attempt to commit changes:
 ## Contributing
 
 Please ensure your code adheres to the existing coding style and passes all linting and tests before submitting a pull request.
+
+# How to Run Docker
+
+- Create .env.docker from .env.example
+- docker run --env-file .env.local my-app
+- TO build the cotainer
+- `docker build -t mmh-backend .`
