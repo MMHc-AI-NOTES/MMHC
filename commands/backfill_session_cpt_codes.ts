@@ -19,7 +19,14 @@ export default class BackfillSessionCptCodes extends BaseCommand {
     description: 'Backfill a single note_id. If omitted, backfills all sessions.',
   })
   declare noteId: string
+  private cptCodeMap = new Map<string, CptCode>()
+  private async loadCptCodes() {
+    const cptCodes = await CptCode.query()
 
+    this.cptCodeMap = new Map(cptCodes.map((cpt) => [String(cpt.appointmentTypeId), cpt]))
+
+    this.logger.info(`Loaded ${cptCodes.length} CPT codes`)
+  }
   private async processSession(session: Session): Promise<boolean> {
     const appointmentTypeId = await fetchAppointmentTypeIdFromBigQuery(session.noteId)
 
@@ -29,8 +36,8 @@ export default class BackfillSessionCptCodes extends BaseCommand {
       )
       return false
     }
-
-    const cptCode = await CptCode.query().where('appointment_type_id', appointmentTypeId).first()
+    console.log(this.cptCodeMap)
+   const cptCode = this.cptCodeMap.get(String(appointmentTypeId))
 
     if (!cptCode) {
       this.logger.warning(
@@ -48,6 +55,7 @@ export default class BackfillSessionCptCodes extends BaseCommand {
   }
 
   async run() {
+    await this.loadCptCodes()
     if (this.noteId?.trim()) {
       await this.runForOneNote(this.noteId.trim())
       return
