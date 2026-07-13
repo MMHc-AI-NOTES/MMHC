@@ -36,8 +36,7 @@ export default class BackfillSessionCptCodes extends BaseCommand {
       )
       return false
     }
-    console.log(this.cptCodeMap)
-   const cptCode = this.cptCodeMap.get(String(appointmentTypeId))
+    const cptCode = this.cptCodeMap.get(String(appointmentTypeId))
 
     if (!cptCode) {
       this.logger.warning(
