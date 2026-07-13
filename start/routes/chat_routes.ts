@@ -11,6 +11,7 @@ router
     router.delete('/:chatId', [ChatController, 'delete'])
     router.post('/listing', [ChatController, 'listing'])
     router.post('/:chatId/reevaluate', [ChatController, 'reevaluate'])
+    router.post('/update-score/:chatId', [ChatController, 'updateScore'])
   })
   .prefix('api/chats')
   .use(middleware.auth())
