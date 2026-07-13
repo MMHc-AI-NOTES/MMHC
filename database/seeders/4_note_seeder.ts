@@ -39,7 +39,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 37,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: '3dce6595-1ea9-485f-9713-cc467384318e',
@@ -64,7 +64,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 37,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: 'e4c03ead-daba-4540-aaf3-addea3a3b443',
@@ -89,7 +89,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 34,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: 'e4c03ead-daba-4540-aaf3-addea3a3b444',
@@ -114,7 +114,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 34,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: 'b6e04e8f-0afc-4e32-897a-d07449783f78',
@@ -140,7 +140,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 35,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: 'b6e04e8f-0afc-4e32-897a-d07449783f79',
@@ -165,7 +165,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 35,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 
 //         {
@@ -195,7 +195,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 36,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: '02f3230e-6526-46cc-b06b-57f81da105c3',
@@ -217,7 +217,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 36,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: '3828ccd0-2424-4ea4-bdfb-abb4da59b404',
@@ -242,7 +242,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 37,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //         {
 //           noteId: '3828ccd0-2424-4ea4-bdfb-abb4da59b405',
@@ -267,7 +267,7 @@
 //           },
 //           practitionerId: 8,
 //           patientId: 37,
-//           type: SessionTypeEnum.intake,
+//           type: SessionTypeEnum.progress_note,
 //         },
 //       ]
 

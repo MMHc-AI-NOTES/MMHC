@@ -17,6 +17,25 @@ import type { updateNoteValidatorInterface } from '#validators/note_validator'
 import app from '@adonisjs/core/services/app'
 import fs from 'node:fs/promises'
 import db from '@adonisjs/lucid/services/db'
+import { AuditActionEnum } from '#enums/audit_log_enum'
+
+export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<string, any>[]> {
+  const auditLog = await db
+    .from('audit_logs')
+    .where('note_id', noteId)
+    .where('action', AuditActionEnum.webhookSessionReceived)
+    .select('metadata')
+    .first()
+
+  if (!auditLog?.metadata) {
+    return []
+  }
+  const meta =
+    typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
+
+  const raw = meta?.raw_payload?.Diagnosis
+  return Array.isArray(raw) ? raw : []
+}
 
 /**
  * Serialize a note with nested children for listing.
@@ -343,17 +362,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       throw new Error('Note not found for the provided note ID')
     }
 
-    // Fetch diagnosis from audit_logs
-    let diagnosis: Array<any> | [] = []
-    const auditLog = await db.from('audit_logs').where('note_id', noteId).select('metadata').first()
-
-    if (auditLog?.metadata) {
-      const meta =
-        typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
-
-      const raw = meta?.raw_payload?.Diagnosis
-      diagnosis = Array.isArray(raw) ? raw : []
-    }
+    const diagnosis = await getDiagnosisFromAuditLog(noteId)
 
     const serialized = note.serialize()
     // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.

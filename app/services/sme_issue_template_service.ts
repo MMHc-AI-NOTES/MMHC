@@ -32,6 +32,11 @@ export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateVali
       }
     }
 
+    const requestedDescriptionId =
+      reqData.description_id && reqData.description_id.trim().length > 0
+        ? reqData.description_id.trim()
+        : null
+
     // Check if a template with same combination already exists
     const existingTemplate = await SmeIssuesTamplate.query()
       .where('error_type_id', reqData.error_type_id)
@@ -43,7 +48,8 @@ export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateVali
       return sendError('Template with this combination already exists')
     }
 
-    const descriptionId = await getNextDescriptionId(issuesRelatedTo.displayName)
+    const descriptionId =
+      requestedDescriptionId ?? (await getNextDescriptionId(issuesRelatedTo.displayName))
 
     const template = await SmeIssuesTamplate.create({
       errorTypeId: reqData.error_type_id,
@@ -141,6 +147,13 @@ export const updateSmeIssueTemplate = async (
     }
 
     const oldIssuesRelatedToId = template.issuesRelatedToId
+    const hasDescriptionId = Object.prototype.hasOwnProperty.call(reqData, 'description_id')
+    const requestedDescriptionId =
+      hasDescriptionId && reqData.description_id && reqData.description_id.trim().length > 0
+        ? reqData.description_id.trim()
+        : hasDescriptionId
+          ? null
+          : undefined
 
     // Verify referenced records exist if being updated
     if (reqData.error_type_id !== undefined) {
@@ -173,6 +186,10 @@ export const updateSmeIssueTemplate = async (
       template.issueDescriptionId = reqData.issue_description_id ?? null
     }
 
+    if (hasDescriptionId) {
+      template.descriptionId = requestedDescriptionId ?? null
+    }
+
     // Compute final combination after update (use existing values when not provided)
     const finalErrorTypeId = reqData.error_type_id ?? template.errorTypeId
     const finalIssuesRelatedToId = reqData.issues_related_to_id ?? template.issuesRelatedToId
@@ -199,17 +216,19 @@ export const updateSmeIssueTemplate = async (
       return sendError('Template with this combination already exists')
     }
 
-    if (nextDescriptionId) {
+    if (nextDescriptionId && !hasDescriptionId) {
       template.descriptionId = nextDescriptionId
     }
 
     await template.save()
 
-    if (oldIssuesRelatedToId !== template.issuesRelatedToId) {
-      await resequenceDescriptionIds(oldIssuesRelatedToId)
-      await resequenceDescriptionIds(template.issuesRelatedToId)
-    } else {
-      await resequenceDescriptionIds(template.issuesRelatedToId)
+    if (!hasDescriptionId) {
+      if (oldIssuesRelatedToId !== template.issuesRelatedToId) {
+        await resequenceDescriptionIds(oldIssuesRelatedToId)
+        await resequenceDescriptionIds(template.issuesRelatedToId)
+      } else {
+        await resequenceDescriptionIds(template.issuesRelatedToId)
+      }
     }
 
     await template.load('errorType')

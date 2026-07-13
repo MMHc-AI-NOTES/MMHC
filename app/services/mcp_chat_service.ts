@@ -4,13 +4,25 @@ import { applySorting } from '#services/apply_sorting'
 import { paginateQuery } from '#services/apply_pagination'
 import { applyFilters } from '#services/apply_filter'
 import { sendSuccess } from '#services/custom_response_service'
-import { evaluateChatWithMcp, resolveMcpClientId, toMcpApiResponse } from '#services/mcp_service'
-import type { NormalizedEvaluationResult, McpScoreNoteResponse } from '#interfaces/mcp_interface'
+import {
+  evaluateChatWithMcp,
+  resolveMcpClientId,
+  resolveMcpCptCode,
+  toMcpApiResponse,
+  toMcpApiResponseOrNull,
+} from '#services/mcp_service'
+import { getDiagnosisFromAuditLog } from '#services/note_service'
+import type { NormalizedEvaluationResult } from '#interfaces/mcp_interface'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getChatAiReview } from '#services/evaluation_service'
 import { AiStatusEnum, WorkflowEnum } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
-import { ChatSeverityEnum, ChatTriggerSourceEnum, ChatResultEnum } from '#enums/chat_enum'
+import {
+  ChatSeverityEnum,
+  ChatTriggerSourceEnum,
+  ChatResultEnum,
+  ChatAiReviewEnum,
+} from '#enums/chat_enum'
 import { aiScoreThresholds } from '#helpers/gemini_safety_config'
 import { DateTime } from 'luxon'
 import { createAuditLog } from '#services/audit_log_service'
@@ -20,7 +32,6 @@ import type { createMcpChatValidatorInterface } from '#validators/mcp_chat_valid
 import logger from '@adonisjs/core/services/logger'
 
 export const MCP_MODEL_ID = 'mcp-v13'
-export const MCP_PROMPT_LABEL = 'MCP AI Scorer v13'
 
 function mapSeverity(validationStatus?: string): number {
   if (validationStatus === 'error') return ChatSeverityEnum.critical
@@ -48,12 +59,16 @@ function mapWorkflow(validationStatus?: string): number {
 
 async function runMcpEvaluation(session: Session): Promise<NormalizedEvaluationResult> {
   await session.load('patient')
+  await session.load('cptCode')
 
   const previousNote = await resolvePreviousSessionContent(session)
+  const diagnosis = await getDiagnosisFromAuditLog(session.noteId)
 
   return evaluateChatWithMcp({
     noteId: session.noteId,
     clientId: resolveMcpClientId(session),
+    cptCode: resolveMcpCptCode(session),
+    diagnosis,
     currentNote: session.session,
     previousNote,
   })
@@ -64,7 +79,11 @@ export const createMcpChat = async (
   userId: number,
   ctx?: HttpContext
 ) => {
-  const session = await Session.query().where('note_id', reqData.note_id).preload('patient').first()
+  const session = await Session.query()
+    .where('note_id', reqData.note_id)
+    .preload('patient')
+    .preload('cptCode')
+    .first()
 
   if (!session) {
     ctx?.logger.error({ noteId: reqData.note_id }, 'Session not found while creating MCP chat')
@@ -82,12 +101,17 @@ export const createMcpChat = async (
 
   const severity = mapSeverity(evaluation.validation_result?.status)
   const result = mapResult(evaluation.validation_result?.status)
+  const prompt = JSON.stringify(evaluation.mcp_request ?? {})
+  const modelId =
+    evaluation.mcp_response?.meta.scorer_version ??
+    evaluation.mcp_response?.model_version ??
+    MCP_MODEL_ID
 
   const chat = await Chat.create({
-    prompt: MCP_PROMPT_LABEL,
+    prompt,
     userNote: session.session,
     userInput: evaluation.user_input,
-    modelId: MCP_MODEL_ID,
+    modelId,
     noteId: reqData.note_id,
     evaluationScore: evaluation.score,
     responseTime,
@@ -117,7 +141,7 @@ export const createMcpChat = async (
       note_id: reqData.note_id,
       chat_id: chat.id,
       provider: 'MCP',
-      model_id: MCP_MODEL_ID,
+      model_id: chat.modelId,
     },
   })
 
@@ -138,7 +162,11 @@ export const createMcpChat = async (
 }
 
 export const scoreMcpNote = async (reqData: createMcpChatValidatorInterface) => {
-  const session = await Session.query().where('note_id', reqData.note_id).preload('patient').first()
+  const session = await Session.query()
+    .where('note_id', reqData.note_id)
+    .preload('patient')
+    .preload('cptCode')
+    .first()
 
   if (!session) {
     logger.error({ noteId: reqData.note_id }, 'Session not found for the provided note')
@@ -153,7 +181,7 @@ export const scoreMcpNote = async (reqData: createMcpChatValidatorInterface) => 
 export const getMcpChatById = async (chatId: number) => {
   const chat = await Chat.query()
     .where('id', chatId)
-    .where('model_id', MCP_MODEL_ID)
+    .where('ai_review', ChatAiReviewEnum.mcp)
     .preload('user')
     .preload('humanReviews', (reviewsQuery) =>
       reviewsQuery.orderBy('id', 'desc').preload('practitioner')
@@ -176,12 +204,16 @@ export const getMcpChatById = async (chatId: number) => {
 export const reevaluateMcpChat = async (chatId: number) => {
   const chat = await Chat.find(chatId)
 
-  if (!chat || chat.modelId !== MCP_MODEL_ID) {
+  if (!chat || chat.aiReview !== ChatAiReviewEnum.mcp) {
     logger.error({ chatId }, 'MCP chat not found')
     throw new Error('MCP chat not found')
   }
 
-  const session = await Session.query().where('note_id', chat.noteId).preload('patient').first()
+  const session = await Session.query()
+    .where('note_id', chat.noteId)
+    .preload('patient')
+    .preload('cptCode')
+    .first()
 
   if (!session) {
     logger.error({ noteId: chat.noteId }, 'Session not found for this chat')
@@ -196,6 +228,11 @@ export const reevaluateMcpChat = async (chatId: number) => {
   const endTimeMs = Date.now()
   const endTime = DateTime.fromMillis(endTimeMs)
   const responseTime = (endTimeMs - startTimeMs) / 1000
+  const prompt = JSON.stringify(evaluation.mcp_request ?? {})
+  const modelId =
+    evaluation.mcp_response?.meta.scorer_version ??
+    evaluation.mcp_response?.model_version ??
+    MCP_MODEL_ID
 
   chat.evaluationScore = evaluation.score
   chat.responseTime = responseTime
@@ -205,6 +242,8 @@ export const reevaluateMcpChat = async (chatId: number) => {
   chat.evaluation = evaluation.evaluation
   chat.bedrockResponse = evaluation
   chat.userInput = evaluation.user_input
+  chat.prompt = prompt
+  chat.modelId = modelId
   chat.severity = mapSeverity(evaluation.validation_result?.status)
   chat.result = mapResult(evaluation.validation_result?.status)
   chat.userNote = session.session
@@ -233,56 +272,65 @@ export const listMcpChats = async (
   filters?: Array<any>,
   sorts?: Array<any>
 ) => {
-  let query: any
-  let filterData: any
-  let sortChat: any
+  try {
+    let query: any
+    let filterData: any
+    let sortChat: any
 
-  let chatListings: any = Chat.query()
-    .where('model_id', MCP_MODEL_ID)
-    .preload('user')
-    .preload('humanReviews', (reviewsQuery) =>
-      reviewsQuery.orderBy('id', 'desc').preload('practitioner')
-    )
+    let chatListings: any = Chat.query()
+      .where('ai_review', ChatAiReviewEnum.mcp)
+      .preload('user')
+      .preload('humanReviews', (reviewsQuery) =>
+        reviewsQuery.orderBy('id', 'desc').preload('practitioner')
+      )
 
-  if (filters?.length) {
-    filterData = applyFilters(chatListings, filters, chatFilterEnum)
-  }
-  if (filterData?.status === false) {
+    if (filters?.length) {
+      filterData = applyFilters(chatListings, filters, chatFilterEnum)
+    }
+    if (filterData?.status === false) {
+      return {
+        status: filterData.status,
+        message: filterData.message,
+      }
+    }
+
+    query = filterData?.query ?? chatListings
+    if (!sorts?.length) {
+      query = query.orderBy('id', 'desc')
+    }
+    if (sorts?.length) {
+      sortChat = applySorting(query, sorts, chatSortEnum)
+      if (sortChat?.status) {
+        return sortChat
+      }
+    }
+
+    const sortQuery = sortChat?.query ?? query
+    const chatListingPaginated = await paginateQuery(sortQuery, pageSize, page)
+
     return {
-      status: filterData.status,
-      message: filterData.message,
+      status: true,
+      message: 'MCP chats listed successfully',
+      data: {
+        count: chatListingPaginated['rows'].length,
+        total_count: chatListingPaginated.total,
+        total_page_count: chatListingPaginated.lastPage,
+        page: chatListingPaginated.currentPage,
+        page_size: chatListingPaginated.perPage,
+        data: chatListingPaginated['rows'].map((chat: Chat) => {
+          const stored = chat.bedrockResponse as NormalizedEvaluationResult | null
+          const mcpResponse = toMcpApiResponseOrNull(stored)
+
+          return {
+            ...chat.serialize(),
+            mcp_response: mcpResponse,
+            mcp_error: mcpResponse ? null : (stored?.validation_result?.message ?? null),
+          }
+        }),
+      },
     }
-  }
-
-  query = filterData?.query ?? chatListings
-  if (!sorts?.length) {
-    query = query.orderBy('id', 'desc')
-  }
-  if (sorts?.length) {
-    sortChat = applySorting(query, sorts, chatSortEnum)
-    if (sortChat?.status) {
-      return sortChat
-    }
-  }
-
-  const sortQuery = sortChat?.query ?? query
-  const chatListingPaginated = await paginateQuery(sortQuery, pageSize, page)
-
-  return {
-    status: true,
-    message: 'MCP chats listed successfully',
-    data: {
-      count: chatListingPaginated['rows'].length,
-      total_count: chatListingPaginated.total,
-      total_page_count: chatListingPaginated.lastPage,
-      page: chatListingPaginated.currentPage,
-      page_size: chatListingPaginated.perPage,
-      data: chatListingPaginated['rows']
-        .map((row: any) => {
-          const stored = row.bedrockResponse as NormalizedEvaluationResult | null
-          return stored ? toMcpApiResponse(stored) : null
-        })
-        .filter(Boolean) as McpScoreNoteResponse[],
-    },
+  } catch (error: any) {
+    logger.error({ error }, 'Error in listMcpChats')
+    throw new Error('Failed to retrieve MCP chats. Please try again later.')
   }
 }
