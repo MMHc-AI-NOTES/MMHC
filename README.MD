@@ -99,5 +99,6 @@ Please ensure your code adheres to the existing coding style and passes all lint
 
 - Create .env.docker from .env.example
 - docker run --env-file .env.local my-app
-- TO build the cotainer
+- TO build the container
 - `docker build -t mmh-backend .`
+- -
