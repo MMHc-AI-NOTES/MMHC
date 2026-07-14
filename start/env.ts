@@ -75,7 +75,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   REDIS_DB: Env.schema.number.optional(),
   REDIS_PREFIX: Env.schema.string.optional(),
   REDIS_KEY_PREFIX: Env.schema.string.optional(),
-  REDIS_TLS: Env.schema.boolean.optional(),
+  REDIS_TLS: Env.schema.boolean(),
 
   /*
   |----------------------------------------------------------
