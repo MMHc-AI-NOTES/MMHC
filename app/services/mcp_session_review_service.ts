@@ -10,6 +10,7 @@ import {
 import { getDiagnosisFromAuditLog } from '#services/note_service'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getSessionByNoteId } from '#services/webhook_service'
+import logger from '@adonisjs/core/services/logger'
 
 export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewValidatorInterface) => {
   try {
@@ -31,7 +32,7 @@ export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewVali
       previousNote,
     })
 
-    console.log('[MCP Session Review] MCP request:', JSON.stringify(mcpRequest, null, 2))
+    logger.info('[MCP Session Review] MCP request:', JSON.stringify(mcpRequest, null, 2))
 
     const evaluation = await evaluateChatWithMcp({
       noteId: session.noteId,
@@ -44,13 +45,13 @@ export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewVali
 
     const mcpResponse = toMcpApiResponse(evaluation)
 
-    console.log('[MCP Session Review] MCP response:', JSON.stringify(mcpResponse, null, 2))
+    logger.info('[MCP Session Review] MCP response:', JSON.stringify(mcpResponse, null, 2))
 
     return sendSuccess('MCP session review response (playground, not saved)', {
       mcp_response: mcpResponse,
     })
   } catch (error: any) {
-    console.log('Error in invokeMcpSessionReview:', error.message)
+    logger.error('Error in invokeMcpSessionReview:', error.message)
     throw error
   }
 }
