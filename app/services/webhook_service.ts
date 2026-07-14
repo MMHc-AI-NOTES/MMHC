@@ -60,10 +60,8 @@ export const updateSessionCptCodeBySessionId = async (sessionId: number) => {
       reason: 'no_appointment_type_id',
     }
   }
- console.log('appointmentTypeId in session tabek', appointmentTypeId)
-  const cptCode = await CptCode.query()
-    .where('appointment_type_id', appointmentTypeId)
-    .first()
+  console.log('appointmentTypeId in session tabek', appointmentTypeId)
+  const cptCode = await CptCode.query().where('appointment_type_id', appointmentTypeId).first()
 
   if (!cptCode) {
     console.log('[Session CPT] No cpt_codes row for appointment_type_id', {
