@@ -68,7 +68,7 @@ export const redisConfig = {
   db: Number(env.get('REDIS_DB', '0')),
   keyPrefix: env.get('REDIS_KEY_PREFIX', 'mmh-'),
   // Upstash (and other managed Redis) requires TLS
-  ...(redisTlsEnabled ? { tls: { maxRetriesPerRequest: null } } : {}),
+  ...(redisTlsEnabled ? { tls: {}, maxRetriesPerRequest: null } : {}),
 }
 
 export const appConfig = {
