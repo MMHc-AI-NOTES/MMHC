@@ -58,12 +58,20 @@ export const practiceQConfig = {
   baseUrl: env.get('PRACTICEQ_BASE_URL', 'https://intakeq.com/api/v1'),
 }
 
+const redisTlsEnabled = ['true', '1', 'yes'].includes(
+  String(env.get('REDIS_TLS', 'false')).toLowerCase()
+)
+
 export const redisConfig = {
   host: env.get('REDIS_HOST', '127.0.0.1'),
   port: Number(env.get('REDIS_PORT', '6379')),
+  username: env.get('REDIS_USERNAME', '') || undefined,
   password: env.get('REDIS_PASSWORD', '') || undefined,
   db: Number(env.get('REDIS_DB', '0')),
   keyPrefix: env.get('REDIS_KEY_PREFIX', 'mmh-'),
+  // Upstash (and other managed Redis) requires TLS
+  ...(redisTlsEnabled ? { tls: {} } : {}),
+  maxRetriesPerRequest: null,
 }
 
 export const appConfig = {
