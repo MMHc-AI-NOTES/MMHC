@@ -16,8 +16,86 @@ import { sendSuccess } from '#services/custom_response_service'
 import type { webhookSessionValidatorInterface } from '#validators/webhook_validator'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { storeWebhookSessionVersionIfDifferent } from '#services/json_comparison_service'
+import { fetchAppointmentTypeIdFromBigQuery } from '#services/bigquery_service'
 import { DateTime } from 'luxon'
 import type { WebhookJobData } from '#jobs/queues/webhook_queue'
+import logger from '@adonisjs/core/services/logger'
+/**
+ * Enqueue CPT enrichment for a session after it is saved.
+ * Failures are logged and do not fail the webhook save path.
+ */
+const enqueueSessionCptJob = async (sessionId: number) => {
+  try {
+    const { addSessionCptJob } = await import('#jobs/queues/session_cpt_queue')
+    await addSessionCptJob({ sessionId })
+    logger.info('[Session CPT] Queued job', { sessionId })
+  } catch (error: any) {
+    logger.error('[Session CPT] Failed to queue job', {
+      sessionId,
+      error: error.message,
+    })
+  }
+}
+
+/**
+ * Resolve AppointmentTypeId from BigQuery via session.note_id,
+ * look up cpt_codes by appointment_type_id, and update session.cpt_code_id.
+ */
+export const updateSessionCptCodeBySessionId = async (sessionId: number) => {
+  const session = await getSessionById(sessionId)
+
+  const appointmentTypeId = await fetchAppointmentTypeIdFromBigQuery(session.noteId)
+
+  if (!appointmentTypeId) {
+    logger.info('[Session CPT] No AppointmentTypeId from BigQuery', {
+      sessionId,
+      noteId: session.noteId,
+    })
+    return {
+      updated: false,
+      sessionId,
+      noteId: session.noteId,
+      appointmentTypeId: null,
+      cptCodeId: null,
+      reason: 'no_appointment_type_id',
+    }
+  }
+  logger.info('appointmentTypeId in session table', appointmentTypeId)
+  const cptCode = await CptCode.query().where('appointment_type_id', appointmentTypeId).first()
+
+  if (!cptCode) {
+    logger.info('[Session CPT] No cpt_codes row for appointment_type_id', {
+      sessionId,
+      noteId: session.noteId,
+      appointmentTypeId,
+    })
+    return {
+      updated: false,
+      sessionId,
+      noteId: session.noteId,
+      appointmentTypeId,
+      cptCodeId: null,
+      reason: 'no_cpt_code_match',
+    }
+  }
+  session.cptCodeId = cptCode.id
+  await session.save()
+
+  logger.info('[Session CPT] Updated session cpt_code_id', {
+    sessionId,
+    noteId: session.noteId,
+    appointmentTypeId,
+    cptCodeId: cptCode.id,
+  })
+
+  return {
+    updated: true,
+    sessionId,
+    noteId: session.noteId,
+    appointmentTypeId,
+    cptCodeId: cptCode.id,
+  }
+}
 
 /**
  * Field mapping: question id → canonical session field name.
@@ -300,6 +378,8 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       await relinkPatientSessions(session.patientId)
     }
 
+    await enqueueSessionCptJob(session.id)
+
     const status = existingSession ? 'updated' : 'created'
     console.log('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
     return sendSuccess(
@@ -548,6 +628,10 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
         sessionJson: session.session || '{}',
       })
     }
+  }
+
+  if (session) {
+    await enqueueSessionCptJob(session.id)
   }
 
   const allValidationErrors = [...webhookValidation.errors]
