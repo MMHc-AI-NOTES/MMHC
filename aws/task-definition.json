@@ -1,0 +1,192 @@
+{
+  "family": "default-mmh-backend-c480",
+  "executionRoleArn": "arn:aws:iam::199990519622:role/service-role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::199990519622:role/mmh-backend-task-role",
+  "networkMode": "awsvpc",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "containerDefinitions": [
+    {
+      "name": "Main",
+      "image": "199990519622.dkr.ecr.us-east-1.amazonaws.com/mmh/mmh-backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3333,
+          "protocol": "tcp"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "TZ",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:TZ::"
+        },
+        {
+          "name": "PORT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:PORT::"
+        },
+        {
+          "name": "HOST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:HOST::"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:LOG_LEVEL::"
+        },
+        {
+          "name": "APP_NAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:APP_NAME::"
+        },
+        {
+          "name": "APP_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:APP_KEY::"
+        },
+        {
+          "name": "NODE_ENV",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:NODE_ENV::"
+        },
+        {
+          "name": "DB_HOST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:DB_HOST::"
+        },
+        {
+          "name": "DB_PORT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:DB_PORT::"
+        },
+        {
+          "name": "DB_USER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:DB_USER::"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:DB_PASSWORD::"
+        },
+        {
+          "name": "DB_DATABASE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:DB_DATABASE::"
+        },
+        {
+          "name": "SMTP_HOST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:SMTP_HOST::"
+        },
+        {
+          "name": "SMTP_PORT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:SMTP_PORT::"
+        },
+        {
+          "name": "SMTP_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:SMTP_USERNAME::"
+        },
+        {
+          "name": "SMTP_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:SMTP_PASSWORD::"
+        },
+        {
+          "name": "SMTP_FROM",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:SMTP_FROM::"
+        },
+        {
+          "name": "AWS_REGION",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:AWS_REGION::"
+        },
+        {
+          "name": "AWS_ACCESS_KEY_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:AWS_ACCESS_KEY_ID::"
+        },
+        {
+          "name": "AWS_SECRET_ACCESS_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:AWS_SECRET_ACCESS_KEY::"
+        },
+        {
+          "name": "FRONTEND_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:FRONTEND_URL::"
+        },
+        {
+          "name": "EMAIL_COMPANY_LOGO",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:EMAIL_COMPANY_LOGO::"
+        },
+        {
+          "name": "REDIS_HOST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:REDIS_HOST::"
+        },
+        {
+          "name": "REDIS_PORT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:REDIS_PORT::"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:REDIS_PASSWORD::"
+        },
+        {
+          "name": "REDIS_KEY_PREFIX",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:REDIS_KEY_PREFIX::"
+        },
+        {
+          "name": "REDIS_DB",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:REDIS_DB::"
+        },
+        {
+          "name": "EMAIL_TEST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:EMAIL_TEST::"
+        },
+        {
+          "name": "EMAIL_TEST_ADDRESS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:EMAIL_TEST_ADDRESS::"
+        },
+        {
+          "name": "INTAKEQ_FORM_NOTE_URL_BASE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:INTAKEQ_FORM_NOTE_URL_BASE::"
+        },
+        {
+          "name": "S3_DATA_BASE_PATH",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:S3_DATA_BASE_PATH::"
+        },
+        {
+          "name": "AI_REVIEW",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:AI_REVIEW::"
+        },
+        {
+          "name": "MCP_API_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:MCP_API_URL::"
+        },
+        {
+          "name": "MCP_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:MCP_TOKEN::"
+        },
+        {
+          "name": "BIGQUERY_PROJECT_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:BIGQUERY_PROJECT_ID::"
+        },
+        {
+          "name": "BIGQUERY_CLIENT_EMAIL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:BIGQUERY_CLIENT_EMAIL::"
+        },
+        {
+          "name": "BIGQUERY_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:BIGQUERY_PRIVATE_KEY::"
+        },
+        {
+          "name": "BIGQUERY_NOTES_TABLE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:BIGQUERY_NOTES_TABLE::"
+        },
+        {
+          "name": "BIGQUERY_APPOINTMENT_TABLE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:BIGQUERY_APPOINTMENT_TABLE::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "mmh-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "mmh-backend-prod"
+        }
+      }
+    }
+  ]
+}
