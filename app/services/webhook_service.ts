@@ -19,7 +19,7 @@ import { storeWebhookSessionVersionIfDifferent } from '#services/json_comparison
 import { fetchAppointmentTypeIdFromBigQuery } from '#services/bigquery_service'
 import { DateTime } from 'luxon'
 import type { WebhookJobData } from '#jobs/queues/webhook_queue'
-
+import logger from '@adonisjs/core/services/logger'
 /**
  * Enqueue CPT enrichment for a session after it is saved.
  * Failures are logged and do not fail the webhook save path.
@@ -28,9 +28,9 @@ const enqueueSessionCptJob = async (sessionId: number) => {
   try {
     const { addSessionCptJob } = await import('#jobs/queues/session_cpt_queue')
     await addSessionCptJob({ sessionId })
-    console.log('[Session CPT] Queued job', { sessionId })
+    logger.info('[Session CPT] Queued job', { sessionId })
   } catch (error: any) {
-    console.error('[Session CPT] Failed to queue job', {
+    logger.error('[Session CPT] Failed to queue job', {
       sessionId,
       error: error.message,
     })
@@ -47,7 +47,7 @@ export const updateSessionCptCodeBySessionId = async (sessionId: number) => {
   const appointmentTypeId = await fetchAppointmentTypeIdFromBigQuery(session.noteId)
 
   if (!appointmentTypeId) {
-    console.log('[Session CPT] No AppointmentTypeId from BigQuery', {
+    logger.info('[Session CPT] No AppointmentTypeId from BigQuery', {
       sessionId,
       noteId: session.noteId,
     })
@@ -60,11 +60,11 @@ export const updateSessionCptCodeBySessionId = async (sessionId: number) => {
       reason: 'no_appointment_type_id',
     }
   }
-  console.log('appointmentTypeId in session tabek', appointmentTypeId)
+  logger.info('appointmentTypeId in session table', appointmentTypeId)
   const cptCode = await CptCode.query().where('appointment_type_id', appointmentTypeId).first()
 
   if (!cptCode) {
-    console.log('[Session CPT] No cpt_codes row for appointment_type_id', {
+    logger.info('[Session CPT] No cpt_codes row for appointment_type_id', {
       sessionId,
       noteId: session.noteId,
       appointmentTypeId,
@@ -78,11 +78,10 @@ export const updateSessionCptCodeBySessionId = async (sessionId: number) => {
       reason: 'no_cpt_code_match',
     }
   }
-  console.log('cptCode', cptCode)
   session.cptCodeId = cptCode.id
   await session.save()
 
-  console.log('[Session CPT] Updated session cpt_code_id', {
+  logger.info('[Session CPT] Updated session cpt_code_id', {
     sessionId,
     noteId: session.noteId,
     appointmentTypeId,

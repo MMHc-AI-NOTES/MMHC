@@ -15,8 +15,8 @@ export const sessionCptQueue = new Queue<SessionCptJobData>(SESSION_CPT_QUEUE_NA
       type: 'exponential',
       delay: 2000,
     },
-    removeOnComplete: false,
-    removeOnFail: false,
+    removeOnComplete: true,
+    removeOnFail: true,
   },
 })
 
