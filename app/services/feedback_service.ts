@@ -54,6 +54,7 @@ export function formatFeedbackVerdictResponse(record: FeedbackVerdict) {
     verdict: record.verdict,
     comment: record.comment,
     by: record.reviewer?.fullName ?? null,
+    reviewer_id: record.reviewerId ?? null,
   }
 }
 
