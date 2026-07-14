@@ -12,13 +12,15 @@ permissions:
 
 jobs:
   deploy:
-    name: Build and push Docker image to ECR
+    name: Build and deploy to ECS
     runs-on: ubuntu-latest
 
     env:
       AWS_REGION: ${{secrets.AWS_REGION}}
       ECR_REPOSITORY: mmh/mmh-backend
       ECR_REGISTRY: ${{secrets.ECR_REGISTRY}}
+      ECS_CLUSTER: ${{vars.ECS_CLUSTER}}
+      ECS_SERVICE: ${{vars.ECS_SERVICE}}
 
     steps:
       - name: Checkout repository
@@ -56,3 +58,19 @@ jobs:
             ${{ env.IMAGE_URI_LATEST }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Render ECS task definition
+        id: render-task-definition
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: aws/task-definition.json
+          container-name: Main
+          image: ${{ env.IMAGE_URI }}
+
+      - name: Deploy to ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-definition.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
