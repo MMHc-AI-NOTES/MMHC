@@ -18,8 +18,8 @@ export const webhookQueue = new Queue<WebhookJobData>(WEBHOOK_QUEUE_NAME, {
       delay: 1000,
     },
     // false = do not remove completed jobs; avoids "Missing key for job" when worker calls moveToFinished
-    removeOnComplete: false,
-    removeOnFail: false,
+    removeOnComplete: true,
+    removeOnFail: true,
   },
 })
 

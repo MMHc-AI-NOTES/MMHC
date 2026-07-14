@@ -33,7 +33,7 @@ export const dispatchEmailQueue = new Queue<DispatchEmailJobData>(DISPATCH_EMAIL
       delay: 180000, // base delay 3 minutes between retries
     },
     removeOnComplete: true,
-    removeOnFail: false,
+    removeOnFail: true,
   },
 })
 
