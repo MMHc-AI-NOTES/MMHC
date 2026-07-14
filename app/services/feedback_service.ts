@@ -12,6 +12,7 @@ import { DateTime } from 'luxon'
 import { getSessionById, getSessionBySessionId } from '#services/webhook_service'
 import { getSmeIssueTemplateByDescriptionId } from '#services/sme_issue_template_service'
 import { getLatestChatByNoteId } from '#services/chat_service'
+import logger from '@adonisjs/core/services/logger'
 
 export async function resolveScorerVersion(noteId: string) {
   const chat = await getLatestChatByNoteId(noteId)
@@ -140,7 +141,7 @@ export async function submitFeedback(
     'Content-Type': 'application/json',
     'authorization': `Bearer ${mcpConfig.token}`,
   }
-  console.log('request body', JSON.stringify(adjudicationBody, null, 2))
+  logger.info('request body', JSON.stringify(adjudicationBody, null, 2))
   try {
     const res = await axios.post(url, adjudicationBody, { headers, validateStatus: () => true })
     if (res.status !== HttpStatusCode.Ok) {
@@ -150,12 +151,12 @@ export async function submitFeedback(
       mcpSynced = true
       mcpResponse = res.data
     }
-    console.log('[Feedback] MCP response status:', res.status)
-    console.log('[Feedback] MCP response body:', JSON.stringify(mcpResponse, null, 2))
+    logger.info('[Feedback] MCP response status:', res.status)
+    logger.info('[Feedback] MCP response body:', JSON.stringify(mcpResponse, null, 2))
   } catch (error: any) {
     mcpResponse = { error: error.message ?? 'MCP API call failed', code: error.code ?? null }
     mcpSynced = false
-    console.log('[Feedback] MCP call failed:', error.message)
+    logger.error('[Feedback] MCP call failed:', error.message)
   }
 
   record.adjudicationResponse =
@@ -213,7 +214,7 @@ export const getFeedbackVerdictById = async (id: number) => {
     }
     return FeedbackResponse
   } catch (error: any) {
-    console.log('Error in getFeedbackVerdictById:', error.message)
+    logger.error('Error in getFeedbackVerdictById:', error.message)
     throw new Error(error.message)
   }
 }
