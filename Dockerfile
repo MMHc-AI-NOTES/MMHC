@@ -27,6 +27,7 @@ COPY --from=build --chown=appuser:nodejs /app/package.json ./package.json
 COPY --from=build --chown=appuser:nodejs /app/package-lock.json ./package-lock.json
 COPY --from=build --chown=appuser:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=appuser:nodejs /app/build ./build
+COPY --chown=appuser:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 
 # RUN npm prune
 RUN npm prune --ignore-scripts --omit=dev
@@ -35,4 +36,4 @@ RUN npm prune --ignore-scripts --omit=dev
 USER appuser
 
 EXPOSE 3333
-CMD ["sh", "-c", "node build/bin/server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
