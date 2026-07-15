@@ -14,6 +14,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
 import vine from '@vinejs/vine'
+import logger from '@adonisjs/core/services/logger'
 
 const smeIssueTemplateIdValidator = vine.compile(
   vine.object({
@@ -28,7 +29,7 @@ export default class SmeIssueTemplateController {
       const templates = await listSmeIssueTemplates(page, pageSize)
       return sendSuccess('SME issue templates listed successfully', templates)
     } catch (error) {
-      console.log('SME issue template listing error', error)
+      logger.error('SME issue template listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -39,7 +40,7 @@ export default class SmeIssueTemplateController {
       const response = await getSmeIssueTemplate(id)
       return response
     } catch (error) {
-      console.log('SME issue template getting error', error)
+      logger.error('SME issue template getting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -50,7 +51,7 @@ export default class SmeIssueTemplateController {
       const response = await createSmeIssueTemplate(payload)
       return response
     } catch (error) {
-      console.log('SME issue template creating error', error)
+      logger.error('SME issue template creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -64,7 +65,7 @@ export default class SmeIssueTemplateController {
       const response = await updateSmeIssueTemplate(id, payload)
       return response
     } catch (error) {
-      console.log('SME issue template updating error', error)
+      logger.error('SME issue template updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -75,7 +76,7 @@ export default class SmeIssueTemplateController {
       const response = await deleteSmeIssueTemplate(id)
       return response
     } catch (error) {
-      console.log('SME issue template deleting error', error)
+      logger.error('SME issue template deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

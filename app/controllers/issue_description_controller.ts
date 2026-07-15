@@ -13,6 +13,7 @@ import {
 } from '#validators/issue_description_validator'
 import ErrorService from '#services/error_service'
 import vine from '@vinejs/vine'
+import logger from '@adonisjs/core/services/logger'
 
 const issueDescriptionIdValidator = vine.compile(
   vine.object({
@@ -29,7 +30,7 @@ export default class IssueDescriptionController {
       const issueDescriptionsResponse = await listIssueDescriptions(page, pageSize, filters, sorts)
       return issueDescriptionsResponse
     } catch (error) {
-      console.log('Issue description listing error', error)
+      logger.error('Issue description listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -40,7 +41,7 @@ export default class IssueDescriptionController {
       const response = await getIssueDescription(id)
       return response
     } catch (error) {
-      console.log('Issue description getting error', error)
+      logger.error('Issue description getting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -51,7 +52,7 @@ export default class IssueDescriptionController {
       const issueDescriptionResponse = await createIssueDescription(payload)
       return issueDescriptionResponse
     } catch (error) {
-      console.log('Issue description creating error', error)
+      logger.error('Issue description creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -63,7 +64,7 @@ export default class IssueDescriptionController {
       const response = await updateIssueDescription(id, payload)
       return response
     } catch (error) {
-      console.log('Issue description updating error', error)
+      logger.error('Issue description updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -74,7 +75,7 @@ export default class IssueDescriptionController {
       const response = await deleteIssueDescription(id)
       return response
     } catch (error) {
-      console.log('Issue description deleting error', error)
+      logger.error('Issue description deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

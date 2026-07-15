@@ -4,6 +4,7 @@ import { markNoteReviewed, getNoteReviewMark } from '#services/note_review_mark_
 import ErrorService from '#services/error_service'
 import vine from '@vinejs/vine'
 import { getSmeReviewersNoteCounts } from '#services/note_review_mark_service'
+import logger from '@adonisjs/core/services/logger'
 
 const paramsValidator = vine.compile(
   vine.object({
@@ -21,7 +22,7 @@ export default class NoteReviewMarkController {
       const response = await markNoteReviewed(payload, currentUser.id, ctx)
       return response
     } catch (error) {
-      console.log('Note review mark update error', error)
+      logger.error('Note review mark update error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -36,7 +37,7 @@ export default class NoteReviewMarkController {
       const response = await getNoteReviewMark(noteId, reviewerId, noteVersionId)
       return response
     } catch (error) {
-      console.log('Note review mark get error', error)
+      logger.error('Note review mark get error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -46,7 +47,7 @@ export default class NoteReviewMarkController {
       const response = await getSmeReviewersNoteCounts()
       return response
     } catch (error) {
-      console.log('Sme reviewers note counts error', error)
+      logger.error('Sme reviewers note counts error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

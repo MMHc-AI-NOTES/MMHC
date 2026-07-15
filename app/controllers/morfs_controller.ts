@@ -1,3 +1,4 @@
+import logger from '@adonisjs/core/services/logger'
 import Morf from '#models/morf'
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
@@ -15,7 +16,7 @@ export default class MorfsController {
 
       return sendSuccess('Morf created successfully', body)
     } catch (error) {
-      console.log('Morf creation error', error)
+      logger.error('Morf creation error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

@@ -21,6 +21,7 @@ import { HumanReviewDecisionEnum } from '#enums/human_review_enum'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { HttpContext } from '@adonisjs/core/http'
+import logger from '@adonisjs/core/services/logger'
 
 export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) => {
   try {
@@ -143,7 +144,7 @@ export const createSmeIssue = async (reqData: createSmeIssueValidatorInterface) 
 
     return sendSuccess('SME issue created successfully', smeIssue)
   } catch (error: any) {
-    console.log('Error in createSmeIssue:', error.message)
+    logger.error('Error in createSmeIssue:', error.message)
     return sendError(error.message)
   }
 }
@@ -236,7 +237,7 @@ export const listSmeIssues = async (
       })),
     }
   } catch (error: any) {
-    console.log('Error in listSmeIssues:', error.message)
+    logger.error('Error in listSmeIssues:', error.message)
     throw new Error('Failed to retrieve SME issues. Please try again later.')
   }
 }
@@ -259,7 +260,7 @@ export const getSmeIssue = async (id: number) => {
 
     return sendSuccess('SME issue retrieved successfully', issue)
   } catch (error: any) {
-    console.log('Error in getSmeIssue:', error.message)
+    logger.error('Error in getSmeIssue:', error.message)
     return sendError(error.message)
   }
 }
@@ -421,7 +422,7 @@ export const updateSmeIssue = async (id: number, reqData: updateSmeIssueValidato
 
     return sendSuccess('SME issue updated successfully', issue)
   } catch (error: any) {
-    console.log('Error in updateSmeIssue:', error.message)
+    logger.error('Error in updateSmeIssue:', error.message)
     return sendError(error.message)
   }
 }
@@ -435,7 +436,7 @@ export const deleteSmeIssue = async (id: number) => {
     await issue.delete()
     return sendSuccess('SME issue deleted successfully')
   } catch (error: any) {
-    console.log('Error in deleteSmeIssue:', error.message)
+    logger.error('Error in deleteSmeIssue:', error.message)
     return sendError(error.message)
   }
 }
@@ -488,7 +489,7 @@ export const deleteSmeIssuesByNoteAndVersion = async (
       reviewer_id: reviewerId,
     })
   } catch (error: any) {
-    console.log('Error in deleteSmeIssuesByNoteAndVersion:', error.message)
+    logger.error('Error in deleteSmeIssuesByNoteAndVersion:', error.message)
     return sendError(error.message)
   }
 }
@@ -648,7 +649,7 @@ export const assignSmeIssueToManager = async (
 
     return sendSuccess('SME issue assigned to manager successfully', managerReview)
   } catch (error: any) {
-    console.log('Error in assignSmeIssueToManager:', error.message)
+    logger.error('Error in assignSmeIssueToManager:', error.message)
     return sendError(error.message)
   }
 }

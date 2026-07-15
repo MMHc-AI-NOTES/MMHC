@@ -18,6 +18,7 @@ import app from '@adonisjs/core/services/app'
 import fs from 'node:fs/promises'
 import db from '@adonisjs/lucid/services/db'
 import { AuditActionEnum } from '#enums/audit_log_enum'
+import logger from '@adonisjs/core/services/logger'
 
 export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<string, any>[]> {
   const auditLog = await db
@@ -311,7 +312,7 @@ export const noteListing = async (
       }),
     }
   } catch (error: any) {
-    console.log('Error in noteListing:', error.message)
+    logger.error('Error in noteListing:', error.message)
     throw new Error('Failed to retrieve notes. Please try again later.')
   }
 }
@@ -358,7 +359,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       .first()
 
     if (!note) {
-      console.log('Error in getNoteWithChats: Note not found for note_id:', noteId)
+      logger.error('Error in getNoteWithChats: Note not found for note_id:', noteId)
       throw new Error('Note not found for the provided note ID')
     }
 
@@ -406,7 +407,7 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
 
     return sendSuccess('Note with chats retrieved successfully', noteWithCount)
   } catch (error: any) {
-    console.log('error while getting note with chat', error.message)
+    logger.error('Error while getting note with chat', error.message)
     throw new Error('error while getting note with chat')
   }
 }
@@ -844,7 +845,7 @@ Now evaluate the following Progress Note:`,
 
     return dataset
   } catch (error: any) {
-    console.log('Error while building test dataset:', error.message)
+    logger.error('Error while building test dataset:', error.message)
     throw new Error('Failed to build test dataset')
   }
 }
@@ -866,7 +867,7 @@ export const updateNote = async (noteId: string, reqData: updateNoteValidatorInt
 
     return sendSuccess('Note updated successfully', note)
   } catch (error: any) {
-    console.log('Error in getNoteWithChats:', error.message)
+    logger.error('Error in getNoteWithChats:', error.message)
     throw new Error('error while getting note with chat')
   }
 }

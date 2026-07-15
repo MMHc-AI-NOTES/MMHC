@@ -1,5 +1,6 @@
 import { SageMakerRuntimeClient, InvokeEndpointCommand } from '@aws-sdk/client-sagemaker-runtime'
 import { bedrockConfig } from '#config/services'
+import logger from '@adonisjs/core/services/logger'
 
 const sagemakerClient = new SageMakerRuntimeClient({
   region: bedrockConfig.region,
@@ -40,7 +41,7 @@ const prepareSageMakerPayload = (input: any) => {
   parameters.max_new_tokens = Math.max(1, Math.min(requested, safeBudget))
 
   if (parameters.max_new_tokens < MIN_MAX_NEW_TOKENS) {
-    console.warn(
+    logger.warn(
       `SageMaker payload near token limit: estimated_input_tokens=${estimatedInputTokens}, ` +
         `max_new_tokens=${parameters.max_new_tokens}`
     )
@@ -70,7 +71,7 @@ export const invokeSageMakerEndpoint = async (endpointName: string, input: any):
 
     return parsed
   } catch (error: any) {
-    console.log('SageMaker Runtime Error:', error.message)
+    logger.error('SageMaker Runtime Error:', error.message)
     throw new Error('Failed to communicate with SageMaker endpoint.')
   }
 }

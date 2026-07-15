@@ -8,6 +8,7 @@ import type {
   createErrorTypeValidatorInterface,
   updateErrorTypeValidatorInterface,
 } from '#validators/error_type_validator'
+import logger from '@adonisjs/core/services/logger'
 
 export const listErrorTypes = async (
   page?: number,
@@ -56,7 +57,7 @@ export const listErrorTypes = async (
       })),
     })
   } catch (error: any) {
-    console.log('Error in listErrorTypes:', error.message)
+    logger.error('Error in listErrorTypes:', error.message)
     throw new Error('Failed to retrieve error types. Please try again later.')
   }
 }
@@ -71,7 +72,7 @@ export const getErrorType = async (id: number) => {
 
     return sendSuccess('Error type retrieved successfully', errorType)
   } catch (error: any) {
-    console.log('Error in getErrorType:', error.message)
+    logger.error('Error in getErrorType:', error.message)
     return sendError(error.message)
   }
 }
@@ -92,7 +93,7 @@ export const createErrorType = async (reqData: createErrorTypeValidatorInterface
 
     return sendSuccess('Error type created successfully', errorType)
   } catch (error: any) {
-    console.log('Error in createErrorType:', error.message)
+    logger.error('Error in createErrorType:', error.message)
     return sendError(error.message)
   }
 }
@@ -127,7 +128,7 @@ export const updateErrorType = async (id: number, reqData: updateErrorTypeValida
 
     return sendSuccess('Error type updated successfully', errorType)
   } catch (error: any) {
-    console.log('Error in updateErrorType:', error.message)
+    logger.error('Error in updateErrorType:', error.message)
     return sendError(error.message)
   }
 }
@@ -150,7 +151,7 @@ export const deleteErrorType = async (id: number) => {
     await errorType.delete()
     return sendSuccess('Error type deleted successfully')
   } catch (error: any) {
-    console.log('Error in deleteErrorType:', error.message)
+    logger.error('Error in deleteErrorType:', error.message)
     return sendError(error.message)
   }
 }

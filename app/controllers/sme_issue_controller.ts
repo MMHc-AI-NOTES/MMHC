@@ -19,6 +19,7 @@ import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
 import vine from '@vinejs/vine'
 import { UserTypeEnum } from '#enums/user_type_enum'
+import logger from '@adonisjs/core/services/logger'
 
 const smeIssueIdValidator = vine.compile(
   vine.object({
@@ -35,7 +36,7 @@ export default class SmeIssueController {
       const smeIssueResponse = await listSmeIssues(page, pageSize, filters, sorts)
       return sendSuccess('SME issues listed successfully', smeIssueResponse)
     } catch (error) {
-      console.log('SME issue listing error', error)
+      logger.error('SME issue listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -46,7 +47,7 @@ export default class SmeIssueController {
       const response = await getSmeIssue(id)
       return response
     } catch (error) {
-      console.log('SME issue getting error', error)
+      logger.error('SME issue getting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -61,7 +62,7 @@ export default class SmeIssueController {
       const smeIssueResponse = await createSmeIssue(payload)
       return smeIssueResponse
     } catch (error) {
-      console.log('SME issue creating error', error)
+      logger.error('SME issue creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -73,7 +74,7 @@ export default class SmeIssueController {
       const response = await updateSmeIssue(id, payload)
       return response
     } catch (error) {
-      console.log('SME issue updating error', error)
+      logger.error('SME issue updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -84,7 +85,7 @@ export default class SmeIssueController {
       const response = await deleteSmeIssue(id)
       return response
     } catch (error) {
-      console.log('SME issue deleting error', error)
+      logger.error('SME issue deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -99,7 +100,7 @@ export default class SmeIssueController {
       const response = await deleteSmeIssuesByNoteAndVersion(noteId, versionId, reviewerId)
       return response
     } catch (error) {
-      console.log('SME Issues deleting by note and version error', error)
+      logger.error('SME Issues deleting by note and version error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -111,7 +112,7 @@ export default class SmeIssueController {
       const response = await assignSmeIssueToManager(payload, currentUser.id, ctx)
       return response
     } catch (error) {
-      console.log('SME issue assigning to manager error', error)
+      logger.error('SME issue assigning to manager error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

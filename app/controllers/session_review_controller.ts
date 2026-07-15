@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
 import { invokeSessionReview } from '#services/session_review_service'
 import { invokeSessionReviewValidator } from '#validators/session_review_validator'
-
+import logger from '@adonisjs/core/services/logger'
 export default class SessionReviewController {
   public async invoke(ctx: HttpContext) {
     try {
@@ -10,7 +10,7 @@ export default class SessionReviewController {
       const response = await invokeSessionReview(payload)
       return response
     } catch (error) {
-      console.log('session review invoke error', error)
+      logger.error('session review invoke error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

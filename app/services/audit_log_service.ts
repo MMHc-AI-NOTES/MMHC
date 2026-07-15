@@ -1,6 +1,7 @@
 import AuditLog from '#models/audit_log'
 import { DateTime } from 'luxon'
 import type { HttpContext } from '@adonisjs/core/http'
+import logger from '@adonisjs/core/services/logger'
 
 type AuditLogMetadata = Record<string, any> | null | undefined
 
@@ -47,6 +48,6 @@ export const createAuditLog = async (params: CreateAuditLogParams) => {
       metadata: params.metadata ?? null,
     })
   } catch (error: any) {
-    console.log('Error creating audit log:', error.message)
+    logger.error('Error creating audit log:', error.message)
   }
 }

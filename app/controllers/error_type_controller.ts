@@ -13,6 +13,7 @@ import {
 } from '#validators/error_type_validator'
 import ErrorService from '#services/error_service'
 import vine from '@vinejs/vine'
+import logger from '@adonisjs/core/services/logger'
 
 const errorTypeIdValidator = vine.compile(
   vine.object({
@@ -29,7 +30,7 @@ export default class ErrorTypeController {
       const errorTypesResponse = await listErrorTypes(page, pageSize, filters, sorts)
       return errorTypesResponse
     } catch (error) {
-      console.log('Error type listing error', error)
+      logger.error('Error type listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -40,7 +41,7 @@ export default class ErrorTypeController {
       const response = await getErrorType(id)
       return response
     } catch (error) {
-      console.log('Error type getting error', error)
+      logger.error('Error type getting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -51,7 +52,7 @@ export default class ErrorTypeController {
       const errorTypeResponse = await createErrorType(payload)
       return errorTypeResponse
     } catch (error) {
-      console.log('Error type creating error', error)
+      logger.error('Error type creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -63,7 +64,7 @@ export default class ErrorTypeController {
       const response = await updateErrorType(id, payload)
       return response
     } catch (error) {
-      console.log('Error type updating error', error)
+      logger.error('Error type updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -74,7 +75,7 @@ export default class ErrorTypeController {
       const response = await deleteErrorType(id)
       return response
     } catch (error) {
-      console.log('Error type deleting error', error)
+      logger.error('Error type deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

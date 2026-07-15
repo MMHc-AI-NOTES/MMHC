@@ -12,6 +12,8 @@ import mail from '@adonisjs/mail/services/main'
 import { createAuditLog } from '#services/audit_log_service'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { DispatchEmailJobData } from '#jobs/queues/dispatch_email_queue'
+import logger from '@adonisjs/core/services/logger'
+
 export const dispatchWelcomeEmail = async () => {
   try {
     WelcomeEmailEvent.dispatch({
@@ -19,7 +21,7 @@ export const dispatchWelcomeEmail = async () => {
       userEmail: 'mtariqsajid@gmail.com',
     })
   } catch (error) {
-    console.log('dispatchWelcomeEmail Error:', error)
+    logger.error('dispatchWelcomeEmail Error:', error)
   }
 }
 
@@ -33,7 +35,7 @@ export const sendWelcomeEmail = async (payload: WelcomeEmailSendEvent) => {
       })
     )
   } catch (error) {
-    console.log('sendWelcomeEmail Error:', error)
+    logger.error('sendWelcomeEmail Error:', error)
   }
 }
 
@@ -49,7 +51,7 @@ export const sendUserInviteEmail = async (email: string, invitationLink: string)
       })
     )
   } catch (error) {
-    console.log('sendUserInviteEmail Error:', error)
+    logger.error('sendUserInviteEmail Error:', error)
     throw error
   }
 }
@@ -66,7 +68,7 @@ export const sendForgotPasswordEmail = async (email: string, resetUrl: string) =
       })
     )
   } catch (error) {
-    console.log('sendForgotPasswordEmail Error:', error)
+    logger.error('sendForgotPasswordEmail Error:', error)
     throw error
   }
 }
@@ -135,7 +137,7 @@ export const sendPractitionerSmeIssuesEmail = async (
       },
     })
   } catch (error) {
-    console.log('sendPractitionerSmeIssuesEmail Error:', error)
+    logger.error('sendPractitionerSmeIssuesEmail Error:', error)
     throw error
   }
 }
@@ -236,7 +238,7 @@ export const sendMissingFieldsEmail = async (
       },
     })
   } catch (error) {
-    console.log('sendMissingFieldsEmail Error:', error)
+    logger.error('sendMissingFieldsEmail Error:', error)
     throw error
   }
 }

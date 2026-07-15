@@ -9,7 +9,7 @@ import {
 } from '#services/mcp_chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
-
+import logger from '@adonisjs/core/services/logger'
 export default class McpChatController {
   /** Score a note via MCP without persisting a chat record */
   public async score(ctx: HttpContext) {
@@ -17,7 +17,7 @@ export default class McpChatController {
       const payload = await createMcpChatValidator.validate(ctx.request.body())
       return await scoreMcpNote(payload)
     } catch (error) {
-      console.log('MCP score error', error)
+      logger.error('MCP score error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -28,7 +28,7 @@ export default class McpChatController {
       const user = ctx.auth.getUserOrFail()
       return await createMcpChat(payload, user.id, ctx)
     } catch (error) {
-      console.log('MCP chat create error', error)
+      logger.error('MCP chat create error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -38,7 +38,7 @@ export default class McpChatController {
       const { chatId } = await mcpChatIdValidator.validate(ctx.params)
       return await getMcpChatById(chatId)
     } catch (error) {
-      console.log('MCP chat show error', error)
+      logger.error('MCP chat show error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -48,7 +48,7 @@ export default class McpChatController {
       const { chatId } = await mcpChatIdValidator.validate(ctx.params)
       return await reevaluateMcpChat(chatId)
     } catch (error) {
-      console.log('MCP chat reevaluate error', error)
+      logger.error('MCP chat reevaluate error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -60,7 +60,7 @@ export default class McpChatController {
       )
       return await listMcpChats(page, pageSize, filters, sorts)
     } catch (error) {
-      console.log('MCP chat listing error', error)
+      logger.error('MCP chat listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

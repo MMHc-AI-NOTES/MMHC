@@ -16,6 +16,7 @@ import {
 } from '#services/chat_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
+import logger from '@adonisjs/core/services/logger'
 
 export default class ChatController {
   public async create(ctx: HttpContext) {
@@ -25,7 +26,7 @@ export default class ChatController {
       const chatResponse = await createChat(payload, user.id, undefined, ctx)
       return chatResponse
     } catch (error) {
-      console.log('chat creating error', error)
+      logger.error('chat creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -36,7 +37,7 @@ export default class ChatController {
       const chatResponse = await getChatById(chatId)
       return chatResponse
     } catch (error) {
-      console.log('chat getting by id error', error)
+      logger.error('chat getting by id error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -48,7 +49,7 @@ export default class ChatController {
       const chatResponse = await updateChat(payload, chatId)
       return chatResponse
     } catch (error) {
-      console.log('chat updating error', error)
+      logger.error('chat updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -59,7 +60,7 @@ export default class ChatController {
       const payload = await updateChatScoreValidator.validate(ctx.request.body())
       return await updateChatScore(chatId, payload)
     } catch (error) {
-      console.log('chat score updating error', error)
+      logger.error('chat score updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -70,7 +71,7 @@ export default class ChatController {
       const chatResponse = await deleteChat(chatId)
       return chatResponse
     } catch (error) {
-      console.log('chat deleting error', error)
+      logger.error('chat deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -83,7 +84,7 @@ export default class ChatController {
       const chatResponse = await listChats(page, pageSize, filters, sorts)
       return chatResponse
     } catch (error) {
-      console.log('chat listing error', error)
+      logger.error('chat listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -94,7 +95,7 @@ export default class ChatController {
       const chatResponse = await reevaluateChat(chatId)
       return chatResponse
     } catch (error) {
-      console.log('chat re-evaluation error', error)
+      logger.error('chat re-evaluation error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

@@ -2,6 +2,7 @@ import { FiltersInterface } from '#interfaces/filters_interface'
 import { BaseModel } from '@adonisjs/lucid/orm'
 import { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import moment from 'moment'
+import logger from '@adonisjs/core/services/logger'
 
 export const applyFilters = (
   query: ModelQueryBuilderContract<typeof BaseModel>,
@@ -56,12 +57,15 @@ export const applyFilters = (
   })
 
   if (invalidFilterType) {
-    console.log('Error in applyFilters: Invalid filter type provided')
+    logger.error('Error in applyFilters: Invalid filter type provided')
     throw new Error('Invalid filter type. Valid types are: exact, like')
   }
 
   if (invalidFilter) {
-    console.log('Error in applyFilters: Invalid filter column provided. Valid filters:', filterEnum)
+    logger.error(
+      'Error in applyFilters: Invalid filter column provided. Valid filters:',
+      filterEnum
+    )
     throw new Error(`Invalid filter column. Valid columns are: ${filterEnum?.join(', ')}`)
   }
 

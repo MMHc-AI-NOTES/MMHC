@@ -18,7 +18,7 @@ import {
 } from '#validators/manager_review_validator'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
-
+import logger from '@adonisjs/core/services/logger'
 export default class ManagerReviewController {
   public async listing(ctx: HttpContext) {
     try {
@@ -28,7 +28,7 @@ export default class ManagerReviewController {
       const managerReviewResponse = await listManagerReviews(page, pageSize, filters, sorts)
       return sendSuccess('Manager reviews listed successfully', managerReviewResponse)
     } catch (error) {
-      console.log('Manager review listing error', error)
+      logger.error('Manager review listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -39,7 +39,7 @@ export default class ManagerReviewController {
       const managerReviewResponse = await getManagerReview(id)
       return managerReviewResponse
     } catch (error) {
-      console.log('Manager review getting by id error', error)
+      logger.error('Manager review getting by id error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -51,7 +51,7 @@ export default class ManagerReviewController {
       const response = await updateManagerReview(id, payload)
       return response
     } catch (error) {
-      console.log('Manager review updating error', error)
+      logger.error('Manager review updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -62,7 +62,7 @@ export default class ManagerReviewController {
       const response = await deleteManagerReview(id)
       return response
     } catch (error) {
-      console.log('Manager review deleting error', error)
+      logger.error('Manager review deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -73,7 +73,7 @@ export default class ManagerReviewController {
       const response = await notifyPractitioner(payload)
       return response
     } catch (error) {
-      console.log('Notify practitioner error', error)
+      logger.error('Notify practitioner error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -84,7 +84,7 @@ export default class ManagerReviewController {
       const response = await bulkNotifyPractitioner(payload.manager_review_ids)
       return response
     } catch (error) {
-      console.log('Bulk notify practitioner error', error)
+      logger.error('Bulk notify practitioner error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

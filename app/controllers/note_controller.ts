@@ -13,6 +13,7 @@ import { paginationValidator } from '#validators/pagination_validator'
 import { updateNoteValidator } from '#validators/note_validator'
 import vine from '@vinejs/vine'
 import type { HttpContext } from '@adonisjs/core/http'
+import logger from '@adonisjs/core/services/logger'
 
 const noteIdValidator = vine.compile(
   vine.object({
@@ -30,7 +31,7 @@ export default class NotesController {
       const noteResponse = await noteListing(page, pageSize, filters, sorts, user)
       return sendSuccess('Notes listed successfully', noteResponse)
     } catch (error) {
-      console.log('Note listing error', error)
+      logger.error('Note listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -42,7 +43,7 @@ export default class NotesController {
       const noteResponse = await getNoteWithChats(noteId, user)
       return noteResponse
     } catch (error) {
-      console.log('Note with chats getting error', error)
+      logger.error('Note with chats getting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -53,7 +54,7 @@ export default class NotesController {
       const activity = await getNoteActivity(noteId)
       return activity
     } catch (error) {
-      console.log('Note activity error', error)
+      logger.error('Note activity error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -65,7 +66,7 @@ export default class NotesController {
       const statistics = await getQueueStatistics(startDate, endDate)
       return sendSuccess('Queue statistics retrieved successfully', statistics)
     } catch (error) {
-      console.log('Queue statistics error', error)
+      logger.error('Queue statistics error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -76,7 +77,7 @@ export default class NotesController {
       const statistics = await getWorkloadStatistics(user.id)
       return sendSuccess('Workload statistics retrieved successfully', statistics)
     } catch (error) {
-      console.log('Workload statistics error', error)
+      logger.error('Workload statistics error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -86,7 +87,7 @@ export default class NotesController {
       const data = await buildTestDataset()
       return sendSuccess('Test dataset built successfully', data)
     } catch (error) {
-      console.log('Test dataset error', error)
+      logger.error('Test dataset error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -98,7 +99,7 @@ export default class NotesController {
       const noteResponse = await updateNote(noteId, payload)
       return noteResponse
     } catch (error) {
-      console.log('Note update error', error)
+      logger.error('Note update error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

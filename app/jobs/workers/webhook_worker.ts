@@ -2,12 +2,13 @@ import { Worker, Job } from 'bullmq'
 import { redisConfig } from '#config/services'
 import { WEBHOOK_QUEUE_NAME, type WebhookJobData } from '#jobs/queues/webhook_queue'
 import { processWebhookJob } from '#services/webhook_service'
+import logger from '@adonisjs/core/services/logger'
 
 let webhookWorker: Worker | null = null
 
 export const startWebhookWorker = () => {
   if (webhookWorker) {
-    console.log('Webhook worker already running')
+    logger.info('Webhook worker already running')
     return webhookWorker
   }
 
@@ -15,16 +16,16 @@ export const startWebhookWorker = () => {
     WEBHOOK_QUEUE_NAME,
     async (job: Job<WebhookJobData>) => {
       try {
-        console.log(`Processing webhook job ${job.id} for note: ${job.data.payload.NoteId}`)
+        logger.info(`Processing webhook job ${job.id} for note: ${job.data.payload.NoteId}`)
         // Process webhook job from queue
         const result = await processWebhookJob(job.data)
-        console.log(
+        logger.info(
           `Webhook job ${job.id} completed successfully for note: ${job.data.payload.NoteId}`
         )
         return result
       } catch (error: any) {
-        console.error(`Webhook job ${job.id} failed:`, error.message)
-        console.error('Full error:', error)
+        logger.error(`Webhook job ${job.id} failed:`, error.message)
+        logger.error('Full error:', error)
         throw error
       }
     },
@@ -36,21 +37,21 @@ export const startWebhookWorker = () => {
   )
 
   webhookWorker.on('completed', (job) => {
-    console.log(`Job ${job.id} has completed`)
+    logger.info(`Job ${job.id} has completed`)
   })
 
   webhookWorker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} has failed with error: ${err.message}`)
+    logger.error(`Job ${job?.id} has failed with error: ${err.message}`)
   })
 
   webhookWorker.on('error', (err: any) => {
     if (err?.message?.includes?.('Missing key for job')) {
       return
     }
-    console.error('Worker error:', err)
+    logger.error('Worker error:', err)
   })
 
-  console.log('Webhook worker started')
+  logger.info('Webhook worker started')
   return webhookWorker
 }
 
@@ -58,6 +59,6 @@ export const stopWebhookWorker = async () => {
   if (webhookWorker) {
     await webhookWorker.close()
     webhookWorker = null
-    console.log('Webhook worker stopped')
+    logger.info('Webhook worker stopped')
   }
 }
