@@ -13,7 +13,6 @@ import { requestPasswordReset, resetPassword } from '#services/password_reset_se
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 import logger from '@adonisjs/core/services/logger'
-import env from '#start/env'
 export default class AuthController {
   async register(ctx: HttpContext): Promise<void> {
     try {
@@ -36,7 +35,6 @@ export default class AuthController {
 
       return sendSuccess('Logged In Successfully', { token, user })
     } catch (error) {
-      console.log('#########DB_HOST', env.get('DB_HOST'))
       logger.error('Error in login controller', error)
       return ErrorService.handleError(ctx, error)
     }
