@@ -16,7 +16,7 @@ RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 ENV PORT=3333
 ENV HOST=0.0.0.0
 
@@ -28,10 +28,11 @@ COPY --from=build --chown=appuser:nodejs /app/package-lock.json ./package-lock.j
 COPY --from=build --chown=appuser:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=appuser:nodejs /app/build ./build
 
+# RUN npm prune
 RUN npm prune --ignore-scripts --omit=dev
 
 
 USER appuser
 
 EXPOSE 3333
-CMD ["sh", "-c", "NODE_ENV=production exec node build/bin/server.js"]
+CMD ["sh", "-c", "node build/bin/server.js"]
