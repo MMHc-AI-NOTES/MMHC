@@ -1,4 +1,4 @@
-name: Deploy to Prod ECR
+name: Deploy to Prod ECR & ECS
 
 on:
   push:
