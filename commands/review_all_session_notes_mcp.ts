@@ -3,9 +3,9 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 import db from '@adonisjs/lucid/services/db'
 import { createMcpChat } from '#services/mcp_chat_service'
 
-const DEFAULT_CHUNK_SIZE = 200
-const DEFAULT_DELAY_MS = 1
-const DEFAULT_CONCURRENCY = 200
+const DEFAULT_CHUNK_SIZE = 100
+const DEFAULT_DELAY_MS = 500
+const DEFAULT_CONCURRENCY = 100
 
 export default class ReviewAllSessionNotesMcp extends BaseCommand {
   static commandName = 'session:review-all-notes-mcp'
