@@ -20,6 +20,7 @@ import type {
   updateChatValidatorInterface,
   updateChatScoreValidatorInterface,
 } from '#validators/chat_validator'
+import logger from '@adonisjs/core/services/logger'
 
 export const createChat = async (
   reqData: createChatValidatorInterface,
@@ -36,7 +37,7 @@ export const createChat = async (
     }
 
     if (!session) {
-      console.log('Error in createChat: Session not found for note_id:', reqData.note_id)
+      logger.error('Error in createChat: Session not found for note_id:', reqData.note_id)
       throw new Error('Session not found for the provided note')
     }
 
@@ -44,12 +45,12 @@ export const createChat = async (
     const agent = await Agent.find(reqData.prompt_id)
 
     if (!agent) {
-      console.log('Error in createChat: Agent not found for prompt_id:', reqData.prompt_id)
+      logger.error('Error in createChat: Agent not found for prompt_id:', reqData.prompt_id)
       throw new Error('Agent not found for the provided prompt')
     }
 
     if (!agent.prompt) {
-      console.log(
+      logger.error(
         'Error in createChat: Agent prompt is not configured for agent_id:',
         reqData.prompt_id
       )
@@ -57,7 +58,7 @@ export const createChat = async (
     }
 
     if (!agent.model) {
-      console.log(
+      logger.error(
         'Error in createChat: Agent model is not configured for agent_id:',
         reqData.prompt_id
       )
@@ -78,7 +79,7 @@ export const createChat = async (
     const topK = agent.topK ?? 250
 
     if (!prompt) {
-      console.log('Error in createChat: Agent prompt is required for evaluation')
+      logger.error('Error in createChat: Agent prompt is required for evaluation')
       throw new Error('Agent prompt is required for evaluation')
     }
 
@@ -200,7 +201,7 @@ export const createChat = async (
 
     return sendSuccess('Chat created and evaluated successfully', chat)
   } catch (error: any) {
-    console.log('Error in createChat:', error.message)
+    logger.error('Error in createChat:', error.message)
     throw error
   }
 }
@@ -223,13 +224,13 @@ export const getChatById = async (chatId: number) => {
       .first()
 
     if (!chat) {
-      console.log('Error in getChatById: Chat not found with id:', chatId)
+      logger.error('Error in getChatById: Chat not found with id:', chatId)
       throw new Error('Chat not found')
     }
 
     return sendSuccess('Chat retrieved successfully', chat)
   } catch (error: any) {
-    console.log('Error in getChatById:', error.message)
+    logger.error('Error in getChatById:', error.message)
     throw error
   }
 }
@@ -239,7 +240,7 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
     const chat = await Chat.find(chatId)
 
     if (!chat) {
-      console.log('Error in updateChat: Chat not found with id:', chatId)
+      logger.error('Error in updateChat: Chat not found with id:', chatId)
       throw new Error('Chat not found')
     }
 
@@ -250,7 +251,7 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
       const modelId = reqData.model_id || chat.modelId
 
       if (!prompt) {
-        console.log('Error in updateChat: Prompt is required for evaluation')
+        logger.error('Error in updateChat: Prompt is required for evaluation')
         throw new Error('Prompt is required for evaluation')
       }
 
@@ -347,7 +348,7 @@ export const updateChat = async (reqData: updateChatValidatorInterface, chatId: 
     await chat.save()
     return sendSuccess('Chat updated successfully', chat)
   } catch (error: any) {
-    console.log('Error in updateChat:', error.message)
+    logger.error('Error in updateChat:', error.message)
     throw error
   }
 }
@@ -357,14 +358,14 @@ export const deleteChat = async (chatId: number) => {
     const chat = await Chat.find(chatId)
 
     if (!chat) {
-      console.log('Error in deleteChat: Chat not found with id:', chatId)
+      logger.error('Error in deleteChat: Chat not found with id:', chatId)
       throw new Error('Chat not found')
     }
 
     await chat.delete()
     return sendSuccess('Chat deleted successfully')
   } catch (error: any) {
-    console.log('Error in deleteChat:', error.message)
+    logger.error('Error in deleteChat:', error.message)
     throw error
   }
 }
@@ -424,7 +425,7 @@ export const listChats = async (
       },
     }
   } catch (error: any) {
-    console.log('Error in listChats:', error.message)
+    logger.error('Error in listChats:', error.message)
     throw new Error('Failed to retrieve chats. Please try again later.')
   }
 }
@@ -434,7 +435,7 @@ export const reevaluateChat = async (chatId: number) => {
     const chat = await Chat.find(chatId)
 
     if (!chat) {
-      console.log('Error in reevaluateChat: Chat not found with id:', chatId)
+      logger.error('Error in reevaluateChat: Chat not found with id:', chatId)
       throw new Error('Chat not found')
     }
 
@@ -442,7 +443,7 @@ export const reevaluateChat = async (chatId: number) => {
     const session = await Session.query().where('note_id', chat.noteId).first()
 
     if (!session) {
-      console.log('Error in reevaluateChat: Session not found for note_id:', chat.noteId)
+      logger.error('Error in reevaluateChat: Session not found for note_id:', chat.noteId)
       throw new Error('Session not found for this chat')
     }
 
@@ -452,7 +453,7 @@ export const reevaluateChat = async (chatId: number) => {
     previousNote = previousSession?.session || undefined
 
     if (!chat.prompt) {
-      console.log(
+      logger.error(
         'Error in reevaluateChat: Chat prompt is required for re-evaluation, chat_id:',
         chatId
       )
@@ -555,7 +556,7 @@ export const reevaluateChat = async (chatId: number) => {
 
     return sendSuccess('Chat re-evaluated successfully', chat)
   } catch (error: any) {
-    console.log('Error in reevaluateChat:', error.message)
+    logger.error('Error in reevaluateChat:', error.message)
     throw error
   }
 }
@@ -580,7 +581,7 @@ export const updateChatScore = async (
 
     return sendSuccess('Chat score updated successfully', chat)
   } catch (error: any) {
-    console.log('Error in updateChatScore:', error.message)
+    logger.error('Error in updateChatScore:', error.message)
     throw error
   }
 }

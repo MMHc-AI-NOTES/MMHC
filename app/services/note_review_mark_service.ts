@@ -11,6 +11,7 @@ import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import { UserTypeEnum } from '#enums/user_type_enum'
+import logger from '@adonisjs/core/services/logger'
 
 export const markNoteReviewed = async (
   reqData: markNoteReviewedValidatorInterface,
@@ -176,7 +177,7 @@ export const getSmeReviewersNoteCounts = async () => {
       }))
     )
   } catch (error: any) {
-    console.log('getSmeReviewersNoteCounts error', error.message)
+    logger.error('getSmeReviewersNoteCounts error', error.message)
     return sendError('Failed to retrieve sme reviewers note counts')
   }
 }

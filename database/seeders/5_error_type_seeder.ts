@@ -1,5 +1,6 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import ErrorType from '#models/error_type'
+import logger from '@adonisjs/core/services/logger'
 
 export default class extends BaseSeeder {
   async run() {
@@ -27,7 +28,7 @@ export default class extends BaseSeeder {
 
       await ErrorType.updateOrCreateMany('id', errorTypesData)
     } catch (error) {
-      console.log(`Error in seeding error types: ${error}`)
+      logger.error(`Error in seeding error types: ${error}`)
       throw error
     }
   }

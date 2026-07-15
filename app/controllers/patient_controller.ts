@@ -3,7 +3,7 @@ import ErrorService from '#services/error_service'
 import { patientListing } from '#services/patient_service'
 import { paginationValidator } from '#validators/pagination_validator'
 import type { HttpContext } from '@adonisjs/core/http'
-
+import logger from '@adonisjs/core/services/logger'
 export default class PatientController {
   public async listing(ctx: HttpContext) {
     try {
@@ -13,7 +13,7 @@ export default class PatientController {
       const patientResponse = await patientListing(page, pageSize, filters, sorts)
       return sendSuccess('Patients listed successfully', patientResponse)
     } catch (error) {
-      console.log('Patient listing error', error)
+      logger.error('Patient listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

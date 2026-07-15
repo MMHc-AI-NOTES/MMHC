@@ -1,6 +1,7 @@
 import { SortsInterface } from '#interfaces/sorts_interface'
 import { BaseModel } from '@adonisjs/lucid/orm'
 import { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
+import logger from '@adonisjs/core/services/logger'
 
 export const applySorting = (
   query: ModelQueryBuilderContract<typeof BaseModel>,
@@ -31,12 +32,12 @@ export const applySorting = (
   }
 
   if (invalidSortColumn) {
-    console.log('Error in applySorting: Invalid sort column provided. Valid columns:', sortEnum)
+    logger.error('Error in applySorting: Invalid sort column provided. Valid columns:', sortEnum)
     throw new Error(`Invalid sort column. Valid columns are: ${sortEnum?.join(', ')}`)
   }
 
   if (invalidSortOrder) {
-    console.log('Error in applySorting: Invalid sort order provided')
+    logger.error('Error in applySorting: Invalid sort order provided')
     throw new Error("Invalid sort order. Valid orders are: 'asc', 'desc'")
   }
 

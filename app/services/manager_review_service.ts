@@ -24,6 +24,7 @@ import {
   sendBulkPractitionerSmeIssuesEmail,
 } from '#services/email_service'
 import { DateTime } from 'luxon'
+import logger from '@adonisjs/core/services/logger'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -168,7 +169,7 @@ export const listManagerReviews = async (
       data: dataWithScores,
     }
   } catch (error: any) {
-    console.log('Error in listManagerReviews:', error.message)
+    logger.error('Error in listManagerReviews:', error.message)
     throw new Error('Failed to retrieve manager reviews. Please try again later.')
   }
 }
@@ -465,7 +466,7 @@ export const notifyPractitioner = async (reqData: notifyPractitionerValidatorInt
       issues_count: smeIssues.length,
     })
   } catch (error: any) {
-    console.log('Error in notifyPractitioner:', error.message)
+    logger.error('Error in notifyPractitioner:', error.message)
     return sendError(error.message)
   }
 }
@@ -593,7 +594,7 @@ export const bulkNotifyPractitioner = async (managerReviewIds: number[]) => {
       reviews_updated: allNotifiedIds.length,
     })
   } catch (error: any) {
-    console.log('Error in bulkNotifyPractitioner:', error.message)
+    logger.error('Error in bulkNotifyPractitioner:', error.message)
     return sendError(error.message)
   }
 }

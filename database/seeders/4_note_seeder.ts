@@ -10,6 +10,9 @@
 //   WorkflowEnum,
 //   PriorityEnum,
 // } from '#enums/session_enum'
+
+// import logger from "@adonisjs/core/services/logger"
+
 // import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 
 // export default class extends BaseSeeder {
@@ -324,7 +327,7 @@
 //         }
 //       }
 //     } catch (error) {
-//       console.log(`Error in seeding sessions: ${error}`)
+//       logger.error(`Error in seeding sessions: ${error}`)
 //       throw error
 //     }
 //   }

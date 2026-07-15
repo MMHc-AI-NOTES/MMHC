@@ -1,3 +1,4 @@
+import logger from '@adonisjs/core/services/logger'
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 import {
@@ -28,7 +29,7 @@ export default class UsersController {
       const userResponse = await createUser(payload, currentUser.type)
       return sendSuccess('User created successfully', userResponse)
     } catch (error) {
-      console.log('User creating error', error)
+      logger.error('User creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -39,7 +40,7 @@ export default class UsersController {
       const userResponse = await getUserById(userId)
       return sendSuccess('User details', userResponse)
     } catch (error) {
-      console.log('User getting by id error', error)
+      logger.error('User getting by id error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -73,7 +74,7 @@ export default class UsersController {
       await deleteUser(userId)
       return sendSuccess('User deleted successfully')
     } catch (error) {
-      console.log('User deleting error', error)
+      logger.error('User deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -86,7 +87,7 @@ export default class UsersController {
       const userResponse = await userListing(page, pageSize, filters, sorts)
       return sendSuccess('Users listed successfully', userResponse)
     } catch (error) {
-      console.log('User listing error', error)
+      logger.error('User listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -97,7 +98,7 @@ export default class UsersController {
       const user = await completeUserOnboarding(payload)
       return sendSuccess('Onboarding completed successfully', user)
     } catch (error) {
-      console.log('Error in completeOnboarding:', error)
+      logger.error('Error in completeOnboarding:', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -108,7 +109,7 @@ export default class UsersController {
       await resendUserOnboardingEmail(userId)
       return sendSuccess('Onboarding email resent successfully')
     } catch (error) {
-      console.log('Error in resendOnboardingEmail:', error)
+      logger.error('Error in resendOnboardingEmail:', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -120,7 +121,7 @@ export default class UsersController {
       const user = await updateUserPassword(payload, currentUser.id, currentUser.type)
       return sendSuccess('Password updated successfully', user)
     } catch (error) {
-      console.log('Error in updatePassword:', error)
+      logger.error('Error in updatePassword:', error)
       return ErrorService.handleError(ctx, error)
     }
   }

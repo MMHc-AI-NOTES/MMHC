@@ -187,7 +187,7 @@ export const getSessionById = async (id: number) => {
 
     return session
   } catch (error: any) {
-    console.log('Error in getSessionById:', error.message)
+    logger.error('Error in getSessionById:', error.message)
     throw new Error(error.message)
   }
 }
@@ -205,7 +205,7 @@ export const getSessionBySessionId = async (sessionId: string) => {
 
     return session
   } catch (error: any) {
-    console.log('Error in getSessionBySessionId:', error.message)
+    logger.error('Error in getSessionBySessionId:', error.message)
     throw new Error(error.message)
   }
 }
@@ -220,7 +220,7 @@ export const getSessionByNoteId = async (noteId: string) => {
 
     return session
   } catch (error: any) {
-    console.log('Error in getSessionByNoteId:', error.message)
+    logger.error('Error in getSessionByNoteId:', error.message)
     throw new Error(error.message)
   }
 }
@@ -238,7 +238,7 @@ export const getSessionByNoteId = async (noteId: string) => {
  */
 export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
   const noteId = payload.NoteId
-  console.log('[Webhook] Processing started', { noteId })
+  logger.info('[Webhook] Processing started', { noteId })
 
   try {
     // Get CPT code 90791 (default for sessions)
@@ -381,7 +381,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
     await enqueueSessionCptJob(session.id)
 
     const status = existingSession ? 'updated' : 'created'
-    console.log('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
+    logger.info('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
     return sendSuccess(
       existingSession
         ? 'Session updated successfully from webhook'
@@ -393,12 +393,12 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       }
     )
   } catch (error: any) {
-    console.log('[Webhook] Processing ended', {
+    logger.error('[Webhook] Processing ended', {
       noteId,
       status: 'not processed',
       error: error.message,
     })
-    console.log('Error in createSessionFromWebhook:', error.message)
+    logger.error('Error in createSessionFromWebhook:', error.message)
     throw error
   }
 }

@@ -1,5 +1,6 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import IssueDescription from '#models/issue_description'
+import logger from '@adonisjs/core/services/logger'
 
 export default class extends BaseSeeder {
   async run() {
@@ -66,7 +67,7 @@ export default class extends BaseSeeder {
 
       await IssueDescription.updateOrCreateMany('id', issueDescriptionsData)
     } catch (error) {
-      console.log(`Error in seeding issue descriptions: ${error}`)
+      logger.error(`Error in seeding issue descriptions: ${error}`)
       throw error
     }
   }

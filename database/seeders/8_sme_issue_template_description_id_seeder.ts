@@ -5,6 +5,7 @@ import {
   getNextDescriptionId,
   resequenceDescriptionIds,
 } from '#helpers/sme_issue_template_description_id_helper'
+import logger from '@adonisjs/core/services/logger'
 
 export default class extends BaseSeeder {
   async run() {
@@ -30,7 +31,7 @@ export default class extends BaseSeeder {
         await resequenceDescriptionIds(section.id)
       }
     } catch (error) {
-      console.log(`Error in seeding SME issue template description IDs: ${error}`)
+      logger.error(`Error in seeding SME issue template description IDs: ${error}`)
       throw error
     }
   }

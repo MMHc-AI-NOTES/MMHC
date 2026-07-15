@@ -12,7 +12,7 @@ import { loginUser, registerUser, impersonateUser } from '#services/auth_service
 import { requestPasswordReset, resetPassword } from '#services/password_reset_service'
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
-
+import logger from '@adonisjs/core/services/logger'
 export default class AuthController {
   async register(ctx: HttpContext): Promise<void> {
     try {
@@ -22,7 +22,7 @@ export default class AuthController {
 
       return sendSuccess('User registered successfully', { user, token })
     } catch (error) {
-      console.log('Error in register controller', error)
+      logger.error('Error in register controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -35,7 +35,7 @@ export default class AuthController {
 
       return sendSuccess('Logged In Successfully', { token, user })
     } catch (error) {
-      console.log('Error in login controller', error)
+      logger.error('Error in login controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -46,7 +46,7 @@ export default class AuthController {
 
       return sendSuccess('User fetched successfully', user)
     } catch (error) {
-      console.log('Error in getUserByToken controller', error)
+      logger.error('Error in getUserByToken controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -62,7 +62,7 @@ export default class AuthController {
 
       return sendSuccess('Impersonation successful', { token, user })
     } catch (error) {
-      console.log('Error in impersonate controller', error)
+      logger.error('Error in impersonate controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -92,7 +92,7 @@ export default class AuthController {
 
       return sendSuccess('Logged out successfully')
     } catch (error) {
-      console.log('Error in logout controller', error)
+      logger.error('Error in logout controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -104,7 +104,7 @@ export default class AuthController {
 
       return response
     } catch (error) {
-      console.log('Error in forgotPassword controller', error)
+      logger.error('Error in forgotPassword controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -115,7 +115,7 @@ export default class AuthController {
       const response = await resetPassword(token, password)
       return response
     } catch (error) {
-      console.log('Error in resetPassword controller', error)
+      logger.error('Error in resetPassword controller', error)
       return ErrorService.handleError(ctx, error)
     }
   }

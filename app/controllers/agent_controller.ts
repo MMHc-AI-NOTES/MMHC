@@ -13,7 +13,7 @@ import {
 } from '#services/agent_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
-
+import logger from '@adonisjs/core/services/logger'
 export default class AgentsController {
   public async addAgent(ctx: HttpContext) {
     try {
@@ -21,7 +21,7 @@ export default class AgentsController {
       const agentResponse = await createAgent(payload)
       return agentResponse
     } catch (error) {
-      console.log('agent creating error', error)
+      logger.error('agent creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -32,7 +32,7 @@ export default class AgentsController {
       const agentResponse = await getAgentById(agentId)
       return agentResponse
     } catch (error) {
-      console.log('agent getting by id error', error)
+      logger.error('agent getting by id error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -44,7 +44,7 @@ export default class AgentsController {
       const agentResponse = await updateAgent(payload, agentId)
       return agentResponse
     } catch (error) {
-      console.log('agent updating error', error)
+      logger.error('agent updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -55,7 +55,7 @@ export default class AgentsController {
       const agentResponse = await deleteAgent(agentId)
       return agentResponse
     } catch (error) {
-      console.log('agent deleting error', error)
+      logger.error('agent deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -68,7 +68,7 @@ export default class AgentsController {
       const agentResponse = await listAgents(page, pageSize, filters, sorts)
       return agentResponse
     } catch (error) {
-      console.log('agent listing error', error)
+      logger.error('agent listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

@@ -13,6 +13,7 @@ import { sendUserInviteEmail } from '#services/email_service'
 import { Secret } from '@adonisjs/core/helpers'
 import { frontendRoutesConfig, getFrontendLink } from '#services/frontend_routes_service'
 import hash from '@adonisjs/core/services/hash'
+import logger from '@adonisjs/core/services/logger'
 
 export const createUser = async (
   payload: createUserValidatorInterface,
@@ -44,7 +45,7 @@ export const createUser = async (
 
     return user
   } catch (error: any) {
-    console.log('Error in createUser:', error.message)
+    logger.error('Error in createUser:', error.message)
     throw new Error(error.message)
   }
 }
@@ -126,7 +127,7 @@ export const userListing = async (
       })),
     }
   } catch (error: any) {
-    console.log('Error in userListing:', error.message)
+    logger.error('Error in userListing:', error.message)
     throw new Error(error.message)
   }
 }
@@ -140,7 +141,7 @@ export const getUserById = async (userId: number) => {
     }
     return userResponse
   } catch (error: any) {
-    console.log('Error in getUserById:', error.message)
+    logger.error('Error in getUserById:', error.message)
     throw new Error(error.message)
   }
 }
@@ -150,7 +151,7 @@ export const deleteUser = async (user_id: number) => {
     const user = await getUserById(user_id)
     return await user.softDelete()
   } catch (error: any) {
-    console.log('Error in deleteUser:', error.message)
+    logger.error('Error in deleteUser:', error.message)
     throw new Error(error.message)
   }
 }
@@ -160,7 +161,7 @@ export const updateUser = async (payload: updateUserValidatorInterface, userId: 
     const user = await getUserById(userId)
     return await user.merge(payload).save()
   } catch (error: any) {
-    console.log('Error in updateUser:', error.message)
+    logger.error('Error in updateUser:', error.message)
     throw new Error(error.message)
   }
 }
@@ -211,7 +212,7 @@ export const completeUserOnboarding = async (payload: completeOnboardingValidato
     }
     return userDetails
   } catch (error: any) {
-    console.log('Error in completeUserOnboarding:', error.message)
+    logger.error('Error in completeUserOnboarding:', error.message)
     throw new Error(error.message)
   }
 }
@@ -245,7 +246,7 @@ export const resendUserOnboardingEmail = async (userId: number) => {
 
     return true
   } catch (error: any) {
-    console.log('Error in resendUserOnboardingEmail:', error.message)
+    logger.error('Error in resendUserOnboardingEmail:', error.message)
     throw new Error(error.message)
   }
 }
@@ -291,7 +292,7 @@ export const updateUserPassword = async (
 
     return user
   } catch (error: any) {
-    console.log('Error in updateUserPassword:', error.message)
+    logger.error('Error in updateUserPassword:', error.message)
     throw new Error(error.message)
   }
 }

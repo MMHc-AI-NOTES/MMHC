@@ -14,7 +14,7 @@ import { paginationValidator } from '#validators/pagination_validator'
 import type { HttpContext } from '@adonisjs/core/http'
 import ErrorService from '#services/error_service'
 import { sendSuccess } from '#services/custom_response_service'
-
+import logger from '@adonisjs/core/services/logger'
 export default class HumanReviewController {
   public async listing(ctx: HttpContext) {
     try {
@@ -32,7 +32,7 @@ export default class HumanReviewController {
       )
       return sendSuccess('Human reviews listed successfully', humanReviewResponse)
     } catch (error) {
-      console.log('Human review listing error', error)
+      logger.error('Human review listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -44,7 +44,7 @@ export default class HumanReviewController {
       const response = await getHumanReview(id, currentUser.id, currentUser.type)
       return response
     } catch (error) {
-      console.log('Human review getting error', error)
+      logger.error('Human review getting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -55,7 +55,7 @@ export default class HumanReviewController {
       const humanReviewResponse = await createHumanReview(payload)
       return humanReviewResponse
     } catch (error) {
-      console.log('Human review creating error', error)
+      logger.error('Human review creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -67,7 +67,7 @@ export default class HumanReviewController {
       const response = await updateHumanReview(id, payload)
       return response
     } catch (error) {
-      console.log('Human review updating error', error)
+      logger.error('Human review updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -78,7 +78,7 @@ export default class HumanReviewController {
       const response = await deleteHumanReview(id)
       return response
     } catch (error) {
-      console.log('Human review deleting error', error)
+      logger.error('Human review deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

@@ -2,6 +2,7 @@ import env from '#start/env'
 import { ChatAiReviewEnum, type ChatAiReview } from '#enums/chat_enum'
 import { evaluateChatWithMcp } from '#services/mcp_service'
 import type { NormalizedEvaluationResult } from '#interfaces/mcp_interface'
+import logger from '@adonisjs/core/services/logger'
 
 // ─── Param Types ──────────────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ export function buildEvaluationParams(data: {
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export async function evaluateNote(params: EvaluationParams): Promise<NormalizedEvaluationResult> {
-  console.log(`[EvaluationRouter] Provider: ${params.provider}`)
+  logger.info(`[EvaluationRouter] Provider: ${params.provider}`)
 
   if (params.provider === ChatAiReviewEnum.mcp) {
     return evaluateChatWithMcp({

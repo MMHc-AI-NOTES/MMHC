@@ -11,6 +11,7 @@ import type {
   createIssuesRelatedToValidatorInterface,
   updateIssuesRelatedToValidatorInterface,
 } from '#validators/issues_related_to_validator'
+import logger from '@adonisjs/core/services/logger'
 
 export const listIssuesRelatedTo = async (
   page?: number,
@@ -59,7 +60,7 @@ export const listIssuesRelatedTo = async (
       })),
     })
   } catch (error: any) {
-    console.log('Error in listIssuesRelatedTo:', error.message)
+    logger.error('Error in listIssuesRelatedTo:', error.message)
     throw new Error('Failed to retrieve issues related to. Please try again later.')
   }
 }
@@ -74,7 +75,7 @@ export const getIssuesRelatedTo = async (id: number) => {
 
     return sendSuccess('Issues related to retrieved successfully', issuesRelatedTo)
   } catch (error: any) {
-    console.log('Error in getIssuesRelatedTo:', error.message)
+    logger.error('Error in getIssuesRelatedTo:', error.message)
     return sendError(error.message)
   }
 }
@@ -94,7 +95,7 @@ export const createIssuesRelatedTo = async (reqData: createIssuesRelatedToValida
 
     return sendSuccess('Issues related to created successfully', issuesRelatedTo)
   } catch (error: any) {
-    console.log('Error in createIssuesRelatedTo:', error.message)
+    logger.error('Error in createIssuesRelatedTo:', error.message)
     return sendError(error.message)
   }
 }
@@ -129,7 +130,7 @@ export const updateIssuesRelatedTo = async (
 
     return sendSuccess('Issues related to updated successfully', issuesRelatedTo)
   } catch (error: any) {
-    console.log('Error in updateIssuesRelatedTo:', error.message)
+    logger.error('Error in updateIssuesRelatedTo:', error.message)
     return sendError(error.message)
   }
 }
@@ -154,7 +155,7 @@ export const deleteIssuesRelatedTo = async (id: number) => {
     await issuesRelatedTo.delete()
     return sendSuccess('Issues related to deleted successfully')
   } catch (error: any) {
-    console.log('Error in deleteIssuesRelatedTo:', error.message)
+    logger.error('Error in deleteIssuesRelatedTo:', error.message)
     return sendError(error.message)
   }
 }

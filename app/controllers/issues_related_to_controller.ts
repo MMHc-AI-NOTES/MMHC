@@ -13,6 +13,7 @@ import {
 } from '#validators/issues_related_to_validator'
 import ErrorService from '#services/error_service'
 import vine from '@vinejs/vine'
+import logger from '@adonisjs/core/services/logger'
 
 const issuesRelatedToIdValidator = vine.compile(
   vine.object({
@@ -29,7 +30,7 @@ export default class IssuesRelatedToController {
       const issuesRelatedToResponse = await listIssuesRelatedTo(page, pageSize, filters, sorts)
       return issuesRelatedToResponse
     } catch (error) {
-      console.log('Issues related to listing error', error)
+      logger.error('Issues related to listing error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -40,7 +41,7 @@ export default class IssuesRelatedToController {
       const response = await getIssuesRelatedTo(id)
       return response
     } catch (error) {
-      console.log('Issues related to getting error', error)
+      logger.error('Issues related to getting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -51,7 +52,7 @@ export default class IssuesRelatedToController {
       const issuesRelatedToResponse = await createIssuesRelatedTo(payload)
       return issuesRelatedToResponse
     } catch (error) {
-      console.log('Issues related to creating error', error)
+      logger.error('Issues related to creating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -63,7 +64,7 @@ export default class IssuesRelatedToController {
       const response = await updateIssuesRelatedTo(id, payload)
       return response
     } catch (error) {
-      console.log('Issues related to updating error', error)
+      logger.error('Issues related to updating error', error)
       return ErrorService.handleError(ctx, error)
     }
   }
@@ -74,7 +75,7 @@ export default class IssuesRelatedToController {
       const response = await deleteIssuesRelatedTo(id)
       return response
     } catch (error) {
-      console.log('Issues related to deleting error', error)
+      logger.error('Issues related to deleting error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

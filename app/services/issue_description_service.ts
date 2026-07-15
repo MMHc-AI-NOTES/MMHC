@@ -11,6 +11,7 @@ import type {
   createIssueDescriptionValidatorInterface,
   updateIssueDescriptionValidatorInterface,
 } from '#validators/issue_description_validator'
+import logger from '@adonisjs/core/services/logger'
 
 export const listIssueDescriptions = async (
   page?: number,
@@ -59,7 +60,7 @@ export const listIssueDescriptions = async (
       })),
     })
   } catch (error: any) {
-    console.log('Error in listIssueDescriptions:', error.message)
+    logger.error('Error in listIssueDescriptions:', error.message)
     throw new Error('Failed to retrieve issue descriptions. Please try again later.')
   }
 }
@@ -74,7 +75,7 @@ export const getIssueDescription = async (id: number) => {
 
     return sendSuccess('Issue description retrieved successfully', issueDescription)
   } catch (error: any) {
-    console.log('Error in getIssueDescription:', error.message)
+    logger.error('Error in getIssueDescription:', error.message)
     return sendError(error.message)
   }
 }
@@ -94,7 +95,7 @@ export const createIssueDescription = async (reqData: createIssueDescriptionVali
 
     return sendSuccess('Issue description created successfully', issueDescription)
   } catch (error: any) {
-    console.log('Error in createIssueDescription:', error.message)
+    logger.error('Error in createIssueDescription:', error.message)
     return sendError(error.message)
   }
 }
@@ -129,7 +130,7 @@ export const updateIssueDescription = async (
 
     return sendSuccess('Issue description updated successfully', issueDescription)
   } catch (error: any) {
-    console.log('Error in updateIssueDescription:', error.message)
+    logger.error('Error in updateIssueDescription:', error.message)
     return sendError(error.message)
   }
 }
@@ -154,7 +155,7 @@ export const deleteIssueDescription = async (id: number) => {
     await issueDescription.delete()
     return sendSuccess('Issue description deleted successfully')
   } catch (error: any) {
-    console.log('Error in deleteIssueDescription:', error.message)
+    logger.error('Error in deleteIssueDescription:', error.message)
     return sendError(error.message)
   }
 }

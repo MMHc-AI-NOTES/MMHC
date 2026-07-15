@@ -16,6 +16,7 @@ import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { UserTypeEnum } from '#enums/user_type_enum'
 import { DisagreementLevelEnum } from '#enums/disagreement_enum'
 import { ErrorTypePoints } from '#enums/manual_issue_enum'
+import logger from '@adonisjs/core/services/logger'
 
 export const createHumanReview = async (reqData: createHumanReviewValidatorInterface) => {
   try {
@@ -215,7 +216,7 @@ export const listHumanReviews = async (
       data: dataWithScores,
     }
   } catch (error: any) {
-    console.log('Error in listHumanReviews:', error.message)
+    logger.error('Error in listHumanReviews:', error.message)
     throw new Error('Failed to retrieve human reviews. Please try again later.')
   }
 }

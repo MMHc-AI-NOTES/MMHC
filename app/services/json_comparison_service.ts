@@ -1,6 +1,7 @@
 import isEqual from 'lodash.isequal'
 import WebhookSessionVersion from '#models/webhook_session_version'
 import SmeIssue from '#models/sme_issue'
+import logger from '@adonisjs/core/services/logger'
 
 /**
  * Compare two JSON objects and determine if they are different
@@ -27,7 +28,7 @@ export const compareJsonObjects = (json1: string | object, json2: string | objec
 
     return !isEqual(obj1, obj2)
   } catch (error) {
-    console.log('Error comparing JSON objects:', error)
+    logger.error('Error comparing JSON objects:', error)
     return true
   }
 }
@@ -48,7 +49,7 @@ export const getLatestWebhookSessionVersion = async (
 
     return latestVersion
   } catch (error) {
-    console.log('Error getting latest webhook session version:', error)
+    logger.error('Error getting latest webhook session version:', error)
     return null
   }
 }
@@ -134,7 +135,7 @@ export const storeWebhookSessionVersionIfDifferent = async (
       message: 'New version stored (JSON is different from previous)',
     }
   } catch (error: any) {
-    console.log('Error storing webhook session version:', error.message)
+    logger.error('Error storing webhook session version:', error.message)
     throw error
   }
 }

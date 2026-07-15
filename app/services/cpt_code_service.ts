@@ -1,3 +1,4 @@
+import logger from '@adonisjs/core/services/logger'
 import CptCode from '#models/cpt_code'
 
 export const listCptCodes = async () => {
@@ -13,7 +14,7 @@ export const listCptCodes = async () => {
       })),
     }
   } catch (error: any) {
-    console.log('Error in listCptCodes:', error.message)
+    logger.error('Error in listCptCodes:', error.message)
     throw new Error(`Error retrieving CPT codes: ${error.message}`)
   }
 }

@@ -12,6 +12,7 @@ import {
   getNextDescriptionId,
   resequenceDescriptionIds,
 } from '#helpers/sme_issue_template_description_id_helper'
+import logger from '@adonisjs/core/services/logger'
 
 export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateValidatorInterface) => {
   try {
@@ -66,7 +67,7 @@ export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateVali
 
     return sendSuccess('SME issue template created successfully', template)
   } catch (error: any) {
-    console.log('Error in createSmeIssueTemplate:', error.message)
+    logger.error('Error in createSmeIssueTemplate:', error.message)
     return sendError(error.message)
   }
 }
@@ -92,7 +93,7 @@ export const listSmeIssueTemplates = async (page?: number, pageSize?: number) =>
       })),
     }
   } catch (error: any) {
-    console.log('Error in listSmeIssueTemplates:', error.message)
+    logger.error('Error in listSmeIssueTemplates:', error.message)
     throw new Error('Failed to retrieve SME issue templates. Please try again later.')
   }
 }
@@ -111,7 +112,7 @@ export const getSmeIssueTemplateByDescriptionId = async (descriptionId: string) 
 
     return smeIssueTemplate
   } catch (error: any) {
-    console.log('Error in getSmeIssueTemplateByDescriptionId:', error.message)
+    logger.error('Error in getSmeIssueTemplateByDescriptionId:', error.message)
     throw new Error(error.message)
   }
 }
@@ -131,7 +132,7 @@ export const getSmeIssueTemplate = async (id: number) => {
 
     return sendSuccess('SME issue template retrieved successfully', template)
   } catch (error: any) {
-    console.log('Error in getSmeIssueTemplate:', error.message)
+    logger.error('Error in getSmeIssueTemplate:', error.message)
     return sendError(error.message)
   }
 }
@@ -239,7 +240,7 @@ export const updateSmeIssueTemplate = async (
 
     return sendSuccess('SME issue template updated successfully', template)
   } catch (error: any) {
-    console.log('Error in updateSmeIssueTemplate:', error.message)
+    logger.error('Error in updateSmeIssueTemplate:', error.message)
     return sendError(error.message)
   }
 }
@@ -256,7 +257,7 @@ export const deleteSmeIssueTemplate = async (id: number) => {
     await resequenceDescriptionIds(issuesRelatedToId)
     return sendSuccess('SME issue template deleted successfully')
   } catch (error: any) {
-    console.log('Error in deleteSmeIssueTemplate:', error.message)
+    logger.error('Error in deleteSmeIssueTemplate:', error.message)
     return sendError(error.message)
   }
 }

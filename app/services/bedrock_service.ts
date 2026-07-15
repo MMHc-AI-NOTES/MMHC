@@ -8,6 +8,7 @@ import { bedrockConfig } from '#config/services'
 import { EvaluationPromptKeys } from '#enums/evaluation_prompt_enum'
 import { agentModelKeys } from '#enums/agent_enum'
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
+import logger from '@adonisjs/core/services/logger'
 
 const client = new BedrockRuntimeClient({
   region: bedrockConfig.region,
@@ -51,7 +52,7 @@ export const invokeBedrockModel = async (
     // If SageMaker endpoint ARN, use SageMaker Runtime
     if (actualModelId.startsWith('arn:aws:sagemaker:')) {
       const endpointName = actualModelId.split('endpoint/')[1]
-      console.log('invokeBedrockModel endpointName:', endpointName)
+      logger.info('invokeBedrockModel endpointName:', endpointName)
       if (!endpointName) throw new Error('Invalid SageMaker endpoint ARN')
 
       const sagemakerJsonStrictInstruction = `
@@ -178,7 +179,7 @@ export const invokeBedrockModel = async (
       body: JSON.stringify(body),
     })
 
-    console.log('Invoking Bedrock model:', actualModelId, 'in region:', bedrockConfig.region)
+    logger.info('Invoking Bedrock model:', actualModelId, 'in region:', bedrockConfig.region)
     const res = await client.send(command)
     const output = JSON.parse(new TextDecoder().decode(res.body))
 
@@ -198,7 +199,7 @@ export const invokeBedrockModel = async (
       ...output,
     }
   } catch (error: any) {
-    console.log('Bedrock API Error:', error.message)
+    logger.error('Bedrock API Error:', error.message)
     throw new Error('Failed to communicate with AI service. Please try again later.')
   }
 }
