@@ -4,7 +4,8 @@ import db from '@adonisjs/lucid/services/db'
 import { createMcpChat } from '#services/mcp_chat_service'
 
 const DEFAULT_CHUNK_SIZE = 25
-const DEFAULT_DELAY_MS = 2000
+const DEFAULT_DELAY_MS = 1000
+const DEFAULT_CONCURRENCY = 25
 
 export default class ReviewAllSessionNotesMcp extends BaseCommand {
   static commandName = 'session:review-all-notes-mcp'
@@ -23,9 +24,13 @@ export default class ReviewAllSessionNotesMcp extends BaseCommand {
   @flags.number({ description: 'Delay between chunks in milliseconds (default: 1000)' })
   declare delay?: number
 
+  @flags.number({ description: 'Maximum number of MCP reviews running concurrently (default: 5)' })
+  declare concurrency?: number
+
   async run() {
     const chunkSize = this.chunkSize ?? DEFAULT_CHUNK_SIZE
     const delay = this.delay ?? DEFAULT_DELAY_MS
+    const concurrency = this.concurrency ?? DEFAULT_CONCURRENCY
 
     if (!Number.isInteger(chunkSize) || chunkSize < 1) {
       this.logger.error('--chunk-size must be a positive integer')
@@ -37,6 +42,11 @@ export default class ReviewAllSessionNotesMcp extends BaseCommand {
       return
     }
 
+    if (!Number.isInteger(concurrency) || concurrency < 1) {
+      this.logger.error('--concurrency must be a positive integer')
+      return
+    }
+
     const userId = this.userId ?? 1 //1 is for admin user
 
     let lastId = 0
@@ -44,7 +54,9 @@ export default class ReviewAllSessionNotesMcp extends BaseCommand {
     let skipped = 0
     let failed = 0
 
-    this.logger.info(`Starting MCP review in chunks of ${chunkSize} using user ${userId}`)
+    this.logger.info(
+      `Starting MCP review in chunks of ${chunkSize}, concurrency ${concurrency} using user ${userId}`
+    )
 
     while (true) {
       const sessions = await db
@@ -57,20 +69,16 @@ export default class ReviewAllSessionNotesMcp extends BaseCommand {
 
       if (sessions.length === 0) break
 
-      for (const session of sessions) {
-        lastId = session.id
+      lastId = sessions[sessions.length - 1].id
 
-        const existingChat = await db
-          .from('chats')
-          .where('note_id', session.note_id)
-          .select('id')
-          .first()
+      const noteIds = sessions.map((session) => session.note_id)
+      const existingChats = await db.from('chats').whereIn('note_id', noteIds).select('note_id')
 
-        if (existingChat) {
-          skipped++
-          continue
-        }
+      const existingNoteIds = new Set(existingChats.map((chat) => chat.note_id))
+      const pendingSessions = sessions.filter((session) => !existingNoteIds.has(session.note_id))
+      skipped += sessions.length - pendingSessions.length
 
+      await this.mapWithConcurrency(pendingSessions, concurrency, async (session) => {
         try {
           await createMcpChat({ note_id: session.note_id }, userId)
           processed++
@@ -79,7 +87,7 @@ export default class ReviewAllSessionNotesMcp extends BaseCommand {
           failed++
           this.logger.error(`Failed ${session.note_id}: ${error?.message ?? String(error)}`)
         }
-      }
+      })
 
       this.logger.info(
         `Chunk complete through session ${lastId}; created=${processed}, skipped=${skipped}, failed=${failed}`
@@ -91,5 +99,23 @@ export default class ReviewAllSessionNotesMcp extends BaseCommand {
     }
 
     this.logger.success(`Finished: created=${processed}, skipped=${skipped}, failed=${failed}`)
+  }
+
+  private async mapWithConcurrency<T>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T) => Promise<void>
+  ): Promise<void> {
+    let nextIndex = 0
+
+    const worker = async () => {
+      while (true) {
+        const index = nextIndex++
+        if (index >= items.length) return
+        await mapper(items[index])
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker))
   }
 }
