@@ -7,33 +7,6 @@
 |
 */
 
-import env from '#start/env'
-
-const envKeys = [
-  'NODE_ENV',
-  'PORT',
-  'APP_KEY',
-  'HOST',
-  'LOG_LEVEL',
-  'DB_HOST',
-  'DB_PORT',
-  'DB_USER',
-  'DB_PASSWORD',
-  'DB_DATABASE',
-  'SMTP_HOST',
-  'SMTP_PORT',
-
-  'SMTP_USERNAME',
-  'SMTP_PASSWORD',
-  'SMTP_FROM',
-  'AWS_REGION',
-  'AWS_ACCESS',
-
-  // add the remaining keys here
-] as const
-
-console.log(Object.fromEntries(envKeys.map((key) => [key, env.get(key)])))
-
 import router from '@adonisjs/core/services/router'
 import '#start/routes/user_routes'
 import '#start/routes/auth_routes'

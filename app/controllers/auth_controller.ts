@@ -13,6 +13,8 @@ import { requestPasswordReset, resetPassword } from '#services/password_reset_se
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 import logger from '@adonisjs/core/services/logger'
+import env from '#start/env'
+
 export default class AuthController {
   async register(ctx: HttpContext): Promise<void> {
     try {
@@ -35,6 +37,30 @@ export default class AuthController {
 
       return sendSuccess('Logged In Successfully', { token, user })
     } catch (error) {
+      const envKeys = [
+        'NODE_ENV',
+        'PORT',
+        'APP_KEY',
+        'HOST',
+        'LOG_LEVEL',
+        'DB_HOST',
+        'DB_PORT',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_DATABASE',
+        'SMTP_HOST',
+        'SMTP_PORT',
+
+        'SMTP_USERNAME',
+        'SMTP_PASSWORD',
+        'SMTP_FROM',
+        'AWS_REGION',
+        'AWS_ACCESS',
+
+        // add the remaining keys here
+      ] as const
+
+      console.log(Object.fromEntries(envKeys.map((key) => [key, env.get(key)])))
       logger.error('Error in login controller', error)
       return ErrorService.handleError(ctx, error)
     }
