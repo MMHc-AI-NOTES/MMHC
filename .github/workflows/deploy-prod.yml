@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   deploy:
-    timeout-minutes: 5
+    timeout-minutes: 30
     name: Build and deploy to ECS
     runs-on: ubuntu-latest
 
