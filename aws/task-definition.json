@@ -131,6 +131,10 @@
           "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:REDIS_DB::"
         },
         {
+          "name": "REDIS_TLS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:REDIS_TLS::"
+        },
+        {
           "name": "EMAIL_TEST",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:EMAIL_TEST::"
         },
