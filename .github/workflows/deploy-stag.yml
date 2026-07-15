@@ -114,6 +114,8 @@ jobs:
           _remote_directory_name=$1
           _pm2_server_ref=$1
           _pm2_webhook_webhook_worker_ref="${_pm2_server_ref}-webhook-queue-worker"
+          _pm2_email_worker_ref="${_pm2_server_ref}-email-queue-worker"
+          _pm2_session_cpt_codes_worker_ref="${_pm2_server_ref}-session-cpt-codes-queue-worker"
           NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
 
 
@@ -147,12 +149,22 @@ jobs:
           pm2 delete $_pm2_webhook_webhook_worker_ref --silent
           pm2 start --name $_pm2_webhook_webhook_worker_ref --time $NODE_INTERPRETER -- ace webhook:worker
 
+          ## Webhook Email Worker Job
+          pm2 stop $_pm2_email_worker_ref --silent
+          pm2 delete $_pm2_email_worker_ref --silent
+          pm2 start --name $_pm2_email_worker_ref --time $NODE_INTERPRETER -- ace dispatch_email_worker
+
+          ## Session CPT Codes Worker Job
+          pm2 stop $_pm2_session_cpt_codes_worker_ref --silent
+          pm2 delete $_pm2_session_cpt_codes_worker_ref --silent
+          pm2 start --name $_pm2_session_cpt_codes_worker_ref --time $NODE_INTERPRETER -- ace session:cpt-worker
+
           echo "Deployment Ended Local system name: $HOSTNAME"
           echo "Deployment Ended Local date and time: $(date)"
           echo "Bye"
 
-          pm2 list
           pm2 save
+          pm2 list
 
           EOL
 
