@@ -4,8 +4,8 @@ import Session from '#models/session'
 import CptCode from '#models/cpt_code'
 import { fetchAppointmentTypeIdFromBigQuery } from '#services/bigquery_service'
 
-const CHUNK_SIZE = 50
-const DEFAULT_CONCURRENCY = 100
+const CHUNK_SIZE = 200
+const DEFAULT_CONCURRENCY = 200
 
 export default class BackfillSessionCptCodes extends BaseCommand {
   static commandName = 'session:backfill-cpt-codes'
