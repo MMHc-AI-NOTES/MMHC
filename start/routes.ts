@@ -40,6 +40,6 @@ router.get('/', async () => {
 })
 
 router.get('/test', async () => {
-  const res = await axios.get('https://172.31.74.152:8301')
+  const res = await axios.get('http://172.31.74.152:8301')
   return sendSuccess('Server is healthy', res?.data)
 })
