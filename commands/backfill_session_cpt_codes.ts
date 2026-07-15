@@ -5,6 +5,7 @@ import CptCode from '#models/cpt_code'
 import { fetchAppointmentTypeIdFromBigQuery } from '#services/bigquery_service'
 
 const CHUNK_SIZE = 50
+const DEFAULT_CONCURRENCY = 10
 
 export default class BackfillSessionCptCodes extends BaseCommand {
   static commandName = 'session:backfill-cpt-codes'
@@ -19,6 +20,9 @@ export default class BackfillSessionCptCodes extends BaseCommand {
     description: 'Backfill a single note_id. If omitted, backfills all sessions.',
   })
   declare noteId: string
+
+  @flags.number({ description: 'Maximum number of sessions processed concurrently (default: 10)' })
+  declare concurrency?: number
   private cptCodeMap = new Map<string, CptCode>()
   private async loadCptCodes() {
     const cptCodes = await CptCode.query()
@@ -87,10 +91,18 @@ export default class BackfillSessionCptCodes extends BaseCommand {
   }
 
   private async runForAllNotes() {
+    const concurrency = this.concurrency ?? DEFAULT_CONCURRENCY
+    if (!Number.isInteger(concurrency) || concurrency < 1) {
+      this.logger.error('--concurrency must be a positive integer')
+      this.exitCode = 1
+      return
+    }
     const total = await Session.query().count('* as total')
     const totalCount = Number(total[0].$extras.total ?? 0)
 
-    this.logger.info(`Backfilling all notes: ${totalCount} session(s) (chunk=${CHUNK_SIZE})`)
+    this.logger.info(
+      `Backfilling all notes: ${totalCount} session(s) (chunk=${CHUNK_SIZE}, concurrency=${concurrency})`
+    )
 
     let processed = 0
     let updated = 0
@@ -112,20 +124,21 @@ export default class BackfillSessionCptCodes extends BaseCommand {
         `Processing chunk: sessions ${sessions[0].id}–${sessions[sessions.length - 1].id}`
       )
 
-      for (const session of sessions) {
-        processed += 1
-        lastId = session.id
-
+      const results = await this.mapWithConcurrency(sessions, concurrency, async (session) => {
         try {
-          const didUpdate = await this.processSession(session)
-          if (didUpdate) updated += 1
+          return await this.processSession(session)
         } catch (error: any) {
-          failed += 1
           this.logger.error(
             `Failed session id=${session.id} note_id=${session.noteId}: ${error.message}`
           )
+          failed += 1
+          return false
         }
-      }
+      })
+
+      processed += sessions.length
+      updated += results.filter(Boolean).length
+      lastId = sessions[sessions.length - 1].id
     }
 
     this.logger.success('Backfill finished')
@@ -134,5 +147,23 @@ export default class BackfillSessionCptCodes extends BaseCommand {
     if (failed > 0) {
       this.exitCode = 1
     }
+  }
+
+  private async mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T) => Promise<R>
+  ): Promise<R[]> {
+    const results = new Array<R>(items.length)
+    let nextIndex = 0
+    const worker = async () => {
+      while (true) {
+        const index = nextIndex++
+        if (index >= items.length) return
+        results[index] = await mapper(items[index])
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker))
+    return results
   }
 }
