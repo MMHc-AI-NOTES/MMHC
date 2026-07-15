@@ -13,6 +13,7 @@ import { requestPasswordReset, resetPassword } from '#services/password_reset_se
 import { sendSuccess } from '#services/custom_response_service'
 import ErrorService from '#services/error_service'
 import logger from '@adonisjs/core/services/logger'
+import env from '#start/env'
 export default class AuthController {
   async register(ctx: HttpContext): Promise<void> {
     try {
@@ -29,6 +30,7 @@ export default class AuthController {
 
   async login(ctx: HttpContext): Promise<void> {
     try {
+      console.log('#########DB_HOST', env.get('DB_HOST'))
       const { email, password } = await loginValidator.validate(ctx.request.body())
 
       const { token, user } = await loginUser(email, password)
