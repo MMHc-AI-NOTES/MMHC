@@ -39,8 +39,10 @@ jobs:
         run: npm run build
 
       - name: Create env file
+        env:
+          ENV_DEV: ${{ vars.ENV_DEV }}
         run: |
-          echo "${{ vars.ENV_DEV }}" > .env
+          printf '%s\n' "$ENV_DEV" > .env
           cat .env > ./build/.env  # Copy .env to the build directory
 
       - name: Configure AWS Credentials using OIDC
