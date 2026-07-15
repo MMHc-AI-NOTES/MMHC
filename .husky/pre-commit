@@ -8,3 +8,4 @@ case "$GIT_EXEC_PATH" in
 esac
 
 npm run build
+npm run format
