@@ -30,13 +30,13 @@ export default class AuthController {
 
   async login(ctx: HttpContext): Promise<void> {
     try {
-      console.log('#########DB_HOST', env.get('DB_HOST'))
       const { email, password } = await loginValidator.validate(ctx.request.body())
 
       const { token, user } = await loginUser(email, password)
 
       return sendSuccess('Logged In Successfully', { token, user })
     } catch (error) {
+      console.log('#########DB_HOST', env.get('DB_HOST'))
       logger.error('Error in login controller', error)
       return ErrorService.handleError(ctx, error)
     }
