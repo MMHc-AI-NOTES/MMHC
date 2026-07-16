@@ -22,6 +22,7 @@ jobs:
       ECR_REGISTRY: ${{secrets.ECR_REGISTRY}}
       ECS_CLUSTER: ${{vars.ECS_CLUSTER}}
       ECS_SERVICE: ${{vars.ECS_SERVICE}}
+      ECS_SESSION_CPT_SERVICE: mmh-session-cpt-worker
 
     steps:
       - name: Checkout repository
@@ -74,5 +75,33 @@ jobs:
         with:
           task-definition: ${{ steps.render-task-definition.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: false
+
+      # Workers use the same image as the web application. Each gets its own
+      # ECS task definition and service, with only the command changed.
+      - name: Create worker task definitions
+        run: |
+          jq '
+            .family = "mmh-session-cpt-worker" |
+            .containerDefinitions[0].name = "SessionCptWorker" |
+            .containerDefinitions[0].command = ["node", "build/ace.js", "session:cpt-worker"] |
+            .containerDefinitions[0].environment = ((.containerDefinitions[0].environment // []) + [{"name":"RUN_MIGRATIONS","value":"false"}]) |
+            del(.containerDefinitions[0].portMappings)
+          ' aws/task-definition.json > /tmp/session-cpt-worker-task-definition.json
+
+      - name: Render session CPT worker task definition
+        id: render-session-cpt-worker
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: /tmp/session-cpt-worker-task-definition.json
+          container-name: SessionCptWorker
+          image: ${{ steps.image.outputs.image_uri }}
+
+      - name: Deploy session CPT worker
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-session-cpt-worker.outputs.task-definition }}
+          service: ${{ env.ECS_SESSION_CPT_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: false
