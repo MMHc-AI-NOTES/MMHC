@@ -5,6 +5,7 @@ import { updateSessionCptCodeBySessionId } from '#services/webhook_service'
 import logger from '@adonisjs/core/services/logger'
 
 let sessionCptWorker: Worker | null = null
+let redisFailureHandled = false
 
 export const startSessionCptWorker = () => {
   if (sessionCptWorker) {
@@ -48,6 +49,14 @@ export const startSessionCptWorker = () => {
       return
     }
     logger.error('Session CPT worker error:', err)
+
+    // Let ECS restart the task when Redis is unavailable or authentication
+    // fails. Keeping the process alive here prevents the ECS service from
+    // recovering after a Redis outage or secret rotation.
+    if (!redisFailureHandled) {
+      redisFailureHandled = true
+      void stopSessionCptWorker().finally(() => process.exit(1))
+    }
   })
 
   logger.info('Session CPT worker started')
@@ -58,6 +67,7 @@ export const stopSessionCptWorker = async () => {
   if (sessionCptWorker) {
     await sessionCptWorker.close()
     sessionCptWorker = null
+    redisFailureHandled = false
     logger.info('Session CPT worker stopped')
   }
 }

@@ -87,6 +87,7 @@ jobs:
             .containerDefinitions[0].name = "SessionCptWorker" |
             .containerDefinitions[0].command = ["node", "build/ace.js", "session:cpt-worker"] |
             .containerDefinitions[0].environment = ((.containerDefinitions[0].environment // []) + [{"name":"RUN_MIGRATIONS","value":"false"}]) |
+            .containerDefinitions[0].restartPolicy = {"enabled":true,"ignoredExitCodes":[0],"restartAttemptPeriodSeconds":60} |
             del(.containerDefinitions[0].portMappings)
           ' aws/task-definition.json > /tmp/session-cpt-worker-task-definition.json
 
