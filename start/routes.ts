@@ -33,13 +33,7 @@ import '#start/routes/feedback_routes'
 
 import '#start/routes/note_review_mark_routes'
 import { sendSuccess } from '#services/custom_response_service'
-import axios from 'axios'
 
 router.get('/', async () => {
   return sendSuccess('Server is running')
-})
-
-router.get('/test', async () => {
-  const res = await axios.get('http://172.31.74.152:8301')
-  return sendSuccess('Server is healthy', res?.data)
 })
