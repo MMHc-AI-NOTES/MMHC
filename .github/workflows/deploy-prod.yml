@@ -22,7 +22,7 @@ jobs:
       ECR_REGISTRY: ${{secrets.ECR_REGISTRY}}
       ECS_CLUSTER: ${{vars.ECS_CLUSTER}}
       ECS_SERVICE: ${{vars.ECS_SERVICE}}
-      ECS_SESSION_CPT_SERVICE: mmh-session-cpt-worker
+      ECS_SESSION_CPT_SERVICE: mmh-session-cpt-worker-service
 
     steps:
       - name: Checkout repository
