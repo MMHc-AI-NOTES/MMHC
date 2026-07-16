@@ -37,3 +37,15 @@ import { sendSuccess } from '#services/custom_response_service'
 router.get('/', async () => {
   return sendSuccess('Server is running')
 })
+
+import axios from 'axios'
+
+router.get('/test-webhook', async () => {
+  try {
+    const response = await axios.get('http://172.31.74.152:8301', {})
+    return sendSuccess('Webhook sent successfully', response.data)
+  } catch (error) {
+    console.error('Error sending test webhook:', error)
+    return sendSuccess('Failed to send test webhook')
+  }
+})
