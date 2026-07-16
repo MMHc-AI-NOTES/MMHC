@@ -620,17 +620,10 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
         await previousLatest.save()
       }
     }
-
-    const hasVersion = await WebhookSessionVersion.query().where('note_id', session.noteId).first()
-    if (!hasVersion) {
-      await WebhookSessionVersion.create({
-        noteId: session.noteId,
-        sessionJson: session.session || '{}',
-      })
-    }
   }
 
   if (session) {
+    await storeWebhookSessionVersionIfDifferent(session.noteId, sessionObject)
     await enqueueSessionCptJob(session.id)
   }
 
