@@ -1,5 +1,5 @@
-import vine from "@vinejs/vine";
-import { Infer } from "@vinejs/vine/types";
+import vine from '@vinejs/vine'
+import { Infer } from '@vinejs/vine/types'
 
 export const webhookSessionValidator = vine.compile(
   vine.object({
@@ -26,7 +26,7 @@ export const webhookSessionValidator = vine.compile(
         answer: vine.string().optional(),
         question_type: vine.string().optional(),
         office_use: vine.boolean().optional(),
-      }),
+      })
     ),
     AppointmentId: vine.string().optional(),
     NoteName: vine.string().optional(),
@@ -46,7 +46,7 @@ export const webhookSessionValidator = vine.compile(
           Description: vine.string().optional(),
           EndDate: vine.any().optional(),
           NoteId: vine.string().optional(),
-        }),
+        })
       )
       .optional(),
     Diagnosis: vine
@@ -57,22 +57,20 @@ export const webhookSessionValidator = vine.compile(
           Description: vine.string().optional(),
           EndDate: vine.any().optional(),
           NoteId: vine.string().optional(),
-        }),
+        })
       )
       .optional(),
-  }),
-);
+  })
+)
 
-export type webhookSessionValidatorInterface = Infer<
-  typeof webhookSessionValidator
->;
+export type webhookSessionValidatorInterface = Infer<typeof webhookSessionValidator>
 
 export const webhookValidator = vine.compile(
   vine.object({
     NoteId: vine.string().trim().minLength(1),
     Type: vine.string().trim().minLength(1).optional(),
     ClientId: vine.number().withoutDecimals().optional(),
-  }),
-);
+  })
+)
 
-export type webhookValidatorInterface = Infer<typeof webhookValidator>;
+export type webhookValidatorInterface = Infer<typeof webhookValidator>
