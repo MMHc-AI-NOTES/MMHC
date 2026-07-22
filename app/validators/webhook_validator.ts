@@ -7,6 +7,10 @@ export const webhookSessionValidator = vine.compile(
     PractitionerEmail: vine.string().email().optional(),
     ClientId: vine.number().optional(),
     Status: vine.string().optional(),
+    // Note type as sent by PracticeQ (e.g. "Progress Note", "Intake", "Treatment Plan",
+    // "Termination"). Previously only present on the separate webhookValidator used for
+    // key validation and discarded before the session was saved.
+    Type: vine.string().trim().optional(),
     EventTime: vine
       .object({
         seconds: vine.number().optional(),
