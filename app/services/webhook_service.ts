@@ -272,19 +272,14 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       }
     }
 
-    // NoteName carries PracticeQ's real note-type label (e.g. "Progress Note",
-    // "Initial Consultation: Intake/Assessment"); Type is a fallback in case a
-    // given payload only populates one of the two.
+    // NoteName is where PracticeQ actually sends the note type; Type is a fallback.
     const resolvedType = resolveSessionType(
       (payload as any).NoteName ?? (payload as any).Type,
       payload.NoteId
     )
     const sessionType = resolvedType.type
-    // Known fields keep their canonical name for this note type (Subjective,
-    // Objective, etc. for progress notes); anything not explicitly mapped
-    // falls back to PracticeQ's own question text so content is never
-    // silently dropped. If we're not confident about the type (unrecognized
-    // label), skip the id map entirely rather than risk an id collision.
+    // Skip the id map if we're not sure about the type, so we don't apply
+    // the wrong field names to a note type we don't actually recognize.
     const sessionObject = buildSessionObject(
       payload.Questions,
       resolvedType.matched ? sessionType : undefined
@@ -415,15 +410,11 @@ const validateWebhookKeys = (jobData: WebhookJobData): { isValid: boolean; error
   }
 }
 
-/**
- * Required question texts that must be present in the Questions array.
- * These are progress-note-specific labels (PracticeQ's progress note
- * template), so this strict check only applies when the note has resolved
- * to a progress note. Intake/treatment-plan/termination notes use entirely
- * different question text (e.g. "First Name:" and "Date of Birth:", not
- * "Client First Name:" / "Client DOB:") and were being incorrectly flagged
- * as workflow=failed by this same check before it was made type-aware.
- */
+// These are progress-note-specific question labels, so the strict check
+// below only runs when the note is actually a progress note. Intake/
+// treatment-plan/termination notes use different text entirely (e.g.
+// "First Name:" not "Client First Name:") and were getting marked as
+// workflow=failed by this same check before it knew about note types.
 const REQUIRED_QUESTIONS = [
   'Client First Name:',
   'Client Last Name:',
@@ -447,8 +438,7 @@ const validatePayloadQuestions = (
     (q) => q.text && q.answer && typeof q.answer === 'string' && q.answer.trim().length > 0
   )
 
-  // Non-progress-note types don't share the progress-note required-question
-  // labels; just require that the note actually has some answered content.
+  // other note types don't use these labels, just check something got answered
   if (sessionType !== undefined && sessionType !== SessionTypeEnum.progress_note) {
     if (questionsWithAnswers.length === 0) {
       errors.push('No answered questions found in webhook payload')
@@ -491,9 +481,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
   const type = (payload as any).Type
   const clientId = payload.ClientId
 
-  // NoteName carries PracticeQ's real note-type label; Type is a fallback.
-  // Resolved before question validation below, since what counts as a valid
-  // set of questions depends on the note type.
+  // resolved before validation below since what counts as valid depends on the type
   const resolvedType = resolveSessionType((payload as any).NoteName ?? type, noteId)
   const sessionType = resolvedType.type
 
@@ -512,9 +500,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     }
   }
 
-  // Known fields keep their canonical name for this note type; anything not
-  // explicitly mapped falls back to PracticeQ's own question text. If we're
-  // not confident about the type (unrecognized label), skip the id map.
+  // same deal - skip the id map if we're not confident about the type
   const sessionObject = buildSessionObject(
     payload.Questions,
     resolvedType.matched ? sessionType : undefined

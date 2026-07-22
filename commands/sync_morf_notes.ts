@@ -40,7 +40,7 @@ function buildSessionStringFromQuestions(data: any, sessionType?: number): strin
 }
 
 function resolveNoteTypeFromMorfData(data: any, noteId: string): ResolvedSessionType {
-  // NoteName carries PracticeQ's real note-type label; Type/type are fallbacks.
+  // NoteName is where the real type label lives; Type/type are fallbacks.
   const typeValue = data?.NoteName ?? data?.noteName ?? data?.Type ?? data?.type
   return resolveSessionType(typeValue, noteId)
 }

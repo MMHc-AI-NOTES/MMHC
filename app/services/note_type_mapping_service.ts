@@ -1,42 +1,21 @@
 import { SessionTypeEnum } from '#enums/session_enum'
 import logger from '@adonisjs/core/services/logger'
 
-/**
- * Shared note-type + field-mapping logic used by both live ingestion paths:
- *  - the PracticeQ webhook (app/services/webhook_service.ts)
- *  - the MORF sync command (commands/sync_morf_notes.ts)
- *
- * Background: every note used to be stored as a progress note regardless of
- * what PracticeQ actually sent, because (a) the note-type field on the
- * payload (NoteName / Type) was never read into the session, and (b) the old
- * FIELD_MAPPING only recognized progress-note question ids, so other note
- * types (intake, treatment plan, termination) would end up with an empty or
- * near-empty session body even though PracticeQ sent everything correctly.
- *
- * Field mappings below were built from real sample note structures the
- * client provided (progress note, "Initial Consultation: Intake/Assessment",
- * "Initial Consultation: Assessment/Treatment Plan", and "Termination Note").
- * Two important things came out of comparing those samples:
- *
- *  1. Question ids are NOT globally unique across note types — the same id
- *     can mean different fields in different note types (e.g. `zad8-1` is
- *     "Assessment & Therapeutic Intervention" on a progress note but
- *     "Tenative Goals and Plans" on an intake note). So field-name lookup
- *     must be scoped per note type, never a single flat id -> name map.
- *
- *  2. The treatment-plan template has a dynamic, repeatable goal-block
- *     section (up to 4 goals, each optional) whose question ids were NOT
- *     consistent between the two sample files for the same note type —
- *     they appear to be generated per note instance. Hardcoding ids for
- *     treatment plans would be unreliable, so treatment-plan fields are
- *     captured using PracticeQ's own question `text` label instead of an
- *     id lookup (see buildSessionObject below).
- */
+// Shared note-type + field-mapping logic for the two ingestion paths
+// (webhook_service.ts and sync_morf_notes.ts). Notes used to get saved as
+// progress notes no matter what PracticeQ actually sent - this reads the
+// real type off the payload and maps the right fields for it.
+//
+// Two things worth knowing from the sample data: question ids aren't
+// unique across note types (zad8-1 means something different on a
+// progress note vs an intake note), so lookups have to be scoped per
+// type. And the treatment plan template's ids aren't stable between
+// notes (dynamic goal blocks), so that one just uses PracticeQ's own
+// question text instead of an id map - see buildSessionObject below.
 
-// Progress-note question id -> canonical field name. Unchanged from the
-// original implementation — this has already been in production, and other
-// stored sessions / the MCP prompt rely on these exact field names, so don't
-// rename entries here without a migration plan.
+// Progress note id -> field name. This is already live, other stored
+// sessions and the MCP prompt depend on these exact names, so don't
+// rename anything here without a migration.
 export const FIELD_MAPPING: Record<string, string> = {
   // MORF / legacy
   'p9m9-1': 'Session Duration',
@@ -72,8 +51,7 @@ export const FIELD_MAPPING: Record<string, string> = {
   '5r6o-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
-// Intake ("Initial Consultation: Intake/Assessment") question id -> field
-// name, confirmed consistent across both sample files provided.
+// Intake ("Initial Consultation: Intake/Assessment") id -> field name.
 const INTAKE_FIELD_MAPPING: Record<string, string> = {
   'ot2p-1': 'First Name:',
   'ot2p-3': 'Last Name:',
@@ -98,8 +76,7 @@ const INTAKE_FIELD_MAPPING: Record<string, string> = {
   'a17g-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
-// Termination Note question id -> field name, confirmed consistent across
-// both sample files provided.
+// Termination Note id -> field name.
 const TERMINATION_FIELD_MAPPING: Record<string, string> = {
   'uap4-1': 'First Name:',
   'uap4-3': 'Last Name:',
@@ -121,32 +98,23 @@ const TERMINATION_FIELD_MAPPING: Record<string, string> = {
   '45z4-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
-/**
- * Per-note-type id -> field name maps. Treatment plan is intentionally
- * absent — see the file-level comment on why its ids can't be trusted, and
- * buildSessionObject's text-label fallback below for how it's handled.
- */
+// Treatment plan is left out on purpose - ids aren't reliable for it,
+// so it always falls back to question text (see file comment up top).
 const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
   [SessionTypeEnum.progress_note]: FIELD_MAPPING,
   [SessionTypeEnum.intake]: INTAKE_FIELD_MAPPING,
   [SessionTypeEnum.termination]: TERMINATION_FIELD_MAPPING,
 }
 
-/**
- * PracticeQ's note-type label (sent as NoteName, and sometimes as Type) ->
- * SessionTypeEnum. The four "primary" keys are the exact note_name values
- * confirmed from the client's sample note structures; the rest are
- * best-guess aliases kept as a safety net for label variations we haven't
- * seen yet.
- */
+// PracticeQ's NoteName (or Type) -> our enum. First four are confirmed
+// from the real sample data; the rest are guesses in case the wording
+// comes through differently on some notes.
 const TYPE_LABEL_TO_ENUM: Record<string, number> = {
-  // Confirmed exact labels from sample note structures
   'progress note': SessionTypeEnum.progress_note,
   'initial consultation: intake/assessment': SessionTypeEnum.intake,
   'initial consultation: assessment/treatment plan': SessionTypeEnum.treatment_plan,
   'termination note': SessionTypeEnum.termination,
-  // Unconfirmed aliases — kept as a fallback net, verify against real
-  // payloads before relying on these for anything but a warning log.
+  // unconfirmed aliases, just a safety net
   progress: SessionTypeEnum.progress_note,
   intake: SessionTypeEnum.intake,
   'intake note': SessionTypeEnum.intake,
@@ -157,13 +125,10 @@ const TYPE_LABEL_TO_ENUM: Record<string, number> = {
   discharge: SessionTypeEnum.termination,
 }
 
-/**
- * Substring fallback for label variants the exact map doesn't catch (extra
- * spacing, punctuation differences, suffixes like "Progress Note - Adult").
- * Order matters: check the more specific phrases before generic ones so a
- * treatment plan (which also contains the word "assessment") doesn't get
- * misread as an intake note.
- */
+// Backup for label variants the exact map above misses (extra spacing,
+// a suffix like "Progress Note - Adult", etc). Check "treatment plan"
+// before "intake" - the real treatment plan label also contains the
+// word "assessment" so order matters here.
 function fuzzyMatchType(key: string): number | undefined {
   if (key.includes('treatment plan')) return SessionTypeEnum.treatment_plan
   if (key.includes('termination') || key.includes('discharge')) return SessionTypeEnum.termination
@@ -174,24 +139,15 @@ function fuzzyMatchType(key: string): number | undefined {
 
 export interface ResolvedSessionType {
   type: number
-  /**
-   * True when we're confident this is the right type — either an exact/fuzzy
-   * label match, or no label was sent at all (existing payloads never sent
-   * one and are progress notes; treat that case as a confident default, not
-   * a guess). False only when a label WAS sent but we don't recognize it —
-   * in that case buildSessionObject should not trust the progress-note id
-   * map, since an unknown note type's ids could collide with it (see
-   * file-level comment on id collisions).
-   */
+  // false only when a label was actually sent and we didn't recognize it -
+  // a missing label still counts as matched, since older payloads never
+  // sent one and we know those are progress notes.
   matched: boolean
 }
 
-/**
- * Resolve a PracticeQ note-type label to our internal SessionTypeEnum value.
- * Falls back to progress_note for anything unrecognized (and logs, unless
- * the label was simply absent — see ResolvedSessionType.matched above for
- * why that distinction matters to callers).
- */
+// Maps a PracticeQ type label to our enum. Falls back to progress note
+// for anything we don't recognize (and logs it, unless there was just no
+// label at all - that's expected on older payloads, not worth a warning).
 export function resolveSessionType(typeValue?: string | null, noteId?: string): ResolvedSessionType {
   if (!typeValue || typeof typeValue !== 'string' || !typeValue.trim()) {
     return { type: SessionTypeEnum.progress_note, matched: true }
@@ -220,13 +176,8 @@ interface QuestionLike {
   Answer?: unknown
 }
 
-/**
- * Answers are supposed to be strings, but PracticeQ (or a malformed payload)
- * could send a boolean, number, or an array (multi-select). `?? ''` only
- * guards null/undefined, so `false` or `0` would otherwise pass through as
- * non-strings and break downstream code that calls .trim()/.toLowerCase() on
- * session values. Normalize everything to a string here instead.
- */
+// answer should always be a string, but `?? ''` doesn't catch false/0/etc,
+// so this makes sure we never end up storing a non-string value.
 function formatAnswer(answer: unknown): string {
   if (typeof answer === 'string') return answer
   if (answer === null || answer === undefined) return ''
@@ -234,29 +185,16 @@ function formatAnswer(answer: unknown): string {
   return String(answer)
 }
 
-/**
- * Build the session JSON object from a note's Questions array.
- *
- * @param sessionType Pass `resolveSessionType(...).type` when `matched` is
- *   true. When the caller isn't confident about the type (matched: false),
- *   pass `undefined` instead of the fallback type — this skips the id map
- *   entirely for that note, since applying progress-note ids to an unknown
- *   note type risks silently mislabeling fields via an id collision.
- *
- * Order of preference for each question's field name:
- *  1. The canonical field name for its id, *within this note type's map*
- *     (never looked up against another type's ids).
- *  2. The question's own `text` label, as sent by PracticeQ. This is what
- *     correctly captures treatment-plan notes (dynamic per-instance ids)
- *     and any note type we haven't explicitly mapped yet.
- *  3. The raw id, as a last resort, so a question is never silently dropped.
- *
- * If the resulting field name repeats (this genuinely happens on treatment
- * plans — e.g. "Status" and "Target Completion Date (within 3 months)" each
- * appear on every one of the up-to-4 goal blocks), later occurrences are
- * suffixed with " (2)", " (3)", etc. instead of overwriting earlier ones, so
- * no goal's data is ever silently lost.
- */
+// Builds the session object from a note's Questions array.
+//
+// Pass sessionType from resolveSessionType(...).type, but only when
+// matched was true - otherwise pass undefined so we skip the id map
+// instead of risking the wrong field names on a type we don't recognize.
+//
+// Field name for each question: the id map for this type if we have one,
+// otherwise PracticeQ's own question text, otherwise the raw id. Treatment
+// plans repeat labels like "Status" across goal blocks, so repeats get
+// numbered (2), (3), etc rather than overwriting each other.
 export function buildSessionObject(
   questions: QuestionLike[] | undefined | null,
   sessionType?: number
