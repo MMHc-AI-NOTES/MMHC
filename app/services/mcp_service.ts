@@ -182,7 +182,8 @@ function resolveTemplateMetadata(
   if (!description) return undefined
 
   const byIdViaDescription =
-    lookups.byDescriptionId.get(description) ?? lookups.byDescriptionId.get(normalizeLookupKey(description))
+    lookups.byDescriptionId.get(description) ??
+    lookups.byDescriptionId.get(normalizeLookupKey(description))
   if (byIdViaDescription) return { meta: byIdViaDescription, matchedBy: 'id' }
 
   const byText =
