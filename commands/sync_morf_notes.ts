@@ -7,7 +7,6 @@ import User from '#models/user'
 import CptCode from '#models/cpt_code'
 import WebhookSessionVersion from '#models/webhook_session_version'
 import {
-  SessionTypeEnum,
   AiStatusEnum,
   HumanReviewEnum,
   ManagerEnum,
@@ -16,40 +15,11 @@ import {
 } from '#enums/session_enum'
 import { ReviewCycleEnum } from '#enums/review_cycle_enum'
 import { DateTime } from 'luxon'
-
-/** Same as webhook_service: only these fields are stored; all other keys ignored */
-const FIELD_MAPPING: Record<string, string> = {
-  'p9m9-1': 'Session Duration',
-  '1hye-1': 'Mental Status (optional)',
-  'kxgx-7': 'Suicidality',
-  'kxgx-8': 'Homicidality',
-  '6tx9-1': 'Subjective',
-  'rb2f-1': 'Objective',
-  'zad8-1': 'Assessment & Therapeutic Intervention',
-  'ugq6-1': 'Reaction to Intervention',
-  'hnfi-1': 'Plan and Collaboration',
-  '9z5t-1': 'Therapist Reflection and Insight (optional)',
-  'gm4p-1': 'Progress',
-  '4lbp-1': 'Therapist Initials',
-  'p46w-1': 'First Name:',
-  'p46w-2': 'Last Name:',
-  'p46w-3': 'Date of Birth:',
-  'g39u-1': 'Session Duration',
-  'd1zt-1': 'Encounter Type & Method',
-  'cupi-1': 'Mental Status (optional)',
-  'br4k-1': 'Suicidality',
-  'br4k-2': 'Homicidality',
-  'ujky-1': 'Subjective',
-  'k8nq-1': 'Objective',
-  'nbli-1': 'Assessment & Therapeutic Intervention',
-  'm5uu-1': 'Reaction to Intervention',
-  'u3jf-1': 'Plan and Collaboration',
-  'x1gq-1': 'Therapist Reflection and Insight (optional)',
-  'cpb1-1': 'Progress',
-  'zqpc-1': 'Full Name & Credentials (Signature)',
-  'zqpc-2': 'Date Completed',
-  '5r6o-1': 'Documented by Supervised Clinician (if applicable)',
-}
+import {
+  resolveSessionType,
+  buildSessionObject,
+  type ResolvedSessionType,
+} from '#services/note_type_mapping_service'
 
 function getSortableTime(data: any, morfCreatedAt: DateTime): number {
   const dateStr = data?.Date ?? data?.date ?? data?.LastModified ?? data?.last_modified
@@ -64,17 +34,15 @@ function getSortableTime(data: any, morfCreatedAt: DateTime): number {
   return morfCreatedAt.toMillis()
 }
 
-function buildSessionStringFromQuestions(data: any): string {
+function buildSessionStringFromQuestions(data: any, sessionType?: number): string {
   const questions = data?.Questions ?? data?.questions ?? []
-  if (!Array.isArray(questions)) return JSON.stringify({})
-  const sessionObject: Record<string, string> = {}
-  for (const q of questions) {
-    const id = q?.id ?? q?.Id
-    const answer = q?.answer ?? q?.Answer ?? ''
-    const fieldName = FIELD_MAPPING[id]
-    if (fieldName) sessionObject[fieldName] = answer ?? ''
-  }
-  return JSON.stringify(sessionObject)
+  return JSON.stringify(buildSessionObject(questions, sessionType))
+}
+
+function resolveNoteTypeFromMorfData(data: any, noteId: string): ResolvedSessionType {
+  // NoteName is where the real type label lives; Type/type are fallbacks.
+  const typeValue = data?.NoteName ?? data?.noteName ?? data?.Type ?? data?.type
+  return resolveSessionType(typeValue, noteId)
 }
 
 export default class SyncMorfNotes extends BaseCommand {
@@ -99,7 +67,13 @@ export default class SyncMorfNotes extends BaseCommand {
     // Group by patient; preserve order of first occurrence (first client in data = first processed)
     const byPatient = new Map<
       string,
-      { morf: Morf; data: any; noteId: string; timeMs: number; patientId: number | null }[]
+      {
+        morf: Morf
+        data: any
+        noteId: string
+        timeMs: number
+        patientId: number | null
+      }[]
     >()
     const patientOrder: string[] = []
     for (const row of rows) {
@@ -184,7 +158,12 @@ export default class SyncMorfNotes extends BaseCommand {
             }
           }
           if (practitionerId === null) practitionerId = 1
-          const sessionString = buildSessionStringFromQuestions(data)
+          const resolvedType = resolveNoteTypeFromMorfData(data, noteId)
+          const noteType = resolvedType.type
+          const sessionString = buildSessionStringFromQuestions(
+            data,
+            resolvedType.matched ? noteType : undefined
+          )
           const sessionId = `session-${noteId.substring(0, 8)}`
           const sessionTime = data.Date
             ? DateTime.fromISO(data.Date, { setZone: true })
@@ -202,6 +181,7 @@ export default class SyncMorfNotes extends BaseCommand {
             existing.practitionerId = practitionerId
             existing.patientId = patient.id
             existing.parentNoteId = parentNoteId
+            existing.type = noteType
             await existing.save()
             currentSession = existing
             updated++
@@ -213,7 +193,7 @@ export default class SyncMorfNotes extends BaseCommand {
               sessionTime: sessionTime.isValid ? sessionTime : morf.createdAt,
               practitionerId,
               patientId: patient.id,
-              type: SessionTypeEnum.progress_note,
+              type: noteType,
               cptCodeId: cptCode.id,
               aiScore: null,
               aiStatus: AiStatusEnum.not_reviewed,
