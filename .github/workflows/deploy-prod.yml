@@ -22,6 +22,9 @@ jobs:
       ECR_REGISTRY: ${{secrets.ECR_REGISTRY}}
       ECS_CLUSTER: ${{vars.ECS_CLUSTER}}
       ECS_SERVICE: ${{vars.ECS_SERVICE}}
+      ECS_SESSION_CPT_SERVICE: mmh-session-cpt-worker-service
+      ECS_WEBHOOK_SERVICE: mmh-webhook-worker-service
+      ECS_DISPATCH_EMAIL_SERVICE: mmh-dispatch-email-worker-service
 
     steps:
       - name: Checkout repository
@@ -74,5 +77,84 @@ jobs:
         with:
           task-definition: ${{ steps.render-task-definition.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: false
+
+      # Workers use the same image as the web application. Each gets its own
+      # ECS task definition and service, with only the command changed.
+      - name: Create worker task definitions
+        run: |
+          jq '
+            .family = "mmh-session-cpt-worker" |
+            .containerDefinitions[0].name = "SessionCptWorker" |
+            .containerDefinitions[0].command = ["node", "build/ace.js", "session:cpt-worker"] |
+            .containerDefinitions[0].environment = ((.containerDefinitions[0].environment // []) + [{"name":"RUN_MIGRATIONS","value":"false"}]) |
+            .containerDefinitions[0].restartPolicy = {"enabled":true,"ignoredExitCodes":[0],"restartAttemptPeriodSeconds":60} |
+            del(.containerDefinitions[0].portMappings)
+          ' aws/task-definition.json > /tmp/session-cpt-worker-task-definition.json
+
+          jq '
+            .family = "mmh-webhook-worker" |
+            .containerDefinitions[0].name = "WebhookWorker" |
+            .containerDefinitions[0].command = ["node", "build/ace.js", "webhook:worker"] |
+            .containerDefinitions[0].environment = ((.containerDefinitions[0].environment // []) + [{"name":"RUN_MIGRATIONS","value":"false"}]) |
+            .containerDefinitions[0].restartPolicy = {"enabled":true,"ignoredExitCodes":[0],"restartAttemptPeriodSeconds":60} |
+            del(.containerDefinitions[0].portMappings)
+          ' aws/task-definition.json > /tmp/webhook-worker-task-definition.json
+
+          jq '
+            .family = "mmh-dispatch-email-worker" |
+            .containerDefinitions[0].name = "DispatchEmailWorker" |
+            .containerDefinitions[0].command = ["node", "build/ace.js", "dispatch_email_worker"] |
+            .containerDefinitions[0].environment = ((.containerDefinitions[0].environment // []) + [{"name":"RUN_MIGRATIONS","value":"false"}]) |
+            .containerDefinitions[0].restartPolicy = {"enabled":true,"ignoredExitCodes":[0],"restartAttemptPeriodSeconds":60} |
+            del(.containerDefinitions[0].portMappings)
+          ' aws/task-definition.json > /tmp/dispatch-email-worker-task-definition.json
+
+      - name: Render session CPT worker task definition
+        id: render-session-cpt-worker
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: /tmp/session-cpt-worker-task-definition.json
+          container-name: SessionCptWorker
+          image: ${{ steps.image.outputs.image_uri }}
+
+      - name: Deploy session CPT worker
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-session-cpt-worker.outputs.task-definition }}
+          service: ${{ env.ECS_SESSION_CPT_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: false
+
+      - name: Render webhook worker task definition
+        id: render-webhook-worker
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: /tmp/webhook-worker-task-definition.json
+          container-name: WebhookWorker
+          image: ${{ steps.image.outputs.image_uri }}
+
+      - name: Deploy webhook worker
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-webhook-worker.outputs.task-definition }}
+          service: ${{ env.ECS_WEBHOOK_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: false
+
+      - name: Render dispatch email worker task definition
+        id: render-dispatch-email-worker
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: /tmp/dispatch-email-worker-task-definition.json
+          container-name: DispatchEmailWorker
+          image: ${{ steps.image.outputs.image_uri }}
+
+      - name: Deploy dispatch email worker
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-dispatch-email-worker.outputs.task-definition }}
+          service: ${{ env.ECS_DISPATCH_EMAIL_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: false

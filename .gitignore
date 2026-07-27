@@ -23,3 +23,7 @@ yarn-error.log
 # Platform specific
 .DS_Store
 db.sqlite3
+
+# Test fixtures
+tests/fixtures/
+

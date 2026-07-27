@@ -20,6 +20,7 @@ import { fetchAppointmentTypeIdFromBigQuery } from '#services/bigquery_service'
 import { DateTime } from 'luxon'
 import type { WebhookJobData } from '#jobs/queues/webhook_queue'
 import logger from '@adonisjs/core/services/logger'
+import { resolveSessionType, buildSessionObject } from '#services/note_type_mapping_service'
 /**
  * Enqueue CPT enrichment for a session after it is saved.
  * Failures are logged and do not fail the webhook save path.
@@ -95,45 +96,6 @@ export const updateSessionCptCodeBySessionId = async (sessionId: number) => {
     appointmentTypeId,
     cptCodeId: cptCode.id,
   }
-}
-
-/**
- * Field mapping: question id → canonical session field name.
- * Covers both MORF-style IDs and webhook payload IDs (e.g. Progress Note).
- */
-const FIELD_MAPPING: Record<string, string> = {
-  // MORF / legacy
-  'p9m9-1': 'Session Duration',
-  '1hye-1': 'Mental Status (optional)',
-  'kxgx-7': 'Suicidality',
-  'kxgx-8': 'Homicidality',
-  '6tx9-1': 'Subjective',
-  'rb2f-1': 'Objective',
-  'zad8-1': 'Assessment & Therapeutic Intervention',
-  'ugq6-1': 'Reaction to Intervention',
-  'hnfi-1': 'Plan and Collaboration',
-  '9z5t-1': 'Therapist Reflection and Insight (optional)',
-  'gm4p-1': 'Progress',
-  '4lbp-1': 'Therapist Initials',
-  // Progress Note / webhook payload (same input shape)
-  'p46w-1': 'First Name:',
-  'p46w-2': 'Last Name:',
-  'p46w-3': 'Date of Birth:',
-  'g39u-1': 'Session Duration',
-  'd1zt-1': 'Encounter Type & Method',
-  'cupi-1': 'Mental Status (optional)',
-  'br4k-1': 'Suicidality',
-  'br4k-2': 'Homicidality',
-  'ujky-1': 'Subjective',
-  'k8nq-1': 'Objective',
-  'nbli-1': 'Assessment & Therapeutic Intervention',
-  'm5uu-1': 'Reaction to Intervention',
-  'u3jf-1': 'Plan and Collaboration',
-  'x1gq-1': 'Therapist Reflection and Insight (optional)',
-  'cpb1-1': 'Progress',
-  'zqpc-1': 'Full Name & Credentials (Signature)',
-  'zqpc-2': 'Date Completed',
-  '5r6o-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
 function getSessionTimeFromPayload(payload: webhookSessionValidatorInterface): DateTime {
@@ -310,14 +272,18 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       }
     }
 
-    // Only include fields that exist in FIELD_MAPPING (First Name, Last Name, Session Duration, etc.); ignore all other keys
-    const sessionObject: Record<string, string> = {}
-    for (const q of payload.Questions) {
-      const id = q.id ?? (q as any).Id
-      const answer = q.answer ?? (q as any).Answer ?? ''
-      const fieldName = FIELD_MAPPING[id]
-      if (fieldName) sessionObject[fieldName] = answer ?? ''
-    }
+    // NoteName is where PracticeQ actually sends the note type; Type is a fallback.
+    const resolvedType = resolveSessionType(
+      (payload as any).NoteName ?? (payload as any).Type,
+      payload.NoteId
+    )
+    const sessionType = resolvedType.type
+    // Skip the id map if we're not sure about the type, so we don't apply
+    // the wrong field names to a note type we don't actually recognize.
+    const sessionObject = buildSessionObject(
+      payload.Questions,
+      resolvedType.matched ? sessionType : undefined
+    )
     const sessionString = JSON.stringify(sessionObject)
     const sessionTime = getSessionTimeFromPayload(payload)
 
@@ -338,6 +304,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       existingSession.sessionTime = sessionTime.isValid ? sessionTime : DateTime.now()
       existingSession.practitionerId = practitionerId
       existingSession.patientId = patientId
+      existingSession.type = sessionType
       await existingSession.save()
       session = existingSession
     } else {
@@ -349,7 +316,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         sessionTime: sessionTime.isValid ? sessionTime : DateTime.now(),
         practitionerId,
         patientId,
-        type: SessionTypeEnum.progress_note,
+        type: sessionType,
         cptCodeId: cptCode.id,
         aiScore: null,
         aiStatus: AiStatusEnum.not_reviewed,
@@ -381,7 +348,11 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
     await enqueueSessionCptJob(session.id)
 
     const status = existingSession ? 'updated' : 'created'
-    logger.info('[Webhook] Processing ended', { noteId, status: 'processed', action: status })
+    logger.info('[Webhook] Processing ended', {
+      noteId,
+      status: 'processed',
+      action: status,
+    })
     return sendSuccess(
       existingSession
         ? 'Session updated successfully from webhook'
@@ -443,10 +414,11 @@ const validateWebhookKeys = (jobData: WebhookJobData): { isValid: boolean; error
   }
 }
 
-/**
- * Required question texts that must be present in the Questions array
- * These questions must exist with non-empty answers
- */
+// These are progress-note-specific question labels, so the strict check
+// below only runs when the note is actually a progress note. Intake/
+// treatment-plan/termination notes use different text entirely (e.g.
+// "First Name:" not "Client First Name:") and were getting marked as
+// workflow=failed by this same check before it knew about note types.
 const REQUIRED_QUESTIONS = [
   'Client First Name:',
   'Client Last Name:',
@@ -456,7 +428,8 @@ const REQUIRED_QUESTIONS = [
 ]
 
 const validatePayloadQuestions = (
-  questions: webhookSessionValidatorInterface['Questions']
+  questions: webhookSessionValidatorInterface['Questions'],
+  sessionType?: number
 ): { isValid: boolean; errors: string[] } => {
   const errors: string[] = []
 
@@ -468,6 +441,14 @@ const validatePayloadQuestions = (
   const questionsWithAnswers = questions.filter(
     (q) => q.text && q.answer && typeof q.answer === 'string' && q.answer.trim().length > 0
   )
+
+  // other note types don't use these labels, just check something got answered
+  if (sessionType !== undefined && sessionType !== SessionTypeEnum.progress_note) {
+    if (questionsWithAnswers.length === 0) {
+      errors.push('No answered questions found in webhook payload')
+    }
+    return { isValid: errors.length === 0, errors }
+  }
 
   const foundRequiredQuestions: string[] = []
   const missingRequiredQuestions: string[] = []
@@ -504,6 +485,10 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
   const type = (payload as any).Type
   const clientId = payload.ClientId
 
+  // resolved before validation below since what counts as valid depends on the type
+  const resolvedType = resolveSessionType((payload as any).NoteName ?? type, noteId)
+  const sessionType = resolvedType.type
+
   const webhookValidation = validateWebhookKeys(jobData)
   let workflowStatus = WorkflowEnum.in_queue
 
@@ -513,22 +498,17 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
 
   let questionsValidation: { isValid: boolean; errors: string[] } | null = null
   if (webhookValidation.isValid && noteId) {
-    questionsValidation = validatePayloadQuestions(payload.Questions ?? [])
+    questionsValidation = validatePayloadQuestions(payload.Questions ?? [], sessionType)
     if (!questionsValidation.isValid) {
       workflowStatus = WorkflowEnum.failed
     }
   }
 
-  // Only include fields that exist in FIELD_MAPPING; ignore all other keys
-  const sessionObject: Record<string, string> = {}
-  if (Array.isArray(payload.Questions)) {
-    for (const q of payload.Questions) {
-      const id = q.id ?? (q as any).Id
-      const answer = q.answer ?? (q as any).Answer ?? ''
-      const fieldName = FIELD_MAPPING[id]
-      if (fieldName) sessionObject[fieldName] = answer ?? ''
-    }
-  }
+  // same deal - skip the id map if we're not confident about the type
+  const sessionObject = buildSessionObject(
+    payload.Questions,
+    resolvedType.matched ? sessionType : undefined
+  )
   const sessionString = JSON.stringify(sessionObject)
 
   let patientId: number | null = null
@@ -586,6 +566,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
     existing.practitionerId = practitionerId
     existing.patientId = patientId
     existing.workflow = workflowStatus
+    existing.type = sessionType
     await existing.save()
     await session.load('practitioner')
   } else if (noteId) {
@@ -596,7 +577,7 @@ export const processWebhookJob = async (jobData: WebhookJobData) => {
       sessionTime: sessionTime.isValid ? sessionTime : DateTime.now(),
       practitionerId,
       patientId,
-      type: SessionTypeEnum.progress_note,
+      type: sessionType,
       cptCodeId: cptCode?.id ?? null,
       aiScore: null,
       aiStatus: AiStatusEnum.not_reviewed,
