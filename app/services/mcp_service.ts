@@ -154,6 +154,14 @@ async function loadTemplateLookups(issueTexts: string[]): Promise<{
   return { byDescriptionId, byDescriptionText, byNormalizedDescriptionText }
 }
 
+export type ResolvedTemplate = {
+  meta: TemplateMetadata
+  // 'id' = matched on the scorer's description_id, safe to trust the template's
+  // section fields. 'text' = matched on description text only, which is shared
+  // across sections, so the template's section fields must not override the issue's.
+  matchedBy: 'id' | 'text'
+}
+
 function resolveTemplateMetadata(
   issue: McpAiIssue,
   lookups: {
@@ -161,24 +169,74 @@ function resolveTemplateMetadata(
     byDescriptionText: Map<string, TemplateMetadata>
     byNormalizedDescriptionText: Map<string, TemplateMetadata>
   }
-): TemplateMetadata | undefined {
+): ResolvedTemplate | undefined {
   const descriptionId = issue.description_id?.trim()
   if (descriptionId) {
     const byId =
       lookups.byDescriptionId.get(descriptionId) ??
       lookups.byDescriptionId.get(normalizeLookupKey(descriptionId))
-    if (byId) return byId
+    if (byId) return { meta: byId, matchedBy: 'id' }
   }
 
   const description = issue.description?.trim() ?? ''
   if (!description) return undefined
 
-  return (
+  const byIdViaDescription =
     lookups.byDescriptionId.get(description) ??
-    lookups.byDescriptionId.get(normalizeLookupKey(description)) ??
+    lookups.byDescriptionId.get(normalizeLookupKey(description))
+  if (byIdViaDescription) return { meta: byIdViaDescription, matchedBy: 'id' }
+
+  const byText =
     lookups.byDescriptionText.get(description) ??
     lookups.byNormalizedDescriptionText.get(normalizeLookupKey(description))
+  if (byText) return { meta: byText, matchedBy: 'text' }
+
+  return undefined
+}
+
+// Builds the stored issue from the scorer issue + matched template.
+// On a text match the issue keeps its own section and id; the template
+// only contributes points and severity. Text is shared across sections,
+// so trusting the template's section there is what caused duplicate
+// findings to appear under one section.
+export function mergeIssueWithTemplate(
+  issue: McpAiIssue,
+  resolved: ResolvedTemplate
+): NormalizedEvaluationIssue {
+  const { meta, matchedBy } = resolved
+  const matchedById = matchedBy === 'id'
+
+  let pointsDeducted =
+    typeof meta.points === 'number'
+      ? Math.abs(meta.points)
+      : typeof issue.confidence === 'number'
+        ? roundToNearestFive(Math.round(issue.confidence * 30))
+        : 0
+  pointsDeducted = roundToNearestFive(pointsDeducted)
+
+  const severity = deriveSeverity(
+    meta.severity ?? mapErrorTypeToSeverity(issue.error_type ?? ''),
+    pointsDeducted
   )
+  const dbDescription = meta.description ?? null
+
+  return {
+    severity,
+    description_id: matchedById
+      ? (meta.descriptionId ?? issue.description_id ?? null)
+      : (issue.description_id ?? null),
+    description: dbDescription,
+    severity_details: dbDescription ?? '',
+    template_matched: true,
+    points_deducted: pointsDeducted,
+    section_id: matchedById ? (meta.sectionId ?? null) : null,
+    section: matchedById ? (meta.section ?? issue.section ?? '') : (issue.section ?? ''),
+    justification: issue.justification || 'empty',
+    confidence: issue.confidence ?? null,
+    error_type: issue.error_type ?? null,
+    evidence: issue.evidence || 'empty',
+    detector_tier: issue.detector_tier ?? null,
+  }
 }
 
 function deriveSeverity(severity: string, pointsDeducted: number): keyof typeof ErrorTypeEnum {
@@ -334,44 +392,14 @@ async function normaliseMcpIssues(aiIssues: McpAiIssue[]): Promise<{
   const lookups = await loadTemplateLookups(lookupTexts)
 
   const issues = aiIssues.reduce<NormalizedEvaluationIssue[]>((acc, issue) => {
-    const templateMeta = resolveTemplateMetadata(issue, lookups)
-    const templateMatched = Boolean(templateMeta)
+    const resolved = resolveTemplateMetadata(issue, lookups)
 
-    if (!templateMatched) {
+    // No template match at all: dropped, same as before this change.
+    if (!resolved) {
       return acc
     }
 
-    let pointsDeducted =
-      typeof templateMeta?.points === 'number'
-        ? Math.abs(templateMeta.points)
-        : typeof issue.confidence === 'number'
-          ? roundToNearestFive(Math.round(issue.confidence * 30))
-          : 0
-
-    pointsDeducted = roundToNearestFive(pointsDeducted)
-
-    const severity = deriveSeverity(
-      templateMeta?.severity ?? mapErrorTypeToSeverity(issue.error_type ?? ''),
-      pointsDeducted
-    )
-    const dbDescription = templateMeta?.description ?? null
-
-    acc.push({
-      severity,
-      description_id: templateMeta?.descriptionId ?? issue.description_id ?? null,
-      description: dbDescription,
-      severity_details: dbDescription ?? '',
-      template_matched: templateMatched,
-      points_deducted: pointsDeducted,
-      section_id: templateMeta?.sectionId ?? null,
-      section: templateMeta?.section ?? issue.section ?? '',
-      justification: issue.justification || 'empty',
-      confidence: issue.confidence ?? null,
-      error_type: issue.error_type ?? null,
-      evidence: issue.evidence || 'empty',
-      detector_tier: issue.detector_tier ?? null,
-    })
-
+    acc.push(mergeIssueWithTemplate(issue, resolved))
     return acc
   }, [])
 
