@@ -195,10 +195,13 @@ function resolveTemplateMetadata(
 }
 
 // Builds the stored issue from the scorer issue + matched template.
-// On a text match the issue keeps its own section and id; the template
-// only contributes points and severity. Text is shared across sections,
-// so trusting the template's section there is what caused duplicate
-// findings to appear under one section.
+//
+// Rule: what the finding IS comes from the scorer (label, section, id).
+// The template only supplies how much it COSTS (points and severity).
+// A wrong template row can then only affect the score, which a reviewer
+// can see and challenge, instead of relabelling the finding as a
+// different kind of problem. On a text match the template's section is
+// dropped too, since the same text is reused across sections.
 export function mergeIssueWithTemplate(
   issue: McpAiIssue,
   resolved: ResolvedTemplate
@@ -218,15 +221,35 @@ export function mergeIssueWithTemplate(
     meta.severity ?? mapErrorTypeToSeverity(issue.error_type ?? ''),
     pointsDeducted
   )
-  const dbDescription = meta.description ?? null
+
+  // Scorer's own label wins; the template text is only a fallback for
+  // findings that arrive without one.
+  const scorerLabel = issue.description?.trim() || null
+  const label = scorerLabel ?? meta.description ?? null
+
+  // A template whose text disagrees with the scorer usually means the
+  // mapping row points at the wrong description - surface it rather than
+  // letting it quietly change what the reviewer reads.
+  if (
+    scorerLabel &&
+    meta.description &&
+    normalizeLookupKey(scorerLabel) !== normalizeLookupKey(meta.description)
+  ) {
+    logger.warn('[MCP] Template description does not match the scorer label', {
+      descriptionId: issue.description_id ?? null,
+      scorerLabel,
+      templateLabel: meta.description,
+      matchedBy,
+    })
+  }
 
   return {
     severity,
     description_id: matchedById
       ? (meta.descriptionId ?? issue.description_id ?? null)
       : (issue.description_id ?? null),
-    description: dbDescription,
-    severity_details: dbDescription ?? '',
+    description: label,
+    severity_details: label ?? '',
     template_matched: true,
     points_deducted: pointsDeducted,
     section_id: matchedById ? (meta.sectionId ?? null) : null,

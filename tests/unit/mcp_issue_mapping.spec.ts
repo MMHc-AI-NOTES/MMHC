@@ -116,6 +116,56 @@ test.group('mergeIssueWithTemplate - text fallback', () => {
   })
 })
 
+test.group('mergeIssueWithTemplate - label always comes from the scorer', () => {
+  test('a mismapped template cannot relabel the finding', ({ assert }) => {
+    // Production case: ass_4 ("No modality") was mapped to a template row
+    // whose text reads "Field copy/paste from previous note".
+    const issue = makeIssue({
+      section: 'Assessment & Therapeutic Intervention',
+      description: 'No modality',
+      description_id: 'ass_4',
+      detector_tier: 'deterministic',
+      justification: 'Deterministic rule R6 fired - no whitelist modality matched',
+    })
+    const wrongTemplate: ResolvedTemplate['meta'] = {
+      descriptionId: 'ass_4',
+      description: 'Field copy/paste from previous note',
+      severity: 'critical',
+      points: 25,
+      sectionId: 'zad8-1',
+      section: 'Assessment & Therapeutic Intervention',
+    }
+    const result = mergeIssueWithTemplate(issue, { meta: wrongTemplate, matchedBy: 'id' })
+
+    // label follows the scorer, not the mismapped template
+    assert.equal(result.description, 'No modality')
+    assert.equal(result.severity_details, 'No modality')
+    assert.notEqual(result.description, 'Field copy/paste from previous note')
+    // points and severity still come from the template
+    assert.equal(result.points_deducted, 25)
+    assert.equal(result.severity, 'critical')
+  })
+
+  test('title and justification always describe the same finding', ({ assert }) => {
+    const issue = makeIssue({
+      description: 'No clinical interpretation',
+      description_id: 'ass_5',
+      justification: 'no clinical conceptualization is present',
+    })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'text' })
+
+    assert.equal(result.description, 'No clinical interpretation')
+    assert.equal(result.justification, 'no clinical conceptualization is present')
+  })
+
+  test('falls back to the template text when the scorer sends no label', ({ assert }) => {
+    const issue = makeIssue({ description: '' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.description, 'Templated/boilerplate/Vague/non-specific to DOS')
+  })
+})
+
 test.group('mergeIssueWithTemplate - points and severity', () => {
   test('falls back to confidence-based points when template has none', ({ assert }) => {
     const meta: ResolvedTemplate['meta'] = { ...subjectiveTemplate, points: null }
