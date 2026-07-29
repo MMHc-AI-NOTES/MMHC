@@ -44,7 +44,8 @@ export default class NoteReviewMarkController {
 
   public async smeReviewersNoteCounts(ctx: HttpContext) {
     try {
-      const response = await getSmeReviewersNoteCounts()
+      const timeframe = ctx.request.qs().timeframe as string | undefined
+      const response = await getSmeReviewersNoteCounts(timeframe)
       return response
     } catch (error) {
       logger.error('Sme reviewers note counts error', error)
