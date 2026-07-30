@@ -45,7 +45,9 @@ const summariseJobs = async (queue: Queue): Promise<QueueJobSummary[]> => {
   const jobs = [
     ...(await queue.getJobs(['active'], 0, RECENT_JOBS_PER_QUEUE)),
     ...(await queue.getJobs(['completed', 'failed'], 0, RECENT_JOBS_PER_QUEUE)),
-  ]
+    // getJobs can return a stale entry (job id still listed in Redis but its
+    // hash already expired/removed) as undefined instead of omitting it.
+  ].filter((job): job is NonNullable<typeof job> => job != null)
 
   const summaries = await Promise.all(
     jobs.map(async (job) => {
