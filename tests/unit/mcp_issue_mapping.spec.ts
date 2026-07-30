@@ -116,6 +116,164 @@ test.group('mergeIssueWithTemplate - text fallback', () => {
   })
 })
 
+test.group('mergeIssueWithTemplate - edge cases', () => {
+  test('scorer grading is matched case insensitively', ({ assert }) => {
+    const issue = makeIssue({ error_type: 'CRITICAL' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'critical')
+    assert.equal(result.points_deducted, 25)
+  })
+
+  test('surrounding whitespace in the grading is tolerated', ({ assert }) => {
+    const issue = makeIssue({ error_type: '  critical  ' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'critical')
+    assert.equal(result.points_deducted, 25)
+  })
+
+  test('an unrecognised grading is treated as minor rather than dropped', ({ assert }) => {
+    const issue = makeIssue({ error_type: 'catastrophic' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'minor')
+    assert.equal(result.points_deducted, 5)
+  })
+
+  test('major is treated as critical', ({ assert }) => {
+    const issue = makeIssue({ error_type: 'major' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'critical')
+    assert.equal(result.points_deducted, 25)
+  })
+
+  test('medium is treated as moderate', ({ assert }) => {
+    const issue = makeIssue({ error_type: 'medium' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'moderate')
+    assert.equal(result.points_deducted, 15)
+  })
+
+  test('no grading from either side falls back to confidence', ({ assert }) => {
+    const issue = makeIssue({ error_type: '', confidence: 0.5 })
+    const meta: ResolvedTemplate['meta'] = { ...subjectiveTemplate, severity: null, points: null }
+    const result = mergeIssueWithTemplate(issue, { meta, matchedBy: 'id' })
+
+    // 0.5 * 30 = 15, rounded to the nearest five
+    assert.equal(result.points_deducted, 15)
+  })
+
+  test('no grading and no confidence yields zero points, not a crash', ({ assert }) => {
+    const issue = makeIssue({ error_type: '', confidence: undefined })
+    const meta: ResolvedTemplate['meta'] = { ...subjectiveTemplate, severity: null, points: null }
+    const result = mergeIssueWithTemplate(issue, { meta, matchedBy: 'id' })
+
+    assert.equal(result.points_deducted, 0)
+  })
+
+  test('a completely empty template does not throw', ({ assert }) => {
+    const issue = makeIssue({})
+    const meta: ResolvedTemplate['meta'] = {
+      descriptionId: null,
+      description: null,
+      severity: null,
+      points: null,
+      sectionId: null,
+      section: null,
+    }
+    const result = mergeIssueWithTemplate(issue, { meta, matchedBy: 'text' })
+
+    assert.equal(result.severity, 'moderate')
+    assert.equal(result.points_deducted, 15)
+    assert.equal(result.section, 'Subjective')
+    assert.isTrue(result.template_matched)
+  })
+
+  test('missing justification and evidence are replaced with a placeholder', ({ assert }) => {
+    const issue = makeIssue({ justification: '', evidence: '' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.justification, 'empty')
+    assert.equal(result.evidence, 'empty')
+  })
+
+  test('points are always a multiple of five', ({ assert }) => {
+    for (const errorType of ['minor', 'moderate', 'critical', 'unknown', '']) {
+      const result = mergeIssueWithTemplate(makeIssue({ error_type: errorType }), {
+        meta: subjectiveTemplate,
+        matchedBy: 'id',
+      })
+      assert.equal((result.points_deducted ?? 0) % 5, 0)
+    }
+  })
+
+  test('detector tier and confidence pass through untouched', ({ assert }) => {
+    const issue = makeIssue({ detector_tier: 'deterministic', confidence: 1 })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.detector_tier, 'deterministic')
+    assert.equal(result.confidence, 1)
+  })
+})
+
+test.group('mergeIssueWithTemplate - severity always comes from the scorer', () => {
+  test('a mismapped template cannot inflate the severity or points', ({ assert }) => {
+    // Production case: ass_4 was graded moderate by the scorer but the mapping
+    // row pointed at a critical template, so it displayed as critical -25.
+    const issue = makeIssue({
+      section: 'Assessment & Therapeutic Intervention',
+      description: 'No modality',
+      description_id: 'ass_4',
+      error_type: 'moderate',
+      detector_tier: 'deterministic',
+    })
+    const criticalTemplate: ResolvedTemplate['meta'] = {
+      descriptionId: 'ass_4',
+      description: 'Field copy/paste from previous note',
+      severity: 'critical',
+      points: 25,
+      sectionId: 'zad8-1',
+      section: 'Assessment & Therapeutic Intervention',
+    }
+    const result = mergeIssueWithTemplate(issue, { meta: criticalTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'moderate')
+    assert.equal(result.points_deducted, 15)
+    assert.notEqual(result.severity, 'critical')
+    assert.notEqual(result.points_deducted, 25)
+  })
+
+  test('a critical grading from the scorer is respected', ({ assert }) => {
+    const issue = makeIssue({ error_type: 'critical', description_id: 'obj_2' })
+    const moderateTemplate: ResolvedTemplate['meta'] = { ...subjectiveTemplate, severity: 'moderate', points: 15 }
+    const result = mergeIssueWithTemplate(issue, { meta: moderateTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'critical')
+    assert.equal(result.points_deducted, 25)
+  })
+
+  test('falls back to the template grading when the scorer sends none', ({ assert }) => {
+    const issue = makeIssue({ error_type: '' })
+    const result = mergeIssueWithTemplate(issue, { meta: subjectiveTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'moderate')
+    assert.equal(result.points_deducted, 15)
+  })
+
+  test('points follow severity, not the template value', ({ assert }) => {
+    // Template says 5 points but grades it critical; points must match critical.
+    const issue = makeIssue({ error_type: 'critical' })
+    const inconsistentTemplate: ResolvedTemplate['meta'] = { ...subjectiveTemplate, severity: 'critical', points: 5 }
+    const result = mergeIssueWithTemplate(issue, { meta: inconsistentTemplate, matchedBy: 'id' })
+
+    assert.equal(result.severity, 'critical')
+    assert.equal(result.points_deducted, 25)
+  })
+})
+
 test.group('mergeIssueWithTemplate - label always comes from the scorer', () => {
   test('a mismapped template cannot relabel the finding', ({ assert }) => {
     // Production case: ass_4 ("No modality") was mapped to a template row
@@ -141,9 +299,9 @@ test.group('mergeIssueWithTemplate - label always comes from the scorer', () => 
     assert.equal(result.description, 'No modality')
     assert.equal(result.severity_details, 'No modality')
     assert.notEqual(result.description, 'Field copy/paste from previous note')
-    // points and severity still come from the template
-    assert.equal(result.points_deducted, 25)
-    assert.equal(result.severity, 'critical')
+    // grading also follows the scorer, so the critical template cannot inflate it
+    assert.equal(result.severity, 'moderate')
+    assert.equal(result.points_deducted, 15)
   })
 
   test('title and justification always describe the same finding', ({ assert }) => {
