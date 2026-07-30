@@ -62,7 +62,12 @@ export const nextFailureState = (
   existing: { attempts: number } | null,
   error: unknown,
   now: DateTime
-): { attempts: number; last_error: string; last_attempt_at: string; quarantined_at: string | null } => {
+): {
+  attempts: number
+  last_error: string
+  last_attempt_at: string
+  quarantined_at: string | null
+} => {
   const previousAttempts = existing && Number.isFinite(existing.attempts) ? existing.attempts : 0
   const attempts = Math.max(0, previousAttempts) + 1
   const timestamp = now.toSQL({ includeOffset: false }) as string
@@ -83,7 +88,6 @@ export const getSkippableNoteIds = async (now: DateTime = DateTime.now()): Promi
 
   return rows.filter((row) => shouldSkipNote(row, now)).map((row) => row.note_id)
 }
-
 
 export const recordReviewFailure = async (
   noteId: string,

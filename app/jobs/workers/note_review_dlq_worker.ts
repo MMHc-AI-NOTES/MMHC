@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq'
 import logger from '@adonisjs/core/services/logger'
-import { redisConfig } from '#config/services'
+import { bullConnection, bullPrefix } from '#jobs/bull_connection'
 import { NOTE_REVIEW_DLQ_NAME, type NoteReviewDlqPayload } from '#jobs/queues/note_review_dlq'
 import Session from '#models/session'
 import { AiStatusEnum } from '#enums/session_enum'
@@ -38,7 +38,9 @@ export const startNoteReviewDlqWorker = () => {
       }
     },
     {
-      connection: redisConfig,
+      connection: bullConnection,
+      // Must match the queue's prefix or the worker watches the wrong keys.
+      prefix: bullPrefix,
       concurrency: 2,
     }
   )

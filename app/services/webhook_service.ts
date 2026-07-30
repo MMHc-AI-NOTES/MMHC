@@ -198,8 +198,8 @@ export const getSessionByNoteId = async (noteId: string) => {
  *      - For each note, parent_note_id = next newer note's id
  *      - Latest note has parent_note_id = null
  */
-export const createSessionFromWebhook = async (payload: webhookSessionValidatorInterface) => {
-  const noteId = payload.NoteId
+export const createSessionFromWebhook = async (payload: any) => {
+  const noteId = payload.NoteId ?? payload.note_id ?? payload.noteId
   logger.info('[Webhook] Processing started', { noteId })
 
   try {
@@ -212,10 +212,11 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
     // Find or create practitioner by PractitionerEmail or PractitionerId
     let practitionerId: number | null = null
 
-    // First, try to find by PractitionerEmail if provided (any user with this email)
-    if (payload.PractitionerEmail) {
+    const email = payload.PractitionerEmail ?? payload.practitioner_email ?? payload.Email
+    if (email && String(email).trim() !== '') {
+      const emailStr = String(email).trim()
       const practitionerByEmail = await User.query()
-        .where('email', payload.PractitionerEmail)
+        .where('email', emailStr)
         .first()
 
       if (practitionerByEmail) {
@@ -223,7 +224,7 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       } else {
         // Create new practitioner only if no user exists with this email
         const newPractitioner = await User.create({
-          email: payload.PractitionerEmail,
+          email: emailStr,
           fullName: payload.PractitionerName || null,
           type: UserTypeEnum.practitioner,
           isActive: true,
@@ -231,8 +232,11 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
         })
         practitionerId = newPractitioner.id
       }
-    } else if (payload.PractitionerId) {
-      const pidStr = String(payload.PractitionerId).trim()
+    }
+
+    const pid = payload.PractitionerId ?? payload.practitioner_id ?? payload.practitionerId ?? null
+    if (!practitionerId && pid !== null && pid !== undefined && String(pid).trim() !== '') {
+      const pidStr = String(pid).trim()
       // Try by pq_id first (MORF-style), then by numeric id
       const byPqId = await User.query().where('pq_id', pidStr).first()
       if (byPqId) {
@@ -250,16 +254,29 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
     }
 
     if (!practitionerId) {
-      throw new Error(
-        `Practitioner not found. Please provide PractitionerEmail or valid PractitionerId.`
-      )
+      const systemUser = await User.find(1)
+      if (systemUser) {
+        practitionerId = systemUser.id
+      } else {
+        throw new Error(
+          `Practitioner not found. Please provide PractitionerEmail or valid PractitionerId.`
+        )
+      }
     }
 
-    // Find or create patient by ClientId
+    // Find or create patient by PatientId or ClientId
     let patientId: number | null = null
-    if (payload.ClientId) {
-      const clientIdString = String(payload.ClientId)
-      const patient = await Patient.query().where('client_id', clientIdString).first()
+    const patientIdRaw = payload.PatientId ?? payload.patient_id ?? payload.patientId ?? null
+    const clientId = payload.ClientId ?? payload.client_id ?? payload.clientId ?? payload.ClientID ?? null
+
+    if (patientIdRaw !== null && patientIdRaw !== undefined && String(patientIdRaw).trim() !== '') {
+      const p = await Patient.query().where('id', Number(patientIdRaw)).first()
+      if (p) patientId = p.id
+    }
+
+    if (patientId === null && clientId !== null && clientId !== undefined && String(clientId).trim() !== '') {
+      const clientIdString = String(clientId).trim()
+      let patient = await Patient.query().where('client_id', clientIdString).first()
 
       if (patient) {
         patientId = patient.id
@@ -272,16 +289,13 @@ export const createSessionFromWebhook = async (payload: webhookSessionValidatorI
       }
     }
 
-    // NoteName is where PracticeQ actually sends the note type; Type is a fallback.
-    const resolvedType = resolveSessionType(
-      (payload as any).NoteName ?? (payload as any).Type,
-      payload.NoteId
-    )
+    // NoteName is where PracticeQ/MORF sends the note type; Type is a fallback.
+    const typeValue = payload.NoteName ?? payload.noteName ?? payload.Type ?? payload.type
+    const resolvedType = resolveSessionType(typeValue, noteId)
     const sessionType = resolvedType.type
-    // Skip the id map if we're not sure about the type, so we don't apply
-    // the wrong field names to a note type we don't actually recognize.
+    const questions = payload.Questions ?? payload.questions ?? []
     const sessionObject = buildSessionObject(
-      payload.Questions,
+      questions,
       resolvedType.matched ? sessionType : undefined
     )
     const sessionString = JSON.stringify(sessionObject)

@@ -103,7 +103,12 @@ export const syncUnprocessedMorfNotes = async (): Promise<{
       if (p) patientId = p.id
     }
 
-    if (patientId === null && clientId !== null && clientId !== undefined && String(clientId).trim() !== '') {
+    if (
+      patientId === null &&
+      clientId !== null &&
+      clientId !== undefined &&
+      String(clientId).trim() !== ''
+    ) {
       const clientIdStr = String(clientId).trim()
       let p = await Patient.query().where('client_id', clientIdStr).first()
       if (!p) {
@@ -247,6 +252,8 @@ export const syncUnprocessedMorfNotes = async (): Promise<{
     await relinkPatientSessions(patient.id)
   }
 
-  logger.info(`[MorfSync] Complete: created=${created}, updated=${updated}, skipped=${skipped}, errors=${errors}`)
+  logger.info(
+    `[MorfSync] Complete: created=${created}, updated=${updated}, skipped=${skipped}, errors=${errors}`
+  )
   return { created, updated, skipped, errors }
 }
