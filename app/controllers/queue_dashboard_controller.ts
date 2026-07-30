@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
-import { getQueueSummaries } from '#services/queue_dashboard_service'
+import { getQueueSummaries, getQuarantineSummary } from '#services/queue_dashboard_service'
 
 /**
  * Read only view of the BullMQ queues. It is guarded by a shared token rather
@@ -28,6 +28,7 @@ export default class QueueDashboardController {
     return ctx.response.ok({
       generatedAt: new Date().toISOString(),
       queues: await getQueueSummaries(),
+      quarantine: await getQuarantineSummary(),
     })
   }
 
@@ -36,8 +37,8 @@ export default class QueueDashboardController {
       return ctx.response.unauthorized({ message: 'Invalid or missing dashboard token' })
     }
 
-    const queues = await getQueueSummaries()
-    const html = renderDashboard(queues, String(ctx.request.input('token') ?? ''))
+    const [queues, quarantine] = await Promise.all([getQueueSummaries(), getQuarantineSummary()])
+    const html = renderDashboard(queues, quarantine, String(ctx.request.input('token') ?? ''))
 
     return ctx.response.header('content-type', 'text/html; charset=utf-8').send(html)
   }
@@ -55,8 +56,38 @@ const formatTime = (iso: string | null): string =>
 
 const renderDashboard = (
   queues: Awaited<ReturnType<typeof getQueueSummaries>>,
+  quarantine: Awaited<ReturnType<typeof getQuarantineSummary>>,
   token: string
 ): string => {
+  const quarantineRows = quarantine.notes.length
+    ? quarantine.notes
+        .map(
+          (note) => `<tr>
+            <td>${escapeHtml(note.noteId)}</td>
+            <td>${note.attempts}</td>
+            <td>${formatTime(note.quarantinedAt)}</td>
+            <td class="detail">${escapeHtml(note.lastError) || '—'}</td>
+          </tr>`
+        )
+        .join('')
+    : '<tr><td colspan="4" class="empty">No notes have been given up on</td></tr>'
+
+  const quarantineCard = `<section class="card">
+    <header>
+      <div>
+        <h2>Notes the review gave up on</h2>
+        <p class="queue-name">quarantined after ${quarantine.maxAttempts} failed attempts</p>
+      </div>
+      <div class="meta">
+        <span class="${quarantine.notes.length > 0 ? 'warn' : 'ok'}">${quarantine.notes.length} note${quarantine.notes.length === 1 ? '' : 's'}</span>
+      </div>
+    </header>
+    <table>
+      <thead><tr><th>Note</th><th>Attempts</th><th>Given up at</th><th>Last error</th></tr></thead>
+      <tbody>${quarantineRows}</tbody>
+    </table>
+  </section>`
+
   const cards = queues
     .map((queue) => {
       const counts = Object.entries(queue.counts)
@@ -147,6 +178,7 @@ const renderDashboard = (
   <h1>MMHC background queues</h1>
   <p class="generated">Refreshes every 15 seconds. Generated ${formatTime(new Date().toISOString())}.</p>
   ${cards}
+  ${quarantineCard}
 </body>
 </html>`
 }

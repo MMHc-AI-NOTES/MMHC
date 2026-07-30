@@ -3,6 +3,8 @@ import { webhookQueue } from '#jobs/queues/webhook_queue'
 import { sessionCptQueue } from '#jobs/queues/session_cpt_queue'
 import { dispatchEmailQueue } from '#jobs/queues/dispatch_email_queue'
 import { noteReviewQueue, NOTE_REVIEW_SWEEP_JOB } from '#jobs/queues/note_review_queue'
+import { noteReviewDlq } from '#jobs/queues/note_review_dlq'
+import { getQuarantinedNotes, MAX_REVIEW_ATTEMPTS } from '#services/note_review_failure_service'
 
 export interface QueueJobSummary {
   id: string | null
@@ -28,6 +30,7 @@ export interface QueueSummary {
 
 const QUEUES: { queue: Queue; label: string }[] = [
   { queue: noteReviewQueue, label: 'Automatic note review' },
+  { queue: noteReviewDlq, label: 'Note review dead letter queue' },
   { queue: webhookQueue, label: 'Webhook ingestion' },
   { queue: sessionCptQueue, label: 'Session CPT codes' },
   { queue: dispatchEmailQueue, label: 'Email dispatch' },
@@ -72,6 +75,36 @@ const nextSweepAt = async (queue: Queue): Promise<string | null> => {
   const repeatables = await queue.getRepeatableJobs()
   const sweep = repeatables.find((job) => job.name === NOTE_REVIEW_SWEEP_JOB)
   return sweep ? toIso(sweep.next) : null
+}
+
+export interface QuarantinedNoteSummary {
+  noteId: string
+  attempts: number
+  lastError: string | null
+  quarantinedAt: string | null
+}
+
+/**
+ * Notes the automatic review gave up on after MAX_REVIEW_ATTEMPTS. This is the
+ * equivalent of a dead letter queue for this design: the sweep derives its work
+ * from the database rather than from job payloads, so a failed note is never
+ * lost, but it does need somewhere visible to land once retrying is pointless.
+ */
+export const getQuarantineSummary = async (): Promise<{
+  maxAttempts: number
+  notes: QuarantinedNoteSummary[]
+}> => {
+  const rows = await getQuarantinedNotes()
+
+  return {
+    maxAttempts: MAX_REVIEW_ATTEMPTS,
+    notes: rows.map((row) => ({
+      noteId: row.note_id,
+      attempts: row.attempts,
+      lastError: row.last_error,
+      quarantinedAt: row.quarantined_at ? new Date(row.quarantined_at).toISOString() : null,
+    })),
+  }
 }
 
 export const getQueueSummaries = async (): Promise<QueueSummary[]> => {

@@ -10,23 +10,12 @@ import {
   getSkippableNoteIds,
   recordReviewFailure,
 } from '#services/note_review_failure_service'
-
-/**
- * How many notes one sweep will review. An MCP call takes roughly five to
- * fifteen seconds, so this bounds a run to well under the one minute interval
- * and keeps a backlog draining steadily rather than flooding the scorer.
- */
-export const NOTES_PER_SWEEP = 10
-
-/**
- * How many reviews run at once within a sweep. Five keeps the worst case
- * (fifteen seconds a note) at about thirty seconds, so a sweep finishes well
- * before the next one is due.
- */
-export const CONCURRENCY = 5
-
-/** User the created review records are attributed to (system admin). */
-const SYSTEM_USER_ID = 1
+import {
+  CONCURRENCY,
+  NOTES_PER_SWEEP,
+  SYSTEM_USER_ID,
+  mapWithConcurrency,
+} from '#services/note_review_sweep_policy'
 
 let noteReviewWorker: Worker | null = null
 let redisFailureHandled = false
@@ -52,28 +41,6 @@ const findUnreviewedNotes = async (limit: number): Promise<{ id: number; note_id
   }
 
   return query.orderBy('id', 'asc').limit(limit).select('id', 'note_id')
-}
-
-/**
- * Runs `mapper` over `items` with at most `concurrency` in flight. Exported so
- * the bound can be tested directly: exceeding it would put unbounded load on
- * the scorer, and dropping below it would let a sweep overrun its interval.
- */
-export const mapWithConcurrency = async <T>(
-  items: T[],
-  concurrency: number,
-  mapper: (item: T) => Promise<void>
-): Promise<void> => {
-  const limit = Math.max(1, Math.floor(concurrency))
-  let nextIndex = 0
-  const worker = async () => {
-    while (true) {
-      const index = nextIndex++
-      if (index >= items.length) return
-      await mapper(items[index])
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
 }
 
 export const runNoteReviewSweep = async (): Promise<{
