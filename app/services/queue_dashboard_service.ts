@@ -57,8 +57,7 @@ const summariseJobs = async (queue: Queue): Promise<QueueJobSummary[]> => {
         attempts: job.attemptsMade,
         createdAt: toIso(job.timestamp),
         finishedAt: toIso(job.finishedOn),
-        durationMs:
-          job.processedOn && job.finishedOn ? job.finishedOn - job.processedOn : null,
+        durationMs: job.processedOn && job.finishedOn ? job.finishedOn - job.processedOn : null,
         result: job.returnvalue ?? null,
         failedReason: job.failedReason ?? null,
       }
@@ -109,21 +108,25 @@ export const getQuarantineSummary = async (): Promise<{
 
 export const getQueueSummaries = async (): Promise<QueueSummary[]> => {
   return Promise.all(
-    QUEUES.map(async ({ queue, label }) => ({
-      name: queue.name,
-      label,
-      counts: await queue.getJobCounts(
-        'waiting',
-        'active',
-        'completed',
-        'failed',
-        'delayed',
-        'paused'
-      ),
-      workers: (await queue.getWorkers()).length,
-      paused: await queue.isPaused(),
-      nextRunAt: queue.name === noteReviewQueue.name ? await nextSweepAt(queue) : null,
-      recentJobs: await summariseJobs(queue),
-    }))
+    QUEUES.map(async ({ queue, label }) => {
+      const workers = await queue.getWorkers()
+
+      return {
+        name: queue.name,
+        label,
+        counts: await queue.getJobCounts(
+          'waiting',
+          'active',
+          'completed',
+          'failed',
+          'delayed',
+          'paused'
+        ),
+        workers: workers.length,
+        paused: await queue.isPaused(),
+        nextRunAt: queue.name === noteReviewQueue.name ? await nextSweepAt(queue) : null,
+        recentJobs: await summariseJobs(queue),
+      }
+    })
   )
 }

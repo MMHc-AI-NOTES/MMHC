@@ -50,12 +50,16 @@ test.group('Note review sweep | concurrency', () => {
     let inFlight = 0
     let peak = 0
 
-    await mapWithConcurrency(Array.from({ length: 12 }, (_, i) => i), 3, async () => {
-      inFlight++
-      peak = Math.max(peak, inFlight)
-      await delay(5)
-      inFlight--
-    })
+    await mapWithConcurrency(
+      Array.from({ length: 12 }, (_, i) => i),
+      3,
+      async () => {
+        inFlight++
+        peak = Math.max(peak, inFlight)
+        await delay(5)
+        inFlight--
+      }
+    )
 
     assert.equal(peak, 3)
     assert.equal(inFlight, 0)
@@ -149,8 +153,7 @@ test.group('Note review sweep | batching', () => {
 
   test('a batch stays inside the one minute interval at fifteen seconds a note', ({ assert }) => {
     const worstCaseSecondsPerNote = 15
-    const estimatedSeconds =
-      Math.ceil(NOTES_PER_SWEEP / CONCURRENCY) * worstCaseSecondsPerNote
+    const estimatedSeconds = Math.ceil(NOTES_PER_SWEEP / CONCURRENCY) * worstCaseSecondsPerNote
 
     assert.equal(estimatedSeconds, 30)
     assert.isBelow(estimatedSeconds, 60)
