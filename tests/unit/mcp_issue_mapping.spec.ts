@@ -248,7 +248,11 @@ test.group('mergeIssueWithTemplate - severity always comes from the scorer', () 
 
   test('a critical grading from the scorer is respected', ({ assert }) => {
     const issue = makeIssue({ error_type: 'critical', description_id: 'obj_2' })
-    const moderateTemplate: ResolvedTemplate['meta'] = { ...subjectiveTemplate, severity: 'moderate', points: 15 }
+    const moderateTemplate: ResolvedTemplate['meta'] = {
+      ...subjectiveTemplate,
+      severity: 'moderate',
+      points: 15,
+    }
     const result = mergeIssueWithTemplate(issue, { meta: moderateTemplate, matchedBy: 'id' })
 
     assert.equal(result.severity, 'critical')
@@ -266,7 +270,11 @@ test.group('mergeIssueWithTemplate - severity always comes from the scorer', () 
   test('points follow severity, not the template value', ({ assert }) => {
     // Template says 5 points but grades it critical; points must match critical.
     const issue = makeIssue({ error_type: 'critical' })
-    const inconsistentTemplate: ResolvedTemplate['meta'] = { ...subjectiveTemplate, severity: 'critical', points: 5 }
+    const inconsistentTemplate: ResolvedTemplate['meta'] = {
+      ...subjectiveTemplate,
+      severity: 'critical',
+      points: 5,
+    }
     const result = mergeIssueWithTemplate(issue, { meta: inconsistentTemplate, matchedBy: 'id' })
 
     assert.equal(result.severity, 'critical')
