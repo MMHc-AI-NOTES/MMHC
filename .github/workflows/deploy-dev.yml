@@ -118,6 +118,7 @@ jobs:
           _pm2_webhook_webhook_worker_ref="${_pm2_server_ref}-webhook-queue-worker"
           _pm2_email_worker_ref="${_pm2_server_ref}-email-queue-worker"
           _pm2_session_cpt_codes_worker_ref="${_pm2_server_ref}-session-cpt-codes-queue-worker"
+          _pm2_note_review_worker_ref="${_pm2_server_ref}-note-review-worker"
           NODE_INTERPRETER="/home/ubuntu/.nvm/versions/node/v22.21.1/bin/node"
 
 
@@ -164,6 +165,11 @@ jobs:
           pm2 stop $_pm2_session_cpt_codes_worker_ref --silent
           pm2 delete $_pm2_session_cpt_codes_worker_ref --silent
           pm2 start --name $_pm2_session_cpt_codes_worker_ref --time $NODE_INTERPRETER -- ace session:cpt-worker
+
+          ## Note Review Worker Job
+          pm2 stop $_pm2_note_review_worker_ref --silent
+          pm2 delete $_pm2_note_review_worker_ref --silent
+          pm2 start --name $_pm2_note_review_worker_ref --time $NODE_INTERPRETER -- ace note:review-worker
 
 
 

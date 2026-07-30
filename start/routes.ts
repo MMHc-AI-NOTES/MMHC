@@ -32,6 +32,7 @@ import '#start/routes/morf_routes'
 import '#start/routes/feedback_routes'
 
 import '#start/routes/note_review_mark_routes'
+import '#start/routes/queue_dashboard_routes'
 import { sendSuccess } from '#services/custom_response_service'
 
 router.get('/', async () => {

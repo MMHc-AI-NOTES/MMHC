@@ -79,6 +79,14 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |----------------------------------------------------------
+  | Shared token that opens the read only queue dashboard.
+  | Leave unset to keep the dashboard closed.
+  |----------------------------------------------------------
+  */
+  QUEUE_DASHBOARD_TOKEN: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
   | PracticeQ Configuration
   |----------------------------------------------------------
   */

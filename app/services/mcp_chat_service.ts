@@ -30,6 +30,11 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { AuditActionEnum } from '#enums/audit_log_enum'
 import type { createMcpChatValidatorInterface } from '#validators/mcp_chat_validator'
 import logger from '@adonisjs/core/services/logger'
+import {
+  NoteReviewInProgressError,
+  claimNote,
+  releaseNote,
+} from '#services/note_review_claim_service'
 
 export const MCP_MODEL_ID = 'mcp-v13'
 
@@ -90,75 +95,91 @@ export const createMcpChat = async (
     throw new Error('Session not found for the provided note')
   }
 
-  const startTimeMs = Date.now()
-  const startTime = DateTime.fromMillis(startTimeMs)
+  // The automatic sweep runs in the worker process and the Re-run Audit button
+  // runs in the API process, so an in memory guard cannot see both. Without
+  // this a note can be scored twice at once, leaving two chats rows where the
+  // read path only ever returns the first.
+  const claimed = await claimNote(reqData.note_id)
 
-  const evaluation = await runMcpEvaluation(session)
+  if (!claimed) {
+    ctx?.logger.warn({ noteId: reqData.note_id }, 'MCP review already running for this note')
+    throw new NoteReviewInProgressError(reqData.note_id)
+  }
 
-  const endTimeMs = Date.now()
-  const endTime = DateTime.fromMillis(endTimeMs)
-  const responseTime = (endTimeMs - startTimeMs) / 1000
+  try {
+    const startTimeMs = Date.now()
+    const startTime = DateTime.fromMillis(startTimeMs)
 
-  const severity = mapSeverity(evaluation.validation_result?.status)
-  const result = mapResult(evaluation.validation_result?.status)
-  const prompt = JSON.stringify(evaluation.mcp_request ?? {})
-  const modelId =
-    evaluation.mcp_response?.meta.scorer_version ??
-    evaluation.mcp_response?.model_version ??
-    MCP_MODEL_ID
+    const evaluation = await runMcpEvaluation(session)
 
-  const chat = await Chat.create({
-    prompt,
-    userNote: session.session,
-    userInput: evaluation.user_input,
-    modelId,
-    noteId: reqData.note_id,
-    evaluationScore: evaluation.score,
-    responseTime,
-    startTime,
-    endTime,
-    sentiment: evaluation.sentiment,
-    evaluation: evaluation.evaluation,
-    bedrockResponse: evaluation,
-    userId,
-    agentId: null,
-    triggerSource: ChatTriggerSourceEnum.rerun,
-    severity,
-    result,
-    aiReview: getChatAiReview(),
-  })
+    const endTimeMs = Date.now()
+    const endTime = DateTime.fromMillis(endTimeMs)
+    const responseTime = (endTimeMs - startTimeMs) / 1000
 
-  await createAuditLog({
-    ctx,
-    userId,
-    description: `MCP chat created for note ${reqData.note_id}`,
-    action: AuditActionEnum.chatCreated,
-    modelType: 'Chat',
-    modelId: chat.id,
-    noteId: reqData.note_id,
-    status: true,
-    metadata: {
-      note_id: reqData.note_id,
-      chat_id: chat.id,
-      provider: 'MCP',
-      model_id: chat.modelId,
-    },
-  })
+    const severity = mapSeverity(evaluation.validation_result?.status)
+    const result = mapResult(evaluation.validation_result?.status)
+    const prompt = JSON.stringify(evaluation.mcp_request ?? {})
+    const modelId =
+      evaluation.mcp_response?.meta.scorer_version ??
+      evaluation.mcp_response?.model_version ??
+      MCP_MODEL_ID
 
-  const aiScore = evaluation.score
-  const aiStatus = mapAiStatus(aiScore)
-  const workflow = mapWorkflow(evaluation.validation_result?.status)
-
-  await session
-    .merge({
-      aiScore,
-      aiStatus,
-      workflow,
-      reviewCycle: ReviewCycleEnum.cycle_1_of_3,
+    const chat = await Chat.create({
+      prompt,
+      userNote: session.session,
+      userInput: evaluation.user_input,
+      modelId,
+      noteId: reqData.note_id,
+      evaluationScore: evaluation.score,
+      responseTime,
+      startTime,
+      endTime,
+      sentiment: evaluation.sentiment,
+      evaluation: evaluation.evaluation,
+      bedrockResponse: evaluation,
+      userId,
+      agentId: null,
+      triggerSource: ChatTriggerSourceEnum.rerun,
+      severity,
+      result,
+      aiReview: getChatAiReview(),
     })
-    .save()
 
-  return sendSuccess('MCP chat created and scored successfully', toMcpApiResponse(evaluation))
+    await createAuditLog({
+      ctx,
+      userId,
+      description: `MCP chat created for note ${reqData.note_id}`,
+      action: AuditActionEnum.chatCreated,
+      modelType: 'Chat',
+      modelId: chat.id,
+      noteId: reqData.note_id,
+      status: true,
+      metadata: {
+        note_id: reqData.note_id,
+        chat_id: chat.id,
+        provider: 'MCP',
+        model_id: chat.modelId,
+      },
+    })
+
+    const aiScore = evaluation.score
+    const aiStatus = mapAiStatus(aiScore)
+    const workflow = mapWorkflow(evaluation.validation_result?.status)
+
+    await session
+      .merge({
+        aiScore,
+        aiStatus,
+        workflow,
+        reviewCycle: ReviewCycleEnum.cycle_1_of_3,
+      })
+      .save()
+
+    return sendSuccess('MCP chat created and scored successfully', toMcpApiResponse(evaluation))
+  } finally {
+    // Always released, so a scorer timeout cannot lock a note out until the TTL.
+    await releaseNote(reqData.note_id).catch(() => {})
+  }
 }
 
 export const scoreMcpNote = async (reqData: createMcpChatValidatorInterface) => {

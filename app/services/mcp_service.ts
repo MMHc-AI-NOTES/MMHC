@@ -195,10 +195,13 @@ function resolveTemplateMetadata(
 }
 
 // Builds the stored issue from the scorer issue + matched template.
-// On a text match the issue keeps its own section and id; the template
-// only contributes points and severity. Text is shared across sections,
-// so trusting the template's section there is what caused duplicate
-// findings to appear under one section.
+//
+// Rule: what the finding IS comes from the scorer (label, section, id).
+// The template only supplies how much it COSTS (points and severity).
+// A wrong template row can then only affect the score, which a reviewer
+// can see and challenge, instead of relabelling the finding as a
+// different kind of problem. On a text match the template's section is
+// dropped too, since the same text is reused across sections.
 export function mergeIssueWithTemplate(
   issue: McpAiIssue,
   resolved: ResolvedTemplate
@@ -206,27 +209,69 @@ export function mergeIssueWithTemplate(
   const { meta, matchedBy } = resolved
   const matchedById = matchedBy === 'id'
 
+  // Severity is the scorer's judgement, so its error_type wins. The template
+  // is only a fallback for findings that arrive without one. Previously the
+  // template took priority, which let a mismapped row show a finding the
+  // scorer graded moderate as critical.
+  const scorerSeverity = issue.error_type?.trim() ? mapErrorTypeToSeverity(issue.error_type) : null
+  const severityName = scorerSeverity ?? meta.severity ?? ''
+
+  // Points follow from the severity we just settled on. Fall back to the
+  // template's own points, then to confidence, when severity is unknown.
+  const severityKey = severityName.toLowerCase() as keyof typeof ErrorTypeEnum
+  const pointsForSeverity = ErrorTypePoints[ErrorTypeEnum[severityKey]]
+
   let pointsDeducted =
-    typeof meta.points === 'number'
-      ? Math.abs(meta.points)
-      : typeof issue.confidence === 'number'
-        ? roundToNearestFive(Math.round(issue.confidence * 30))
-        : 0
+    typeof pointsForSeverity === 'number'
+      ? pointsForSeverity
+      : typeof meta.points === 'number'
+        ? Math.abs(meta.points)
+        : typeof issue.confidence === 'number'
+          ? roundToNearestFive(Math.round(issue.confidence * 30))
+          : 0
   pointsDeducted = roundToNearestFive(pointsDeducted)
 
-  const severity = deriveSeverity(
-    meta.severity ?? mapErrorTypeToSeverity(issue.error_type ?? ''),
-    pointsDeducted
-  )
-  const dbDescription = meta.description ?? null
+  const severity = deriveSeverity(severityName, pointsDeducted)
+
+  // A template grading that disagrees with the scorer usually means the mapping
+  // row is wrong. Surface it rather than letting it change the reviewer's view.
+  if (scorerSeverity && meta.severity && scorerSeverity !== meta.severity.toLowerCase()) {
+    logger.warn('[MCP] Template severity does not match the scorer grading', {
+      descriptionId: issue.description_id ?? null,
+      scorerSeverity,
+      templateSeverity: meta.severity,
+      matchedBy,
+    })
+  }
+
+  // Scorer's own label wins; the template text is only a fallback for
+  // findings that arrive without one.
+  const scorerLabel = issue.description?.trim() || null
+  const label = scorerLabel ?? meta.description ?? null
+
+  // A template whose text disagrees with the scorer usually means the
+  // mapping row points at the wrong description - surface it rather than
+  // letting it quietly change what the reviewer reads.
+  if (
+    scorerLabel &&
+    meta.description &&
+    normalizeLookupKey(scorerLabel) !== normalizeLookupKey(meta.description)
+  ) {
+    logger.warn('[MCP] Template description does not match the scorer label', {
+      descriptionId: issue.description_id ?? null,
+      scorerLabel,
+      templateLabel: meta.description,
+      matchedBy,
+    })
+  }
 
   return {
     severity,
     description_id: matchedById
       ? (meta.descriptionId ?? issue.description_id ?? null)
       : (issue.description_id ?? null),
-    description: dbDescription,
-    severity_details: dbDescription ?? '',
+    description: label,
+    severity_details: label ?? '',
     template_matched: true,
     points_deducted: pointsDeducted,
     section_id: matchedById ? (meta.sectionId ?? null) : null,

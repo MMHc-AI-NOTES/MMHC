@@ -149,18 +149,34 @@ export const getNoteReviewMark = async (
   })
 }
 
-export const getSmeReviewersNoteCounts = async () => {
+export const getSmeReviewersNoteCounts = async (timeframe?: string) => {
   try {
+    const validTimeframes = ['today', 'this_week', 'all_time']
+    const normalizedTimeframe =
+      timeframe && validTimeframes.includes(timeframe.toLowerCase().trim())
+        ? timeframe.toLowerCase().trim()
+        : 'all_time'
+
     const smeReviewers = await User.query()
       .where('type', UserTypeEnum.sme_reviewer)
       .where('is_active', true)
       .select('id', 'full_name', 'email')
 
-    const countsRaw = await NoteReviewMark.query()
+    const query = NoteReviewMark.query()
       .where('marked_as_reviewed', true)
       .select('reviewer_id')
       .countDistinct('note_id as reviewed_notes_count')
-      .groupBy('reviewer_id')
+
+    if (normalizedTimeframe === 'today') {
+      const startOfDay = DateTime.now().startOf('day')
+      query.where('marked_at', '>=', startOfDay.toJSDate())
+    } else if (normalizedTimeframe === 'this_week') {
+      const startOfWeek = DateTime.now().startOf('week')
+      query.where('marked_at', '>=', startOfWeek.toJSDate())
+    }
+    // 'all_time' applies no additional date filter
+
+    const countsRaw = await query.groupBy('reviewer_id')
 
     const countMap = new Map<number, number>()
     ;(countsRaw as any[]).forEach((r) => {
