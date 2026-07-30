@@ -4,16 +4,26 @@ import logger from '@adonisjs/core/services/logger'
 import { redisConfig } from '#config/services'
 import { NOTE_REVIEW_QUEUE_NAME } from '#jobs/queues/note_review_queue'
 import { createMcpChat } from '#services/mcp_chat_service'
+import { syncUnprocessedMorfNotes } from '#services/morf_sync_service'
+import {
+  clearReviewFailure,
+  getSkippableNoteIds,
+  recordReviewFailure,
+} from '#services/note_review_failure_service'
 
 /**
  * How many notes one sweep will review. An MCP call takes roughly five to
  * fifteen seconds, so this bounds a run to well under the one minute interval
  * and keeps a backlog draining steadily rather than flooding the scorer.
  */
-const NOTES_PER_SWEEP = 10
+export const NOTES_PER_SWEEP = 10
 
-/** How many reviews run at once within a sweep. */
-const CONCURRENCY = 3
+/**
+ * How many reviews run at once within a sweep. Five keeps the worst case
+ * (fifteen seconds a note) at about thirty seconds, so a sweep finishes well
+ * before the next one is due.
+ */
+export const CONCURRENCY = 5
 
 /** User the created review records are attributed to (system admin). */
 const SYSTEM_USER_ID = 1
@@ -31,18 +41,30 @@ const findUnreviewedNotes = async (limit: number): Promise<{ id: number; note_id
       subQuery.from('chats').whereRaw('chats.note_id = session.note_id')
     })
 
-  if (inProgressNoteIds.size > 0) {
-    query.whereNotIn('session.note_id', Array.from(inProgressNoteIds))
+  // Notes currently being reviewed by this process, plus notes that are
+  // quarantined or still inside their retry backoff. Without the second set a
+  // note the scorer can never process would sit at the head of every batch and
+  // block the rest of the backlog.
+  const skip = new Set([...inProgressNoteIds, ...(await getSkippableNoteIds())])
+
+  if (skip.size > 0) {
+    query.whereNotIn('session.note_id', Array.from(skip))
   }
 
   return query.orderBy('id', 'asc').limit(limit).select('id', 'note_id')
 }
 
-const mapWithConcurrency = async <T>(
+/**
+ * Runs `mapper` over `items` with at most `concurrency` in flight. Exported so
+ * the bound can be tested directly: exceeding it would put unbounded load on
+ * the scorer, and dropping below it would let a sweep overrun its interval.
+ */
+export const mapWithConcurrency = async <T>(
   items: T[],
   concurrency: number,
   mapper: (item: T) => Promise<void>
 ): Promise<void> => {
+  const limit = Math.max(1, Math.floor(concurrency))
   let nextIndex = 0
   const worker = async () => {
     while (true) {
@@ -51,7 +73,7 @@ const mapWithConcurrency = async <T>(
       await mapper(items[index])
     }
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker))
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
 }
 
 export const runNoteReviewSweep = async (): Promise<{
@@ -59,6 +81,13 @@ export const runNoteReviewSweep = async (): Promise<{
   reviewed: number
   failed: number
 }> => {
+  // Sync any unprocessed MORF payloads into session records first
+  try {
+    await syncUnprocessedMorfNotes()
+  } catch (morfErr: any) {
+    logger.error('[NoteReview] Error during pre-sweep MORF sync', { error: morfErr?.message })
+  }
+
   const notes = await findUnreviewedNotes(NOTES_PER_SWEEP)
 
   if (!notes.length) {
@@ -73,11 +102,16 @@ export const runNoteReviewSweep = async (): Promise<{
     try {
       await createMcpChat({ note_id: note.note_id }, SYSTEM_USER_ID)
       reviewed++
+      await clearReviewFailure(note.note_id)
     } catch (error: any) {
       failed++
-      logger.error('[NoteReview] Failed to review note', {
-        noteId: note.note_id,
-        error: error?.message ?? String(error),
+      const message = error?.message ?? String(error)
+      logger.error('[NoteReview] Failed to review note', { noteId: note.note_id, error: message })
+      await recordReviewFailure(note.note_id, error).catch((trackingError: any) => {
+        logger.error('[NoteReview] Could not record failure', {
+          noteId: note.note_id,
+          error: trackingError?.message,
+        })
       })
     } finally {
       inProgressNoteIds.delete(note.note_id)
