@@ -9,4 +9,12 @@ router
     router.get('/', [QueueDashboardController, 'index'])
     router.get('/stats', [QueueDashboardController, 'stats'])
   })
+  .prefix('api/admin/queues')
+
+router
+  .group(() => {
+    router.get('/', [QueueDashboardController, 'index'])
+    router.get('/stats', [QueueDashboardController, 'stats'])
+  })
   .prefix('admin/queues')
+
