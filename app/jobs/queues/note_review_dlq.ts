@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { redisConfig } from '#config/services'
+import { bullConnection, bullPrefix } from '#jobs/bull_connection'
 import logger from '@adonisjs/core/services/logger'
 
 export const NOTE_REVIEW_DLQ_NAME = 'note-review-dlq'
@@ -17,7 +17,9 @@ export interface NoteReviewDlqPayload {
  * a note that can never be scored still needs somewhere visible to stop.
  */
 export const noteReviewDlq = new Queue<NoteReviewDlqPayload>(NOTE_REVIEW_DLQ_NAME, {
-  connection: redisConfig,
+  connection: bullConnection,
+  // Matched to the queue it partners, so both live in one Redis namespace.
+  prefix: bullPrefix,
   defaultJobOptions: {
     // Nothing consumes these to completion, so they are kept rather than
     // trimmed aggressively: the queue is the record of what needs looking at.
