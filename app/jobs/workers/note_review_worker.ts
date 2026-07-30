@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq'
 import db from '@adonisjs/lucid/services/db'
 import logger from '@adonisjs/core/services/logger'
-import { redisConfig } from '#config/services'
+import { bullConnection, bullPrefix } from '#jobs/bull_connection'
 import { NOTE_REVIEW_QUEUE_NAME } from '#jobs/queues/note_review_queue'
 import { createMcpChat } from '#services/mcp_chat_service'
 import { syncUnprocessedMorfNotes } from '#services/morf_sync_service'
@@ -138,7 +138,9 @@ export const startNoteReviewWorker = () => {
       return runNoteReviewSweep()
     },
     {
-      connection: redisConfig,
+      connection: bullConnection,
+      // Must match the queue's prefix or the worker watches the wrong keys.
+      prefix: bullPrefix,
       // One sweep at a time. Without this an overrunning sweep could overlap
       // the next and review the same note twice.
       concurrency: 1,
