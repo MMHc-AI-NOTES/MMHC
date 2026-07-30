@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { redisConfig } from '#config/services'
+import { bullConnection, bullPrefix } from '#jobs/bull_connection'
 
 export const NOTE_REVIEW_QUEUE_NAME = 'note-review-processing'
 
@@ -13,7 +13,10 @@ export const NOTE_REVIEW_SWEEP_JOB = 'sweep-unreviewed-notes'
  * fails is simply picked up again on the next run instead of being lost.
  */
 export const noteReviewQueue = new Queue(NOTE_REVIEW_QUEUE_NAME, {
-  connection: redisConfig,
+  connection: bullConnection,
+  // Required: this queue registers a repeatable job, and BullMQ rejects an
+  // ioredis keyPrefix the moment it builds Repeat from the live client.
+  prefix: bullPrefix,
   defaultJobOptions: {
     // One attempt only. If a sweep fails the next run covers the same notes,
     // so retrying here would just duplicate work.
