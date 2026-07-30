@@ -16,6 +16,11 @@ import {
   SYSTEM_USER_ID,
   mapWithConcurrency,
 } from '#services/note_review_sweep_policy'
+import {
+  clearStaleClaims,
+  getClaimedNoteIds,
+  isNoteReviewInProgressError,
+} from '#services/note_review_claim_service'
 
 let noteReviewWorker: Worker | null = null
 let redisFailureHandled = false
@@ -30,11 +35,15 @@ const findUnreviewedNotes = async (limit: number): Promise<{ id: number; note_id
       subQuery.from('chats').whereRaw('chats.note_id = session.note_id')
     })
 
-  // Notes currently being reviewed by this process, plus notes that are
-  // quarantined or still inside their retry backoff. Without the second set a
-  // note the scorer can never process would sit at the head of every batch and
-  // block the rest of the backlog.
-  const skip = new Set([...inProgressNoteIds, ...(await getSkippableNoteIds())])
+  // Three sets are excluded:
+  //  - notes this process is already reviewing
+  //  - notes any process holds a claim on, including the API process serving
+  //    the Re-run Audit button, which an in memory set cannot see
+  //  - notes that are quarantined or still inside their retry backoff, so a
+  //    note the scorer can never process does not sit at the head of every
+  //    batch and block the backlog behind it
+  const [claimed, skippable] = await Promise.all([getClaimedNoteIds(), getSkippableNoteIds()])
+  const skip = new Set([...inProgressNoteIds, ...claimed, ...skippable])
 
   if (skip.size > 0) {
     query.whereNotIn('session.note_id', Array.from(skip))
@@ -47,6 +56,7 @@ export const runNoteReviewSweep = async (): Promise<{
   found: number
   reviewed: number
   failed: number
+  contended: number
 }> => {
   // Sync any unprocessed MORF payloads into session records first
   try {
@@ -55,14 +65,24 @@ export const runNoteReviewSweep = async (): Promise<{
     logger.error('[NoteReview] Error during pre-sweep MORF sync', { error: morfErr?.message })
   }
 
+  // Free claims abandoned by a process that died mid review, otherwise those
+  // notes would be skipped until something else cleaned them up.
+  try {
+    const cleared = await clearStaleClaims()
+    if (cleared > 0) logger.warn('[NoteReview] Cleared stale review claims', { cleared })
+  } catch (claimErr: any) {
+    logger.error('[NoteReview] Could not clear stale claims', { error: claimErr?.message })
+  }
+
   const notes = await findUnreviewedNotes(NOTES_PER_SWEEP)
 
   if (!notes.length) {
-    return { found: 0, reviewed: 0, failed: 0 }
+    return { found: 0, reviewed: 0, failed: 0, contended: 0 }
   }
 
   let reviewed = 0
   let failed = 0
+  let contended = 0
 
   await mapWithConcurrency(notes, CONCURRENCY, async (note) => {
     inProgressNoteIds.add(note.note_id)
@@ -71,6 +91,17 @@ export const runNoteReviewSweep = async (): Promise<{
       reviewed++
       await clearReviewFailure(note.note_id)
     } catch (error: any) {
+      // Another process claimed the note between the query and the call. That
+      // is the guard working, not a review failure, so it must not count
+      // toward quarantine.
+      if (isNoteReviewInProgressError(error)) {
+        contended++
+        logger.info('[NoteReview] Note already being reviewed elsewhere', {
+          noteId: note.note_id,
+        })
+        return
+      }
+
       failed++
       const message = error?.message ?? String(error)
       logger.error('[NoteReview] Failed to review note', { noteId: note.note_id, error: message })
@@ -85,8 +116,13 @@ export const runNoteReviewSweep = async (): Promise<{
     }
   })
 
-  logger.info('[NoteReview] Sweep complete', { found: notes.length, reviewed, failed })
-  return { found: notes.length, reviewed, failed }
+  logger.info('[NoteReview] Sweep complete', {
+    found: notes.length,
+    reviewed,
+    failed,
+    contended,
+  })
+  return { found: notes.length, reviewed, failed, contended }
 }
 
 export const startNoteReviewWorker = () => {
