@@ -12,15 +12,35 @@ export default class NoteReviewWorker extends BaseCommand {
   @flags.boolean({ alias: 's', description: 'Stop the worker' })
   declare stop: boolean
 
+  @flags.boolean({
+    description: 'Clear quarantined notes so they are retried, then exit',
+  })
+  declare release: boolean
+
+  @flags.string({ description: 'Limit --release to a single note id' })
+  declare noteId?: string
+
   async run() {
     const { startNoteReviewWorker, stopNoteReviewWorker } = await import(
       '#jobs/workers/note_review_worker'
     )
     const { scheduleNoteReviewSweep } = await import('#jobs/queues/note_review_queue')
 
+    if (this.release) {
+      const { releaseQuarantine } = await import('#services/note_review_failure_service')
+      const cleared = await releaseQuarantine(this.noteId)
+      this.logger.success(`Released ${cleared} quarantined note${cleared === 1 ? '' : 's'}`)
+      return
+    }
+
+    const { startNoteReviewDlqWorker, stopNoteReviewDlqWorker } = await import(
+      '#jobs/workers/note_review_dlq_worker'
+    )
+
     if (this.stop) {
-      this.logger.info('Stopping note review worker...')
+      this.logger.info('Stopping note review worker and DLQ handler...')
       await stopNoteReviewWorker()
+      await stopNoteReviewDlqWorker()
       this.logger.success('Note review worker stopped successfully')
       return
     }
@@ -32,18 +52,21 @@ export default class NoteReviewWorker extends BaseCommand {
     this.logger.info('Note review sweep scheduled to run every minute')
 
     startNoteReviewWorker()
-    this.logger.success('Note review worker started successfully')
+    startNoteReviewDlqWorker()
+    this.logger.success('Note review worker and DLQ handler started successfully')
     this.logger.info('Press Ctrl+C to stop the worker')
 
     process.on('SIGINT', async () => {
       this.logger.info('\nStopping note review worker...')
       await stopNoteReviewWorker()
+      await stopNoteReviewDlqWorker()
       process.exit(0)
     })
 
     process.on('SIGTERM', async () => {
       this.logger.info('\nStopping note review worker...')
       await stopNoteReviewWorker()
+      await stopNoteReviewDlqWorker()
       process.exit(0)
     })
 
