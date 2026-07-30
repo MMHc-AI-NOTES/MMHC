@@ -17,4 +17,3 @@ router
     router.get('/stats', [QueueDashboardController, 'stats'])
   })
   .prefix('admin/queues')
-
