@@ -181,6 +181,10 @@
         {
           "name": "BIGQUERY_APPOINTMENT_TABLE",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:BIGQUERY_APPOINTMENT_TABLE::"
+        },
+        {
+          "name": "QUEUE_DASHBOARD_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:199990519622:secret:MMH/PROD/Backend-UOoyKE:QUEUE_DASHBOARD_TOKEN::"
         }
       ],
       "logConfiguration": {
