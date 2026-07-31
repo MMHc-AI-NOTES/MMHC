@@ -215,9 +215,7 @@ export const createSessionFromWebhook = async (payload: any) => {
     const email = payload.PractitionerEmail ?? payload.practitioner_email ?? payload.Email
     if (email && String(email).trim() !== '') {
       const emailStr = String(email).trim()
-      const practitionerByEmail = await User.query()
-        .where('email', emailStr)
-        .first()
+      const practitionerByEmail = await User.query().where('email', emailStr).first()
 
       if (practitionerByEmail) {
         practitionerId = practitionerByEmail.id
@@ -267,14 +265,20 @@ export const createSessionFromWebhook = async (payload: any) => {
     // Find or create patient by PatientId or ClientId
     let patientId: number | null = null
     const patientIdRaw = payload.PatientId ?? payload.patient_id ?? payload.patientId ?? null
-    const clientId = payload.ClientId ?? payload.client_id ?? payload.clientId ?? payload.ClientID ?? null
+    const clientId =
+      payload.ClientId ?? payload.client_id ?? payload.clientId ?? payload.ClientID ?? null
 
     if (patientIdRaw !== null && patientIdRaw !== undefined && String(patientIdRaw).trim() !== '') {
       const p = await Patient.query().where('id', Number(patientIdRaw)).first()
       if (p) patientId = p.id
     }
 
-    if (patientId === null && clientId !== null && clientId !== undefined && String(clientId).trim() !== '') {
+    if (
+      patientId === null &&
+      clientId !== null &&
+      clientId !== undefined &&
+      String(clientId).trim() !== ''
+    ) {
       const clientIdString = String(clientId).trim()
       let patient = await Patient.query().where('client_id', clientIdString).first()
 
