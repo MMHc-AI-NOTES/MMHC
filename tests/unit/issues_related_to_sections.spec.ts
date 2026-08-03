@@ -1,27 +1,24 @@
 import { test } from '@japa/runner'
-import { readFileSync } from 'node:fs'
 import { FIELD_MAPPING } from '#services/note_type_mapping_service'
+import { ANNOTATABLE_SECTIONS, assertSectionsAreUnique } from '#services/annotatable_sections'
 
 /**
  * The UI keys its section lookup by both display_name and field_id, so a repeat
- * of either silently takes over another section. These read the seeder as text
- * rather than running it, so they need no database.
+ * of either silently takes over another section.
  */
-const seeder = readFileSync('database/seeders/7_issues_related_to_seeder.ts', 'utf8')
-
-const rows = [
-  ...seeder.matchAll(
-    /id:\s*(\d+),\s*\n?\s*field_id:\s*'([^']+)',\s*\n?\s*display_name:\s*(?:'([^']*)'|"([^"]*)")/g
-  ),
-].map((match) => ({
-  id: Number(match[1]),
-  fieldId: match[2],
-  displayName: match[3] ?? match[4],
+const rows = ANNOTATABLE_SECTIONS.map((section) => ({
+  id: section.id,
+  fieldId: section.field_id,
+  displayName: section.display_name,
 }))
 
 test.group('Annotatable sections', () => {
-  test('the seeder parses into rows', ({ assert }) => {
+  test('the section list is populated', ({ assert }) => {
     assert.isAbove(rows.length, 40)
+  })
+
+  test('the uniqueness guard the seeder runs does not throw', ({ assert }) => {
+    assert.doesNotThrow(() => assertSectionsAreUnique())
   })
 
   test('no display name appears twice', ({ assert }) => {
@@ -124,5 +121,73 @@ test.group('Annotatable sections', () => {
     const clashes = rows.filter((row) => row.id > 13 && progressFieldIds.has(row.fieldId))
 
     assert.deepEqual(clashes, [])
+  })
+})
+
+test.group('Treatment plan sections', () => {
+  const byName = new Map(rows.map((row) => [row.displayName, row.id]))
+
+  test('every goal field is registered by its own name', ({ assert }) => {
+    for (const goal of [1, 2, 3, 4]) {
+      for (const field of [
+        'Long-Term Goal',
+        'Target Completion Date',
+        'Status',
+        'Short-Term Objective 1',
+        'Primary Clinical Intervention',
+        'Notes',
+      ]) {
+        assert.exists(byName.get(`Goal ${goal} ${field}`), `Goal ${goal} ${field}`)
+      }
+    }
+  })
+
+  test('a goal field matches exactly and never falls through to another section', ({ assert }) => {
+    // Registering only "Goal 1" and relying on substring matching sent
+    // "Goal 2 Short-Term Objective 1" to the progress note Objective section,
+    // because the fallback matches on any shared word.
+    const resolve = (fieldKey: string) => {
+      const exact = byName.get(fieldKey)
+      if (exact) return exact
+      const lower = fieldKey.toLowerCase()
+      for (const [name, id] of byName.entries()) {
+        const mapKey = name.toLowerCase()
+        if (mapKey.includes(lower) || lower.includes(mapKey)) return id
+      }
+      return null
+    }
+
+    assert.equal(
+      resolve('Goal 2 Short-Term Objective 1'),
+      byName.get('Goal 2 Short-Term Objective 1')
+    )
+    assert.notEqual(resolve('Goal 2 Short-Term Objective 1'), byName.get('Objective'))
+    assert.equal(resolve('Goal 3 Status'), byName.get('Goal 3 Status'))
+    assert.equal(resolve('Goal 1 Notes'), byName.get('Goal 1 Notes'))
+  })
+
+  test('Progress Since Last Plan does not fall through to the progress note section', ({
+    assert,
+  }) => {
+    // Without its own row the substring fallback would match "Progress", id 9.
+    assert.exists(byName.get('Progress Since Last Plan'))
+    assert.notEqual(byName.get('Progress Since Last Plan'), 9)
+  })
+
+  test('the referral question is named rather than left as a raw id', ({ assert }) => {
+    assert.exists(byName.get('Referral for Additional Services?'))
+  })
+
+  test('treatment plan sections are registered', ({ assert }) => {
+    for (const section of [
+      'Session Frequency:',
+      'Expected Duration:',
+      'Treatment Modality',
+      'Primary Clinical Approach',
+      'Secondary Clinical Approach',
+      'Tenative Goals & Plans:',
+    ]) {
+      assert.exists(byName.get(section))
+    }
   })
 })

@@ -140,17 +140,27 @@ test.group('note_type_mapping_service | buildSessionObject', () => {
     })
   })
 
-  test('treatment-plan (no id map) falls back to question text', ({ assert }) => {
+  test('treatment-plan names a goal field by its goal', ({ assert }) => {
     const result = buildSessionObject(
       [{ id: 'koai-1', text: 'Long-Term Goal', answer: 'Reduce anxiety.' }],
       SessionTypeEnum.treatment_plan
     )
-    assert.deepEqual(result, { 'Long-Term Goal': 'Reduce anxiety.' })
+    assert.deepEqual(result, { 'Goal 1 Long-Term Goal': 'Reduce anxiety.' })
   })
 
-  test('repeated field labels across goal blocks are preserved, not overwritten', ({ assert }) => {
-    // Mirrors the real treatment-plan template: "Status" and "Target Completion
-    // Date (within 3 months)" repeat once per goal block (up to 4 goals).
+  test('treatment-plan still falls back to question text for an unmapped id', ({ assert }) => {
+    const result = buildSessionObject(
+      [{ id: 'zzzz-9', text: 'Some New Field', answer: 'value' }],
+      SessionTypeEnum.treatment_plan
+    )
+    assert.deepEqual(result, { 'Some New Field': 'value' })
+  })
+
+  test('repeated Status labels resolve to their own goal instead of being numbered', ({
+    assert,
+  }) => {
+    // The form repeats "Status" once per objective per goal. Numbering them
+    // Status (2), Status (3) lost which goal they belonged to.
     const result = buildSessionObject(
       [
         { id: 'koai-5', text: 'Status', answer: 'In progress' },
@@ -160,18 +170,26 @@ test.group('note_type_mapping_service | buildSessionObject', () => {
       SessionTypeEnum.treatment_plan
     )
     assert.deepEqual(result, {
-      'Status': 'In progress',
-      'Status (2)': 'Met',
-      'Status (3)': 'Not started',
+      'Goal 1 Status': 'In progress',
+      'Goal 1 Objective 1 Status': 'Met',
+      'Goal 2 Status': 'Not started',
     })
   })
 
-  test('blank question text falls back to the raw id, not an empty key', ({ assert }) => {
+  test('the unlabelled referral question is named instead of showing a raw id', ({ assert }) => {
     const result = buildSessionObject(
       [{ id: '425q-1', text: '', answer: 'Yes' }],
       SessionTypeEnum.treatment_plan
     )
-    assert.deepEqual(result, { '425q-1': 'Yes' })
+    assert.deepEqual(result, { 'Referral for Additional Services?': 'Yes' })
+  })
+
+  test('blank question text still falls back to the raw id when nothing maps it', ({ assert }) => {
+    const result = buildSessionObject(
+      [{ id: 'zzzz-1', text: '', answer: 'Yes' }],
+      SessionTypeEnum.treatment_plan
+    )
+    assert.deepEqual(result, { 'zzzz-1': 'Yes' })
   })
 
   test('an unmatched/unknown type does not apply the progress-note id map', ({ assert }) => {
