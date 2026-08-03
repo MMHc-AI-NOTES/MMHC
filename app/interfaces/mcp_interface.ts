@@ -11,6 +11,9 @@ export interface Session {
   'Therapist Reflection and Insight (optional)': string
   'Overall': string
   'Therapist Initials': string
+
+  // Other note types carry their own sections.
+  [field: string]: string
 }
 
 /** Request body for POST /score-note */
