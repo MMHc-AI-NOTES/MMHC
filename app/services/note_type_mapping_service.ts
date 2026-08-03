@@ -207,6 +207,20 @@ const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
 // PracticeQ's NoteName (or Type) -> our enum. First four are confirmed
 // from the real sample data; the rest are guesses in case the wording
 // comes through differently on some notes.
+// Stable names for the four note types, used wherever a type has to travel
+// outside the application. Numbers stay in the database, these go on the wire.
+export const SESSION_TYPE_SLUG: Record<number, string> = {
+  [SessionTypeEnum.progress_note]: 'progress_note',
+  [SessionTypeEnum.intake]: 'intake',
+  [SessionTypeEnum.treatment_plan]: 'treatment_plan',
+  [SessionTypeEnum.termination]: 'termination',
+}
+
+export function sessionTypeSlug(sessionType?: number | null): string {
+  if (sessionType === null || sessionType === undefined) return 'unknown'
+  return SESSION_TYPE_SLUG[sessionType] ?? 'unknown'
+}
+
 const TYPE_LABEL_TO_ENUM: Record<string, number> = {
   'progress note': SessionTypeEnum.progress_note,
   'initial consultation: intake/assessment': SessionTypeEnum.intake,

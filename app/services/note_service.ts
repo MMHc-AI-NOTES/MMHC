@@ -39,6 +39,28 @@ export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<s
 }
 
 /**
+ * The form name PracticeQ sent with the note. Not stored on the session, so it
+ * comes back from the payload kept in the audit log.
+ */
+export async function getNoteNameFromAuditLog(noteId: string): Promise<string> {
+  const auditLog = await db
+    .from('audit_logs')
+    .where('note_id', noteId)
+    .where('action', AuditActionEnum.webhookSessionReceived)
+    .select('metadata')
+    .first()
+
+  if (!auditLog?.metadata) return ''
+
+  const meta =
+    typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
+  const payload = meta?.raw_payload
+
+  const name = payload?.NoteName ?? payload?.noteName ?? payload?.Type ?? payload?.type
+  return typeof name === 'string' ? name.trim() : ''
+}
+
+/**
  * Serialize a note with nested children for listing.
  * Child notes don't include previous_note (parent) since parent is already in tree above.
  */

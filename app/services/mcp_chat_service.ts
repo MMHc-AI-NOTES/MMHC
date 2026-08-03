@@ -11,7 +11,7 @@ import {
   toMcpApiResponse,
   toMcpApiResponseOrNull,
 } from '#services/mcp_service'
-import { getDiagnosisFromAuditLog } from '#services/note_service'
+import { getDiagnosisFromAuditLog, getNoteNameFromAuditLog } from '#services/note_service'
 import type { NormalizedEvaluationResult } from '#interfaces/mcp_interface'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getChatAiReview } from '#services/evaluation_service'
@@ -68,6 +68,7 @@ async function runMcpEvaluation(session: Session): Promise<NormalizedEvaluationR
 
   const previousNote = await resolvePreviousSessionContent(session)
   const diagnosis = await getDiagnosisFromAuditLog(session.noteId)
+  const noteName = await getNoteNameFromAuditLog(session.noteId)
 
   return evaluateChatWithMcp({
     noteId: session.noteId,
@@ -77,6 +78,7 @@ async function runMcpEvaluation(session: Session): Promise<NormalizedEvaluationR
     currentNote: session.session,
     previousNote,
     sessionType: session.type,
+    noteName,
   })
 }
 

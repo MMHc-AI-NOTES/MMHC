@@ -7,7 +7,7 @@ import {
   resolveMcpCptCode,
   toMcpApiResponse,
 } from '#services/mcp_service'
-import { getDiagnosisFromAuditLog } from '#services/note_service'
+import { getDiagnosisFromAuditLog, getNoteNameFromAuditLog } from '#services/note_service'
 import { resolvePreviousSessionContent } from '#services/session_note_resolver'
 import { getSessionByNoteId } from '#services/webhook_service'
 import logger from '@adonisjs/core/services/logger'
@@ -22,6 +22,7 @@ export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewVali
     const clientId = resolveMcpClientId(session)
     const cptCode = resolveMcpCptCode(session)
     const diagnosis = await getDiagnosisFromAuditLog(session.noteId)
+    const noteName = await getNoteNameFromAuditLog(session.noteId)
 
     const mcpRequest = buildMcpScoreNoteRequest({
       noteId: session.noteId,
@@ -30,6 +31,8 @@ export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewVali
       diagnosis,
       currentNote: session.session,
       previousNote,
+      sessionType: session.type,
+      noteName,
     })
 
     logger.info('[MCP Session Review] MCP request:', JSON.stringify(mcpRequest, null, 2))
@@ -41,6 +44,8 @@ export const invokeMcpSessionReview = async (payload: invokeMcpSessionReviewVali
       diagnosis,
       currentNote: session.session,
       previousNote,
+      sessionType: session.type,
+      noteName,
     })
 
     const mcpResponse = toMcpApiResponse(evaluation)
