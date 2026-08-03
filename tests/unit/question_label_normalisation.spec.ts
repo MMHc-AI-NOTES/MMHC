@@ -84,6 +84,32 @@ test.group('Question label normalisation', () => {
     }
   })
 
+  test('the initial plan and the renewal name the same goal the same way', ({ assert }) => {
+    // "Tentative Goal 1" on the initial plan and "Treatment Goal  #1" on the 90
+    // day renewal are the same box on the form.
+    const expected = 'Goal 1 Long-Term Goal'
+
+    assert.equal(normaliseQuestionLabel('Tentative Goal 1'), expected)
+    assert.equal(normaliseQuestionLabel('Treatment Goal  #1\nInstructions: x'), expected)
+    assert.equal(normaliseQuestionLabel('Tentative treatment Goal 2'), 'Goal 2 Long-Term Goal')
+    assert.equal(
+      normaliseQuestionLabel('Tentative Treatment Goal 3 (optional)'),
+      'Goal 3 Long-Term Goal'
+    )
+  })
+
+  test('sections on the current forms have somewhere to attach a finding', ({ assert }) => {
+    const sectionNames = new Set(ANNOTATABLE_SECTIONS.map((section) => section.display_name))
+
+    for (const name of [
+      'Current Diagnosis',
+      'Communication Difficulties',
+      'Enhanced Communication',
+    ]) {
+      assert.isTrue(sectionNames.has(name), name)
+    }
+  })
+
   test('an ordinary label is left alone apart from tidying', ({ assert }) => {
     assert.equal(normaliseQuestionLabel('Session Frequency:'), 'Session Frequency:')
     assert.equal(normaliseQuestionLabel('  Family   History  '), 'Family History')

@@ -97,6 +97,18 @@ const TREATMENT_PLAN_SECTIONS: AnnotatableSection[] = [
 ]
 
 /**
+ * Present on the current PracticeQ forms but absent from the payloads we had
+ * catalogued, so they had no section and could not be annotated.
+ */
+const LATER_FORM_SECTIONS: AnnotatableSection[] = [
+  // On the intake, the treatment plan and the combined form.
+  { id: 56, field_id: 'current-diagnosis', display_name: 'Current Diagnosis' },
+  // On the combined intake and progress note form.
+  { id: 57, field_id: 'communication-difficulties', display_name: 'Communication Difficulties' },
+  { id: 58, field_id: 'enhanced-communication', display_name: 'Enhanced Communication' },
+]
+
+/**
  * One row per goal field rather than one per goal. Registering only "Goal 1"
  * and leaning on substring matching sent "Goal 2 Short-Term Objective 1" to the
  * progress note Objective section, since the fallback matches any shared word.
@@ -152,6 +164,7 @@ export const ANNOTATABLE_SECTIONS: AnnotatableSection[] = [
   ...INTAKE_SECTIONS,
   ...TERMINATION_SECTIONS,
   ...TREATMENT_PLAN_SECTIONS,
+  ...LATER_FORM_SECTIONS,
   ...buildGoalSections(),
 ]
 

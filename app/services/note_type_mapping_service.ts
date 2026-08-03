@@ -297,17 +297,25 @@ function formatAnswer(answer: unknown): string {
 // variants; the label the clinician reads does not. Normalising the label
 // keeps a new variant readable without waiting on a code change.
 const GOAL_LABEL_RULES: [RegExp, string][] = [
+  // The initial plan heads its goal blocks "Tentative Goal 1" and the 90 day
+  // renewal heads the same blocks "Treatment Goal #1". Tentative describes when
+  // the goal was written, not what the field is, so both resolve to one name.
+  // Splitting them would double the goal sections and show a client's initial
+  // plan and their renewal under different headings.
+  // Each rule consumes the rest of the label. What follows a goal heading is
+  // decoration, "(optional)" or the instructions, and never another field.
+  [/^Tentative\s+(?:Treatment\s+)?Goal\s*#?\s*(\d+).*$/i, 'Goal $1 Long-Term Goal'],
   [
-    /^Objective,?\s*Intervention and Status for\s*GOAL\s*#?\s*(\d+)/i,
+    /^Objective,?\s*Intervention and Status for\s*GOAL\s*#?\s*(\d+).*$/i,
     'Goal $1 Objectives and Interventions',
   ],
-  [/^Treatment\s*Goal\s*#?\s*(\d+)/i, 'Goal $1 Long-Term Goal'],
-  [/^Goal\s*#?\s*(\d+)\s+Target Completion Date/i, 'Goal $1 Target Completion Date'],
+  [/^Treatment\s*Goal\s*#?\s*(\d+).*$/i, 'Goal $1 Long-Term Goal'],
+  [/^Goal\s*#?\s*(\d+)\s+Target Completion Date.*$/i, 'Goal $1 Target Completion Date'],
   [
-    /^Intervention\s*#?\s*(\d+)([a-z])\s+Completion Date/i,
+    /^Intervention\s*#?\s*(\d+)([a-z])\s+Completion Date.*$/i,
     'Goal $1 Intervention $1$2 Completion Date',
   ],
-  [/^Intervention\s*#?\s*(\d+)\s+Completion Date/i, 'Goal $1 Intervention Completion Date'],
+  [/^Intervention\s*#?\s*(\d+)\s+Completion Date.*$/i, 'Goal $1 Intervention Completion Date'],
   [/^Goal\s*#\s*(\d+)\s+(.+)$/i, 'Goal $1 $2'],
 ]
 
