@@ -75,14 +75,15 @@ export default class RebuildSessionFields extends BaseCommand {
         continue
       }
 
+      // The stored type is authoritative. Resolving from the note name again
+      // only reintroduces the chance of a wording mismatch, which leaves the
+      // note with no mapping and no visible change.
       const resolved = resolveSessionType(
         payload.NoteName ?? payload.noteName ?? payload.Type ?? payload.type,
         session.note_id
       )
-      const rebuilt = buildSessionObject(
-        payload.Questions,
-        resolved.matched ? resolved.type : undefined
-      )
+      const type = session.type ?? (resolved.matched ? resolved.type : undefined)
+      const rebuilt = buildSessionObject(payload.Questions, type)
 
       if (!Object.keys(rebuilt).length) {
         noPayload++
@@ -102,9 +103,14 @@ export default class RebuildSessionFields extends BaseCommand {
       const after = Object.keys(rebuilt)
       const renamed = after.filter((key) => !before.includes(key))
 
+      // A heading carrying a newline or reading as a bare question id means no
+      // mapping entry matched, so it is worth naming rather than counting.
+      const unmapped = after.filter((key) => key.includes('\n') || /^[a-z0-9]{4}-\d+$/i.test(key))
+
       this.logger.info(
-        `${session.note_id} type ${session.type}: ${renamed.length} field name(s) change` +
-          (renamed.length ? `, e.g. ${renamed.slice(0, 3).join(' | ')}` : '')
+        `${session.note_id} type ${type}: ${renamed.length} field name(s) change` +
+          (renamed.length ? `, e.g. ${renamed.slice(0, 3).join(' | ')}` : '') +
+          (unmapped.length ? `, ${unmapped.length} still unmapped: ${unmapped.join(' | ')}` : '')
       )
 
       if (this.apply) {
