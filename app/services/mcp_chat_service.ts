@@ -76,6 +76,7 @@ async function runMcpEvaluation(session: Session): Promise<NormalizedEvaluationR
     diagnosis,
     currentNote: session.session,
     previousNote,
+    sessionType: session.type,
   })
 }
 
