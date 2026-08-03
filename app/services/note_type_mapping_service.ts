@@ -98,11 +98,109 @@ const TERMINATION_FIELD_MAPPING: Record<string, string> = {
   '45z4-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
-// Treatment plan is left out on purpose - ids aren't reliable for it,
-// so it always falls back to question text (see file comment up top).
+// Treatment plan id -> field name. Two form variants are in circulation and
+// their ids do not overlap, so both live here.
+//
+// Variant A carries three goal blocks, koai, has1 and 4yq4. The suffixes are
+// not in display order: koai-5 (Status) arrives before koai-4 (Short-Term
+// Objective 1), so names follow meaning rather than number.
+//
+// Variant B carries four, and its goal and objective headings hold no answer,
+// only the dates beneath them do.
+const TREATMENT_PLAN_FIELD_MAPPING: Record<string, string> = {
+  'uap4-1': 'First Name:',
+  'uap4-3': 'Last Name:',
+  'uap4-4': 'Date of Birth:',
+  'uap4-5': 'Initiation Date:',
+  'uap4-6': 'Review on',
+  'uap4-7': 'days on',
+  '425q-1': 'Referral for Additional Services?',
+  '425q-2': 'If yes, specify:',
+  '1abg-1': 'Encounter Type & Method',
+  'yshx-1': 'Session Frequency:',
+  'yshx-2': 'Expected Duration:',
+  'pqkf-1': 'Treatment Modality',
+  'my3p-1': 'Primary Clinical Approach',
+  'qn1y-1': 'Secondary Clinical Approach',
+  'zad8-1': 'Tenative Goals & Plans:',
+  '5mbv-1': 'Expected Length of Treatment:',
+  'cj7t-1': 'Appointments Frequency:',
+
+  // Variant A, goal 1
+  'koai-1': 'Goal 1 Long-Term Goal',
+  'koai-2': 'Goal 1 Target Completion Date',
+  'koai-5': 'Goal 1 Status',
+  'koai-4': 'Goal 1 Short-Term Objective 1',
+  'koai-7': 'Goal 1 Objective 1 Target Date',
+  'koai-11': 'Goal 1 Objective 1 Status',
+  'koai-8': 'Goal 1 Short-Term Objective 2',
+  'koai-9': 'Goal 1 Objective 2 Target Date',
+  'koai-10': 'Goal 1 Objective 2 Status',
+  'koai-12': 'Goal 1 Primary Clinical Intervention',
+  'koai-13': 'Goal 1 Secondary Clinical Intervention',
+  'koai-6': 'Goal 1 Notes',
+
+  // Variant A, goal 2
+  'has1-1': 'Goal 2 Long-Term Goal',
+  'has1-2': 'Goal 2 Target Completion Date',
+  'has1-5': 'Goal 2 Status',
+  'has1-4': 'Goal 2 Short-Term Objective 1',
+  'has1-7': 'Goal 2 Objective 1 Target Date',
+  'has1-11': 'Goal 2 Objective 1 Status',
+  'has1-8': 'Goal 2 Short-Term Objective 2',
+  'has1-9': 'Goal 2 Objective 2 Target Date',
+  'has1-10': 'Goal 2 Objective 2 Status',
+  'has1-12': 'Goal 2 Primary Clinical Intervention',
+  'has1-13': 'Goal 2 Secondary Clinical Intervention',
+  'has1-6': 'Goal 2 Notes',
+
+  // Variant A, goal 3 (optional on the form)
+  '4yq4-1': 'Goal 3 Long-Term Goal',
+  '4yq4-2': 'Goal 3 Target Completion Date',
+  '4yq4-5': 'Goal 3 Status',
+  '4yq4-4': 'Goal 3 Short-Term Objective 1',
+  '4yq4-7': 'Goal 3 Objective 1 Target Date',
+  '4yq4-11': 'Goal 3 Objective 1 Status',
+  '4yq4-8': 'Goal 3 Short-Term Objective 2',
+  '4yq4-9': 'Goal 3 Objective 2 Target Date',
+  '4yq4-10': 'Goal 3 Objective 2 Status',
+  '4yq4-12': 'Goal 3 Primary Clinical Intervention',
+  '4yq4-13': 'Goal 3 Secondary Clinical Intervention',
+  '4yq4-6': 'Goal 3 Notes',
+
+  // Variant B. The goal and objective headings carry instruction text and no
+  // answer, so they are named plainly and drop out of display when empty.
+  'fvuz-1': 'Goal 1 Long-Term Goal',
+  'e0cx-1': 'Goal 1 Target Completion Date',
+  '2ivu-1': 'Goal 1 Objectives and Interventions',
+  'i2k9-2': 'Goal 1 Intervention Completion Date',
+  'i2k9-1': 'Goal 1 Intervention 1a Completion Date',
+  'rt7s-1': 'Goal 2 Long-Term Goal',
+  'f220-1': 'Goal 2 Target Completion Date',
+  'mb2a-1': 'Goal 2 Objectives and Interventions',
+  '6t4l-2': 'Goal 2 Intervention Completion Date',
+  '6t4l-1': 'Goal 2 Intervention 2a Completion Date',
+  'n9fx-1': 'Goal 3 Long-Term Goal',
+  '6tai-1': 'Goal 3 Target Completion Date',
+  'spdh-1': 'Goal 3 Objectives and Interventions',
+  'qgx7-2': 'Goal 3 Intervention Completion Date',
+  'qgx7-1': 'Goal 3 Intervention 3a Completion Date',
+  'e12d-1': 'Goal 4 Long-Term Goal',
+  'r685-1': 'Goal 4 Target Completion Date',
+  'eafq-1': 'Goal 4 Objectives and Interventions',
+  'a28a-2': 'Goal 4 Intervention Completion Date',
+  'a28a-1': 'Goal 4 Intervention 4a Completion Date',
+
+  '8pav-1': 'Progress Since Last Plan',
+  '8ys9-1': 'Full Name & Credentials (Signature)',
+  '8ys9-2': 'Date Completed',
+  'd5sc-1': 'Documented by Supervised Clinician (if applicable)',
+}
+
 const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
   [SessionTypeEnum.progress_note]: FIELD_MAPPING,
   [SessionTypeEnum.intake]: INTAKE_FIELD_MAPPING,
+  [SessionTypeEnum.treatment_plan]: TREATMENT_PLAN_FIELD_MAPPING,
   [SessionTypeEnum.termination]: TERMINATION_FIELD_MAPPING,
 }
 
