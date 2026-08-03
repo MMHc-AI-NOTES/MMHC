@@ -286,6 +286,58 @@ function formatAnswer(answer: unknown): string {
   return String(answer)
 }
 
+// PracticeQ labels a question with the text the clinician reads on the form,
+// which often carries the instructions with it:
+//
+//   "Treatment Goal  #1\nInstructions: Enter the clients primary goal..."
+//
+// The id maps above cover the form variants we have seen, but a variant we
+// have not seen falls back to this text and turns it into a heading, which is
+// unreadable and never matches a section. Question ids change between
+// variants; the label the clinician reads does not. Normalising the label
+// keeps a new variant readable without waiting on a code change.
+const GOAL_LABEL_RULES: [RegExp, string][] = [
+  // The initial plan heads its goal blocks "Tentative Goal 1" and the 90 day
+  // renewal heads the same blocks "Treatment Goal #1". Tentative describes when
+  // the goal was written, not what the field is, so both resolve to one name.
+  // Splitting them would double the goal sections and show a client's initial
+  // plan and their renewal under different headings.
+  // Each rule consumes the rest of the label. What follows a goal heading is
+  // decoration, "(optional)" or the instructions, and never another field.
+  [/^Tentative\s+(?:Treatment\s+)?Goal\s*#?\s*(\d+).*$/i, 'Goal $1 Long-Term Goal'],
+  [
+    /^Objective,?\s*Intervention and Status for\s*GOAL\s*#?\s*(\d+).*$/i,
+    'Goal $1 Objectives and Interventions',
+  ],
+  [/^Treatment\s*Goal\s*#?\s*(\d+).*$/i, 'Goal $1 Long-Term Goal'],
+  [/^Goal\s*#?\s*(\d+)\s+Target Completion Date.*$/i, 'Goal $1 Target Completion Date'],
+  [
+    /^Intervention\s*#?\s*(\d+)([a-z])\s+Completion Date.*$/i,
+    'Goal $1 Intervention $1$2 Completion Date',
+  ],
+  [/^Intervention\s*#?\s*(\d+)\s+Completion Date.*$/i, 'Goal $1 Intervention Completion Date'],
+  [/^Goal\s*#\s*(\d+)\s+(.+)$/i, 'Goal $1 $2'],
+]
+
+export function normaliseQuestionLabel(text: string | undefined | null): string {
+  if (!text) return ''
+
+  let label = String(text)
+    .split(/\n\s*Instructions\s*:/i)[0]
+    .split('\n')[0]
+    .replace(/\s*\(OPTIONAL\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!label) return ''
+
+  for (const [pattern, replacement] of GOAL_LABEL_RULES) {
+    if (pattern.test(label)) return label.replace(pattern, replacement).trim()
+  }
+
+  return label
+}
+
 // Builds the session object from a note's Questions array.
 //
 // Pass sessionType from resolveSessionType(...).type, but only when
@@ -293,7 +345,7 @@ function formatAnswer(answer: unknown): string {
 // instead of risking the wrong field names on a type we don't recognize.
 //
 // Field name for each question: the id map for this type if we have one,
-// otherwise PracticeQ's own question text, otherwise the raw id. Treatment
+// otherwise the normalised question label, otherwise the raw id. Treatment
 // plans repeat labels like "Status" across goal blocks, so repeats get
 // numbered (2), (3), etc rather than overwriting each other.
 export function buildSessionObject(
@@ -311,7 +363,7 @@ export function buildSessionObject(
     const text = q?.text ?? q?.Text
     const answer = formatAnswer(q?.answer ?? q?.Answer)
 
-    const baseFieldName = (id && idMap[id]) || text || id
+    const baseFieldName = (id && idMap[id]) || normaliseQuestionLabel(text) || id
     if (!baseFieldName) continue
 
     const occurrence = (seenCount[baseFieldName] ?? 0) + 1
