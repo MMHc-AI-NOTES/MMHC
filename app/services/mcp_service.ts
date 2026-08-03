@@ -5,6 +5,7 @@ import { mcpConfig } from '#config/services'
 import logger from '@adonisjs/core/services/logger'
 import { ErrorTypeEnum, ErrorTypePoints } from '#enums/manual_issue_enum'
 import { SessionTypeEnum } from '#enums/session_enum'
+import { sessionTypeSlug } from '#services/note_type_mapping_service'
 import axios from 'axios'
 
 // ─── Types (MMHC AI Scorer Mock API v13 — POST /score-note) ─────────────────
@@ -399,6 +400,7 @@ export function buildMcpScoreNoteRequest(params: {
   currentNote: string
   previousNote?: string
   sessionType?: number | null
+  noteName?: string | null
 }): McpScoreNoteRequest {
   const currentSession = parseSessionForMcp(params.currentNote, params.sessionType)
   const previousSession = params.previousNote
@@ -409,6 +411,8 @@ export function buildMcpScoreNoteRequest(params: {
     note_id: params.noteId,
     client_id: params.clientId,
     cpt_code: params.cptCode,
+    note_type: sessionTypeSlug(params.sessionType),
+    note_name: params.noteName?.trim() ?? '',
     diagnosis: params.diagnosis,
     current_session: currentSession,
     previous_session: previousSession,
@@ -496,6 +500,7 @@ export async function evaluateChatWithMcp(params: {
   currentNote: string
   previousNote: string | undefined
   sessionType?: number | null
+  noteName?: string | null
 }): Promise<NormalizedEvaluationResult> {
   const baseUrl = mcpConfig.apiUrl
   const token = mcpConfig.token
@@ -510,6 +515,7 @@ export async function evaluateChatWithMcp(params: {
     currentNote: params.currentNote,
     previousNote: params.previousNote,
     sessionType: params.sessionType,
+    noteName: params.noteName,
   })
 
   const userInput = buildUserInput(
