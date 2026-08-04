@@ -933,49 +933,106 @@ export const updateNote = async (noteId: string, reqData: updateNoteValidatorInt
   }
 }
 
+/** MySQL DATE() can come back as a Date or a string depending on driver config. */
+const dayKeyOf = (value: unknown): string => {
+  const dt = value instanceof Date ? DateTime.fromJSDate(value) : DateTime.fromISO(String(value))
+  return dt.toFormat('yyyy-LL-dd')
+}
+
 export const getDashboardStatistics = async () => {
   try {
     const now = DateTime.now()
     const startOfToday = now.startOf('day').toSQL()!
-
-    // 1. Notes Audited Today
-    const notesAuditedTodayResult = await db
-      .from('session')
-      .where('created_at', '>=', startOfToday)
-      .count('* as total')
-    const notesAuditedToday = Number(notesAuditedTodayResult[0]?.total || 0)
-
-    // 2. Active Practitioners Count
-    const activePractitionersResult = await db
-      .from('session')
-      .whereNotNull('practitioner_id')
-      .countDistinct('practitioner_id as total')
-    const activePractitioners = Number(activePractitionersResult[0]?.total || 0)
-
-    // 3. Critical Issues (sessions where ai_status = failed or priority = 1)
-    const criticalIssuesResult = await db
-      .from('session')
-      .where((builder) => {
-        builder.where('ai_status', AiStatusEnum.failed).orWhere('priority', 1)
-      })
-      .count('* as total')
-    const criticalIssues = Number(criticalIssuesResult[0]?.total || 0)
-
-    // 4. Weekly Growth (% change from previous 7 days to current 7 days)
     const startOfThisWeek = now.minus({ days: 7 }).startOf('day').toSQL()!
     const startOfLastWeek = now.minus({ days: 14 }).startOf('day').toSQL()!
+    const startOfVolumeWindow = now.minus({ days: 6 }).startOf('day').toSQL()!
+    const endOfToday = now.endOf('day').toSQL()!
 
-    const thisWeekResult = await db
-      .from('session')
-      .where('created_at', '>=', startOfThisWeek)
-      .count('* as total')
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const last7Days = Array.from({ length: 7 }, (_, i) => now.minus({ days: 6 - i }))
+
+    // Independent counts, the weekly volume, the top practitioners, and recent
+    // activity all run together instead of one query per day/practitioner.
+    const [
+      notesAuditedTodayResult,
+      activePractitionersResult,
+      criticalIssuesResult,
+      thisWeekResult,
+      lastWeekResult,
+      topPractitioners,
+      volumeRows,
+      recentSessions,
+    ] = await Promise.all([
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfToday)
+        .count('* as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .whereNotNull('practitioner_id')
+        .countDistinct('practitioner_id as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where((builder) => {
+          builder.where('ai_status', AiStatusEnum.failed).orWhere('priority', 1)
+        })
+        .count('* as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfThisWeek)
+        .count('* as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfLastWeek)
+        .where('created_at', '<', startOfThisWeek)
+        .count('* as total'),
+      // Top 4 practitioners by session volume, for the quality trends below.
+      db
+        .from('session')
+        .whereNull('session.deleted_at')
+        .join('users', 'session.practitioner_id', 'users.id')
+        .select('users.id', 'users.full_name')
+        .count('session.id as count')
+        .groupBy('users.id', 'users.full_name')
+        .orderBy('count', 'desc')
+        .limit(4),
+      // Weekly Audit Volume per day, aggregated in one grouped query instead of one per day.
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfVolumeWindow)
+        .where('created_at', '<=', endOfToday)
+        .groupByRaw('DATE(created_at)')
+        .select(
+          db.raw('DATE(created_at) as day'),
+          db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as critical_failures', [
+            AiStatusEnum.failed,
+          ]),
+          db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as passed', [AiStatusEnum.passed]),
+          db.raw('SUM(CASE WHEN human_review = ? THEN 1 ELSE 0 END) as practitioner_corrections', [
+            HumanReviewEnum.completed,
+          ]),
+          db.raw('SUM(CASE WHEN human_review = ? THEN 1 ELSE 0 END) as hitl', [
+            HumanReviewEnum.pending,
+          ])
+        ),
+      // Recent Activities (last 5 sessions)
+      Session.query()
+        .preload('practitioner')
+        .preload('patient')
+        .orderBy('createdAt', 'desc')
+        .limit(5),
+    ])
+
+    const notesAuditedToday = Number(notesAuditedTodayResult[0]?.total || 0)
+    const activePractitioners = Number(activePractitionersResult[0]?.total || 0)
+    const criticalIssues = Number(criticalIssuesResult[0]?.total || 0)
     const thisWeekCount = Number(thisWeekResult[0]?.total || 0)
-
-    const lastWeekResult = await db
-      .from('session')
-      .where('created_at', '>=', startOfLastWeek)
-      .where('created_at', '<', startOfThisWeek)
-      .count('* as total')
     const lastWeekCount = Number(lastWeekResult[0]?.total || 0)
 
     let weeklyGrowth = 0
@@ -985,98 +1042,54 @@ export const getDashboardStatistics = async () => {
       weeklyGrowth = 100
     }
 
-    // 5. Weekly Audit Volume per Day (last 7 days)
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const weeklyAuditVolume: Array<{
-      day: string
-      criticalFailures: number
-      hitl: number
-      passed: number
-      practitionerCorrections: number
-    }> = []
-
-    for (let i = 6; i >= 0; i--) {
-      const dayDate = now.minus({ days: i })
-      const dayStart = dayDate.startOf('day').toSQL()!
-      const dayEnd = dayDate.endOf('day').toSQL()!
-      const dayLabel = daysOfWeek[dayDate.weekday % 7]
-
-      const daySessions = await db
-        .from('session')
-        .where('created_at', '>=', dayStart)
-        .where('created_at', '<=', dayEnd)
-
-      let criticalFailures = 0
-      let hitl = 0
-      let passed = 0
-      let practitionerCorrections = 0
-
-      daySessions.forEach((s) => {
-        if (s.ai_status === AiStatusEnum.failed) criticalFailures++
-        else if (s.ai_status === AiStatusEnum.passed) passed++
-
-        if (s.human_review === HumanReviewEnum.completed) practitionerCorrections++
-        else if (s.human_review === HumanReviewEnum.pending) hitl++
-      })
-
-      weeklyAuditVolume.push({
-        day: dayLabel,
-        criticalFailures,
-        hitl,
-        passed,
-        practitionerCorrections,
-      })
-    }
-
-    // 6. Practitioner Quality Trends (top 4 practitioners by session volume)
-    const topPractitioners = await db
-      .from('session')
-      .join('users', 'session.practitioner_id', 'users.id')
-      .select('users.id', 'users.full_name')
-      .count('session.id as count')
-      .groupBy('users.id', 'users.full_name')
-      .orderBy('count', 'desc')
-      .limit(4)
-
-    const practitionerTrends: Array<{
-      name: string
-      data: Array<{ day: string; score: number }>
-    }> = []
-
-    for (const p of topPractitioners) {
-      const fullName = p.full_name?.trim() || `Practitioner #${p.id}`
-      const pData: Array<{ day: string; score: number }> = []
-
-      for (let i = 6; i >= 0; i--) {
-        const dayDate = now.minus({ days: i })
-        const dayStart = dayDate.startOf('day').toSQL()!
-        const dayEnd = dayDate.endOf('day').toSQL()!
-        const dayLabel = daysOfWeek[dayDate.weekday % 7]
-
-        const scores = await db
-          .from('session')
-          .where('practitioner_id', p.id)
-          .where('created_at', '>=', dayStart)
-          .where('created_at', '<=', dayEnd)
-          .whereNotNull('ai_score')
-          .avg('ai_score as avg_score')
-
-        const avgScore = Number(scores[0]?.avg_score || 0)
-        pData.push({ day: dayLabel, score: Math.round(avgScore) })
+    const volumeByDay = new Map(volumeRows.map((row: any) => [dayKeyOf(row.day), row]))
+    const weeklyAuditVolume = last7Days.map((dayDate) => {
+      const row: any = volumeByDay.get(dayDate.toFormat('yyyy-LL-dd'))
+      return {
+        day: daysOfWeek[dayDate.weekday % 7],
+        criticalFailures: Number(row?.critical_failures || 0),
+        hitl: Number(row?.hitl || 0),
+        passed: Number(row?.passed || 0),
+        practitionerCorrections: Number(row?.practitioner_corrections || 0),
       }
+    })
 
-      practitionerTrends.push({
-        name: fullName,
-        data: pData,
+    // Practitioner Quality Trends: one grouped query across all top practitioners and days,
+    // instead of one avg() query per practitioner per day.
+    const practitionerIds = topPractitioners.map((p: any) => p.id)
+    const trendRows = practitionerIds.length
+      ? await db
+          .from('session')
+          .whereNull('deleted_at')
+          .whereIn('practitioner_id', practitionerIds)
+          .where('created_at', '>=', startOfVolumeWindow)
+          .where('created_at', '<=', endOfToday)
+          .whereNotNull('ai_score')
+          .groupByRaw('practitioner_id, DATE(created_at)')
+          .select(
+            'practitioner_id',
+            db.raw('DATE(created_at) as day'),
+            db.raw('AVG(ai_score) as avg_score')
+          )
+      : []
+
+    const trendByPractitionerDay = new Map(
+      trendRows.map((row: any) => [`${row.practitioner_id}_${dayKeyOf(row.day)}`, row])
+    )
+
+    const practitionerTrends = topPractitioners.map((p: any) => {
+      const fullName = p.full_name?.trim() || `Practitioner #${p.id}`
+
+      const data = last7Days.map((dayDate) => {
+        const row: any = trendByPractitionerDay.get(`${p.id}_${dayDate.toFormat('yyyy-LL-dd')}`)
+        return {
+          day: daysOfWeek[dayDate.weekday % 7],
+          score: Math.round(Number(row?.avg_score || 0)),
+        }
       })
-    }
 
-    // 7. Recent Activities (last 5 sessions)
-    const recentSessions = await Session.query()
-      .preload('practitioner')
-      .preload('patient')
-      .orderBy('createdAt', 'desc')
-      .limit(5)
+      return { name: fullName, data }
+    })
 
     const recentActivities = recentSessions.map((session) => {
       let type: 'info' | 'progress' | 'critical' | 'default' = 'default'
