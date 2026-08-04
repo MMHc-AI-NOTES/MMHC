@@ -1013,9 +1013,7 @@ export const getDashboardStatistics = async () => {
           db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as critical_failures', [
             AiStatusEnum.failed,
           ]),
-          db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as passed', [
-            AiStatusEnum.passed,
-          ]),
+          db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as passed', [AiStatusEnum.passed]),
           db.raw('SUM(CASE WHEN human_review = ? THEN 1 ELSE 0 END) as practitioner_corrections', [
             HumanReviewEnum.completed,
           ]),
@@ -1024,7 +1022,11 @@ export const getDashboardStatistics = async () => {
           ])
         ),
       // Recent Activities (last 5 sessions)
-      Session.query().preload('practitioner').preload('patient').orderBy('createdAt', 'desc').limit(5),
+      Session.query()
+        .preload('practitioner')
+        .preload('patient')
+        .orderBy('createdAt', 'desc')
+        .limit(5),
     ])
 
     const notesAuditedToday = Number(notesAuditedTodayResult[0]?.total || 0)
