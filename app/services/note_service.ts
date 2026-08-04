@@ -21,9 +21,13 @@ import { AuditActionEnum } from '#enums/audit_log_enum'
 import logger from '@adonisjs/core/services/logger'
 
 export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<string, any>[]> {
+  if (!noteId || typeof noteId !== 'string' || !noteId.trim()) {
+    return []
+  }
+
   const auditLog = await db
     .from('audit_logs')
-    .where('note_id', noteId)
+    .where('note_id', noteId.trim())
     .where('action', AuditActionEnum.webhookSessionReceived)
     .select('metadata')
     .first()
@@ -31,8 +35,24 @@ export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<s
   if (!auditLog?.metadata) {
     return []
   }
-  const meta =
-    typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
+
+  let meta: any = null
+  if (typeof auditLog.metadata === 'string') {
+    const trimmed = auditLog.metadata.trim()
+    if (!trimmed) return []
+    try {
+      meta = JSON.parse(trimmed)
+    } catch {
+      logger.warn('[AuditLog] Failed to parse JSON metadata for diagnosis', { noteId })
+      return []
+    }
+  } else {
+    meta = auditLog.metadata
+  }
+
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
+    return []
+  }
 
   const raw = meta?.raw_payload?.Diagnosis
   return Array.isArray(raw) ? raw : []
@@ -43,19 +63,38 @@ export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<s
  * comes back from the payload kept in the audit log.
  */
 export async function getNoteNameFromAuditLog(noteId: string): Promise<string> {
+  if (!noteId || typeof noteId !== 'string' || !noteId.trim()) {
+    return ''
+  }
+
   const auditLog = await db
     .from('audit_logs')
-    .where('note_id', noteId)
+    .where('note_id', noteId.trim())
     .where('action', AuditActionEnum.webhookSessionReceived)
     .select('metadata')
     .first()
 
   if (!auditLog?.metadata) return ''
 
-  const meta =
-    typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
-  const payload = meta?.raw_payload
+  let meta: any = null
+  if (typeof auditLog.metadata === 'string') {
+    const trimmed = auditLog.metadata.trim()
+    if (!trimmed) return ''
+    try {
+      meta = JSON.parse(trimmed)
+    } catch {
+      logger.warn('[AuditLog] Failed to parse JSON metadata for note name', { noteId })
+      return ''
+    }
+  } else {
+    meta = auditLog.metadata
+  }
 
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
+    return ''
+  }
+
+  const payload = meta?.raw_payload
   const name = payload?.NoteName ?? payload?.noteName ?? payload?.Type ?? payload?.type
   return typeof name === 'string' ? name.trim() : ''
 }
