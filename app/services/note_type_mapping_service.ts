@@ -333,13 +333,26 @@ const GOAL_LABEL_RULES: [RegExp, string][] = [
   [/^Goal\s*#\s*(\d+)\s+(.+)$/i, 'Goal $1 $2'],
 ]
 
+/**
+ * A heading longer than this is guidance text rather than a field name. The
+ * longest real one is the intake history question at 66 characters.
+ *
+ * This is the guard that does not depend on guessing PracticeQ's wording. The
+ * splits below drop instructions written on their own line whatever they are
+ * introduced by, but instructions on the same line as the label cannot be
+ * recognised by keyword, since the keyword is theirs to change. Length catches
+ * those without us predicting anything.
+ */
+const MAX_HEADING_LENGTH = 80
+
 export function normaliseQuestionLabel(text: string | undefined | null): string {
   if (!text) return ''
 
   let label = String(text)
-    .split(/\n\s*Instructions\s*:/i)[0]
+    // Anything after a line break is guidance. Taking the first line covers
+    // Instructions, Note, Guidance and any wording we have not seen.
     .split('\n')[0]
-    .replace(/\s*\(OPTIONAL\)/g, '')
+    .replace(/\s*\(OPTIONAL\)/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
 
@@ -347,6 +360,13 @@ export function normaliseQuestionLabel(text: string | undefined | null): string 
 
   for (const [pattern, replacement] of GOAL_LABEL_RULES) {
     if (pattern.test(label)) return label.replace(pattern, replacement).trim()
+  }
+
+  // Same line guidance. Cut at the first colon that has a sentence after it,
+  // and only when the label is too long to be a field name on its own.
+  if (label.length > MAX_HEADING_LENGTH) {
+    const beforeColon = label.split(/:\s+/)[0].trim()
+    if (beforeColon && beforeColon.length <= MAX_HEADING_LENGTH) return beforeColon
   }
 
   return label

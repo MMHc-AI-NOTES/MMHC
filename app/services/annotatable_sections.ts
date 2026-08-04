@@ -109,54 +109,85 @@ const LATER_FORM_SECTIONS: AnnotatableSection[] = [
 ]
 
 /**
+ * Goal sections, written out rather than calculated.
+ *
+ * These ids were generated once from a loop and are now fixed. Every SME issue
+ * and template row points at them, so an id here is a permanent identifier and
+ * not a position in a list. Calculating them meant adding one field shifted
+ * every id after it, silently repointing existing findings at a different
+ * section. A new field takes the next free id at the end.
+ *
  * One row per goal field rather than one per goal. Registering only "Goal 1"
  * and leaning on substring matching sent "Goal 2 Short-Term Objective 1" to the
  * progress note Objective section, since the fallback matches any shared word.
- * The template dropdown is filtered per field, so this length is never shown.
  */
-const GOAL_FIELDS = [
-  'Long-Term Goal',
-  'Target Completion Date',
-  'Status',
-  'Short-Term Objective 1',
-  'Objective 1 Target Date',
-  'Objective 1 Status',
-  'Short-Term Objective 2',
-  'Objective 2 Target Date',
-  'Objective 2 Status',
-  'Primary Clinical Intervention',
-  'Secondary Clinical Intervention',
-  'Notes',
-  'Objectives and Interventions',
-  'Intervention Completion Date',
+const GOAL_SECTIONS: AnnotatableSection[] = [
+  // Goal 1
+  { id: 60, field_id: 'goal-1-0', display_name: 'Goal 1 Long-Term Goal' },
+  { id: 61, field_id: 'goal-1-1', display_name: 'Goal 1 Target Completion Date' },
+  { id: 62, field_id: 'goal-1-2', display_name: 'Goal 1 Status' },
+  { id: 63, field_id: 'goal-1-3', display_name: 'Goal 1 Short-Term Objective 1' },
+  { id: 64, field_id: 'goal-1-4', display_name: 'Goal 1 Objective 1 Target Date' },
+  { id: 65, field_id: 'goal-1-5', display_name: 'Goal 1 Objective 1 Status' },
+  { id: 66, field_id: 'goal-1-6', display_name: 'Goal 1 Short-Term Objective 2' },
+  { id: 67, field_id: 'goal-1-7', display_name: 'Goal 1 Objective 2 Target Date' },
+  { id: 68, field_id: 'goal-1-8', display_name: 'Goal 1 Objective 2 Status' },
+  { id: 69, field_id: 'goal-1-9', display_name: 'Goal 1 Primary Clinical Intervention' },
+  { id: 70, field_id: 'goal-1-10', display_name: 'Goal 1 Secondary Clinical Intervention' },
+  { id: 71, field_id: 'goal-1-11', display_name: 'Goal 1 Notes' },
+  { id: 72, field_id: 'goal-1-12', display_name: 'Goal 1 Objectives and Interventions' },
+  { id: 73, field_id: 'goal-1-13', display_name: 'Goal 1 Intervention Completion Date' },
+  // Goal 2
+  { id: 74, field_id: 'goal-2-0', display_name: 'Goal 2 Long-Term Goal' },
+  { id: 75, field_id: 'goal-2-1', display_name: 'Goal 2 Target Completion Date' },
+  { id: 76, field_id: 'goal-2-2', display_name: 'Goal 2 Status' },
+  { id: 77, field_id: 'goal-2-3', display_name: 'Goal 2 Short-Term Objective 1' },
+  { id: 78, field_id: 'goal-2-4', display_name: 'Goal 2 Objective 1 Target Date' },
+  { id: 79, field_id: 'goal-2-5', display_name: 'Goal 2 Objective 1 Status' },
+  { id: 80, field_id: 'goal-2-6', display_name: 'Goal 2 Short-Term Objective 2' },
+  { id: 81, field_id: 'goal-2-7', display_name: 'Goal 2 Objective 2 Target Date' },
+  { id: 82, field_id: 'goal-2-8', display_name: 'Goal 2 Objective 2 Status' },
+  { id: 83, field_id: 'goal-2-9', display_name: 'Goal 2 Primary Clinical Intervention' },
+  { id: 84, field_id: 'goal-2-10', display_name: 'Goal 2 Secondary Clinical Intervention' },
+  { id: 85, field_id: 'goal-2-11', display_name: 'Goal 2 Notes' },
+  { id: 86, field_id: 'goal-2-12', display_name: 'Goal 2 Objectives and Interventions' },
+  { id: 87, field_id: 'goal-2-13', display_name: 'Goal 2 Intervention Completion Date' },
+  // Goal 3
+  { id: 88, field_id: 'goal-3-0', display_name: 'Goal 3 Long-Term Goal' },
+  { id: 89, field_id: 'goal-3-1', display_name: 'Goal 3 Target Completion Date' },
+  { id: 90, field_id: 'goal-3-2', display_name: 'Goal 3 Status' },
+  { id: 91, field_id: 'goal-3-3', display_name: 'Goal 3 Short-Term Objective 1' },
+  { id: 92, field_id: 'goal-3-4', display_name: 'Goal 3 Objective 1 Target Date' },
+  { id: 93, field_id: 'goal-3-5', display_name: 'Goal 3 Objective 1 Status' },
+  { id: 94, field_id: 'goal-3-6', display_name: 'Goal 3 Short-Term Objective 2' },
+  { id: 95, field_id: 'goal-3-7', display_name: 'Goal 3 Objective 2 Target Date' },
+  { id: 96, field_id: 'goal-3-8', display_name: 'Goal 3 Objective 2 Status' },
+  { id: 97, field_id: 'goal-3-9', display_name: 'Goal 3 Primary Clinical Intervention' },
+  { id: 98, field_id: 'goal-3-10', display_name: 'Goal 3 Secondary Clinical Intervention' },
+  { id: 99, field_id: 'goal-3-11', display_name: 'Goal 3 Notes' },
+  { id: 100, field_id: 'goal-3-12', display_name: 'Goal 3 Objectives and Interventions' },
+  { id: 101, field_id: 'goal-3-13', display_name: 'Goal 3 Intervention Completion Date' },
+  // Goal 4
+  { id: 102, field_id: 'goal-4-0', display_name: 'Goal 4 Long-Term Goal' },
+  { id: 103, field_id: 'goal-4-1', display_name: 'Goal 4 Target Completion Date' },
+  { id: 104, field_id: 'goal-4-2', display_name: 'Goal 4 Status' },
+  { id: 105, field_id: 'goal-4-3', display_name: 'Goal 4 Short-Term Objective 1' },
+  { id: 106, field_id: 'goal-4-4', display_name: 'Goal 4 Objective 1 Target Date' },
+  { id: 107, field_id: 'goal-4-5', display_name: 'Goal 4 Objective 1 Status' },
+  { id: 108, field_id: 'goal-4-6', display_name: 'Goal 4 Short-Term Objective 2' },
+  { id: 109, field_id: 'goal-4-7', display_name: 'Goal 4 Objective 2 Target Date' },
+  { id: 110, field_id: 'goal-4-8', display_name: 'Goal 4 Objective 2 Status' },
+  { id: 111, field_id: 'goal-4-9', display_name: 'Goal 4 Primary Clinical Intervention' },
+  { id: 112, field_id: 'goal-4-10', display_name: 'Goal 4 Secondary Clinical Intervention' },
+  { id: 113, field_id: 'goal-4-11', display_name: 'Goal 4 Notes' },
+  { id: 114, field_id: 'goal-4-12', display_name: 'Goal 4 Objectives and Interventions' },
+  { id: 115, field_id: 'goal-4-13', display_name: 'Goal 4 Intervention Completion Date' },
+  // Numbered after its own goal on one form variant.
+  { id: 116, field_id: 'goal-1-intervention-a', display_name: 'Goal 1 Intervention 1a Completion Date' },
+  { id: 117, field_id: 'goal-2-intervention-a', display_name: 'Goal 2 Intervention 2a Completion Date' },
+  { id: 118, field_id: 'goal-3-intervention-a', display_name: 'Goal 3 Intervention 3a Completion Date' },
+  { id: 119, field_id: 'goal-4-intervention-a', display_name: 'Goal 4 Intervention 4a Completion Date' },
 ]
-
-const GOAL_ID_BASE = 60
-const GOAL_COUNT = 4
-
-const buildGoalSections = (): AnnotatableSection[] => {
-  const sections: AnnotatableSection[] = []
-
-  for (let goal = 1; goal <= GOAL_COUNT; goal++) {
-    GOAL_FIELDS.forEach((field, index) => {
-      sections.push({
-        id: GOAL_ID_BASE + (goal - 1) * GOAL_FIELDS.length + index,
-        field_id: `goal-${goal}-${index}`,
-        display_name: `Goal ${goal} ${field}`,
-      })
-    })
-
-    // Numbered after its own goal on one form variant, so it cannot come from
-    // the shared list above.
-    sections.push({
-      id: GOAL_ID_BASE + GOAL_COUNT * GOAL_FIELDS.length + (goal - 1),
-      field_id: `goal-${goal}-intervention-a`,
-      display_name: `Goal ${goal} Intervention ${goal}a Completion Date`,
-    })
-  }
-
-  return sections
-}
 
 export const ANNOTATABLE_SECTIONS: AnnotatableSection[] = [
   ...PROGRESS_NOTE_SECTIONS,
@@ -165,7 +196,7 @@ export const ANNOTATABLE_SECTIONS: AnnotatableSection[] = [
   ...TERMINATION_SECTIONS,
   ...TREATMENT_PLAN_SECTIONS,
   ...LATER_FORM_SECTIONS,
-  ...buildGoalSections(),
+  ...GOAL_SECTIONS,
 ]
 
 /** Throws if a name, field id or id repeats. */
