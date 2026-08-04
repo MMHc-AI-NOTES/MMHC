@@ -932,3 +932,183 @@ export const updateNote = async (noteId: string, reqData: updateNoteValidatorInt
     throw new Error('error while getting note with chat')
   }
 }
+
+export const getDashboardStatistics = async () => {
+  try {
+    const now = DateTime.now()
+    const startOfToday = now.startOf('day').toSQL()!
+
+    // 1. Notes Audited Today
+    const notesAuditedTodayResult = await db
+      .from('session')
+      .where('created_at', '>=', startOfToday)
+      .count('* as total')
+    const notesAuditedToday = Number(notesAuditedTodayResult[0]?.total || 0)
+
+    // 2. Active Practitioners Count
+    const activePractitionersResult = await db
+      .from('session')
+      .whereNotNull('practitioner_id')
+      .countDistinct('practitioner_id as total')
+    const activePractitioners = Number(activePractitionersResult[0]?.total || 0)
+
+    // 3. Critical Issues (sessions where ai_status = failed or priority = 1)
+    const criticalIssuesResult = await db
+      .from('session')
+      .where((builder) => {
+        builder.where('ai_status', AiStatusEnum.failed).orWhere('priority', 1)
+      })
+      .count('* as total')
+    const criticalIssues = Number(criticalIssuesResult[0]?.total || 0)
+
+    // 4. Weekly Growth (% change from previous 7 days to current 7 days)
+    const startOfThisWeek = now.minus({ days: 7 }).startOf('day').toSQL()!
+    const startOfLastWeek = now.minus({ days: 14 }).startOf('day').toSQL()!
+
+    const thisWeekResult = await db
+      .from('session')
+      .where('created_at', '>=', startOfThisWeek)
+      .count('* as total')
+    const thisWeekCount = Number(thisWeekResult[0]?.total || 0)
+
+    const lastWeekResult = await db
+      .from('session')
+      .where('created_at', '>=', startOfLastWeek)
+      .where('created_at', '<', startOfThisWeek)
+      .count('* as total')
+    const lastWeekCount = Number(lastWeekResult[0]?.total || 0)
+
+    let weeklyGrowth = 0
+    if (lastWeekCount > 0) {
+      weeklyGrowth = Math.round(((thisWeekCount - lastWeekCount) / lastWeekCount) * 100)
+    } else if (thisWeekCount > 0) {
+      weeklyGrowth = 100
+    }
+
+    // 5. Weekly Audit Volume per Day (last 7 days)
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const weeklyAuditVolume: Array<{
+      day: string
+      criticalFailures: number
+      hitl: number
+      passed: number
+      practitionerCorrections: number
+    }> = []
+
+    for (let i = 6; i >= 0; i--) {
+      const dayDate = now.minus({ days: i })
+      const dayStart = dayDate.startOf('day').toSQL()!
+      const dayEnd = dayDate.endOf('day').toSQL()!
+      const dayLabel = daysOfWeek[dayDate.weekday % 7]
+
+      const daySessions = await db
+        .from('session')
+        .where('created_at', '>=', dayStart)
+        .where('created_at', '<=', dayEnd)
+
+      let criticalFailures = 0
+      let hitl = 0
+      let passed = 0
+      let practitionerCorrections = 0
+
+      daySessions.forEach((s) => {
+        if (s.ai_status === AiStatusEnum.failed) criticalFailures++
+        else if (s.ai_status === AiStatusEnum.passed) passed++
+
+        if (s.human_review === HumanReviewEnum.completed) practitionerCorrections++
+        else if (s.human_review === HumanReviewEnum.pending) hitl++
+      })
+
+      weeklyAuditVolume.push({
+        day: dayLabel,
+        criticalFailures,
+        hitl,
+        passed,
+        practitionerCorrections,
+      })
+    }
+
+    // 6. Practitioner Quality Trends (top 4 practitioners by session volume)
+    const topPractitioners = await db
+      .from('session')
+      .join('users', 'session.practitioner_id', 'users.id')
+      .select('users.id', 'users.full_name')
+      .count('session.id as count')
+      .groupBy('users.id', 'users.full_name')
+      .orderBy('count', 'desc')
+      .limit(4)
+
+    const practitionerTrends: Array<{
+      name: string
+      data: Array<{ day: string; score: number }>
+    }> = []
+
+    for (const p of topPractitioners) {
+      const fullName = p.full_name?.trim() || `Practitioner #${p.id}`
+      const pData: Array<{ day: string; score: number }> = []
+
+      for (let i = 6; i >= 0; i--) {
+        const dayDate = now.minus({ days: i })
+        const dayStart = dayDate.startOf('day').toSQL()!
+        const dayEnd = dayDate.endOf('day').toSQL()!
+        const dayLabel = daysOfWeek[dayDate.weekday % 7]
+
+        const scores = await db
+          .from('session')
+          .where('practitioner_id', p.id)
+          .where('created_at', '>=', dayStart)
+          .where('created_at', '<=', dayEnd)
+          .whereNotNull('ai_score')
+          .avg('ai_score as avg_score')
+
+        const avgScore = Number(scores[0]?.avg_score || 0)
+        pData.push({ day: dayLabel, score: Math.round(avgScore) })
+      }
+
+      practitionerTrends.push({
+        name: fullName,
+        data: pData,
+      })
+    }
+
+    // 7. Recent Activities (last 5 sessions)
+    const recentSessions = await Session.query()
+      .preload('practitioner')
+      .preload('patient')
+      .orderBy('createdAt', 'desc')
+      .limit(5)
+
+    const recentActivities = recentSessions.map((session) => {
+      let type: 'info' | 'progress' | 'critical' | 'default' = 'default'
+      if (session.aiStatus === AiStatusEnum.failed) type = 'critical'
+      else if (session.aiStatus === AiStatusEnum.passed) type = 'progress'
+      else if (session.humanReview === HumanReviewEnum.pending) type = 'info'
+
+      const practitionerName = session.practitioner?.fullName || 'Practitioner'
+
+      const dateStr = session.createdAt ? session.createdAt.toRelative() || 'Recently' : 'Recently'
+
+      return {
+        id: String(session.id),
+        type,
+        title: `Note #${session.noteId || session.id} ${session.aiStatus === AiStatusEnum.failed ? 'failed audit' : 'processed'}`,
+        description: `Practitioner: ${practitionerName}`,
+        timestamp: session.createdAt ? session.createdAt.toISO() : new Date().toISOString(),
+        timeAgo: dateStr,
+      }
+    })
+
+    return {
+      notesAuditedToday,
+      weeklyGrowth,
+      activePractitioners,
+      criticalIssues,
+      weeklyAuditVolume,
+      practitionerTrends,
+      recentActivities,
+    }
+  } catch (error: any) {
+    logger.error('Error fetching dashboard statistics', error)
+    throw new Error('Error fetching dashboard statistics')
+  }
+}
