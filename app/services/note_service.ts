@@ -208,9 +208,9 @@ export const noteListing = async (
       .preload('practitioner')
       .preload('patient')
       .preload('parentNote')
-      .preload('childNotes', (childQuery) => {
-        childQuery.preload('practitioner').preload('patient')
-      })
+      // Only childNotes[0]'s id/noteId are read below, so its own practitioner/patient
+      // rows are never used on the list and aren't worth preloading for every row.
+      .preload('childNotes')
       .preload('chats', (chatsQuery) => {
         chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
           humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
@@ -220,10 +220,9 @@ export const noteListing = async (
         humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
       })
       .preload('webhookVersions', (versionsQuery) => {
+        // extractReviewers only reads sme_issues.reviewer; errorType/issuesRelatedTo/
+        // issueDescription are detail-page fields the list never serializes.
         versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
-          smeIssuesQuery.preload('errorType')
-          smeIssuesQuery.preload('issuesRelatedTo')
-          smeIssuesQuery.preload('issueDescription')
           smeIssuesQuery.preload('reviewer')
         })
         versionsQuery.orderBy('id', 'desc')
@@ -424,7 +423,10 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       throw new Error('Note not found for the provided note ID')
     }
 
-    const diagnosis = await getDiagnosisFromAuditLog(noteId)
+    const [diagnosis, feedbackVerdicts] = await Promise.all([
+      getDiagnosisFromAuditLog(noteId),
+      loadFeedbackVerdictsForSession(note.id),
+    ])
 
     const serialized = note.serialize()
     // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.
@@ -451,8 +453,6 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
     delete serialized.webhook_versions
     delete serialized.feedbackVerdicts
     delete serialized.feedback_verdicts
-
-    const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.id)
 
     const noteWithCount = {
       ...serialized,
