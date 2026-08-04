@@ -349,6 +349,26 @@ export function parseNoteToSessionObject(note: unknown): Record<string, unknown>
  * types send their own sections; forcing them through the twelve sent the
  * scorer an empty note.
  */
+/**
+ * Patient identifiers, never sent to the scorer.
+ *
+ * The progress note shape is a fixed list that happens to exclude these, so
+ * nothing identifying ever left with a progress note. Other note types send
+ * every stored field, which put the patient's name and date of birth in the
+ * request. The scorer grades the writing and has no use for either.
+ */
+const PATIENT_IDENTIFIER_KEYS = ['first name', 'last name', 'date of birth']
+
+export function isPatientIdentifierKey(key: string): boolean {
+  const normalised = key
+    .replace(/\s*\(optional\)/gi, '')
+    .replace(/:$/, '')
+    .trim()
+    .toLowerCase()
+
+  return PATIENT_IDENTIFIER_KEYS.includes(normalised)
+}
+
 export function parseSessionForMcp(sessionContent: unknown, sessionType?: number | null): Session {
   const parsed = parseNoteToSessionObject(sessionContent)
 
@@ -370,7 +390,7 @@ export function parseSessionForMcp(sessionContent: unknown, sessionType?: number
 
   return Object.entries(parsed).reduce((session, [key, value]) => {
     const text = String(value ?? '').trim()
-    if (key.trim() && text) session[key] = text
+    if (key.trim() && text && !isPatientIdentifierKey(key)) session[key] = text
     return session
   }, {} as Session)
 }
