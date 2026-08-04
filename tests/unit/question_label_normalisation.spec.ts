@@ -110,6 +110,50 @@ test.group('Question label normalisation', () => {
     }
   })
 
+  test('guidance on its own line is dropped whatever introduces it', ({ assert }) => {
+    // The wording is PracticeQ's to change, so nothing here matches on the
+    // word Instructions. Anything after a line break is guidance.
+    for (const lead of ['Instructions', 'Instruction', 'Note', 'Guidance', 'Please note']) {
+      assert.equal(
+        normaliseQuestionLabel(`Treatment Goal  #1\n${lead}: enter the goal`),
+        'Goal 1 Long-Term Goal',
+        lead
+      )
+    }
+
+    assert.equal(
+      normaliseQuestionLabel('Presenting Problem & Symptoms\nGuidance: describe it'),
+      'Presenting Problem & Symptoms'
+    )
+  })
+
+  test('guidance on the same line is cut when the heading runs long', ({ assert }) => {
+    // No line break to split on, so length is the signal rather than a keyword.
+    assert.equal(
+      normaliseQuestionLabel(
+        'Presenting Problem Guidance: describe the presenting problem in full with examples'
+      ),
+      'Presenting Problem Guidance'
+    )
+  })
+
+  test('a long real section name is not truncated', ({ assert }) => {
+    // The longest genuine heading. It must survive the length guard intact.
+    const longest = 'Pertinent history as related to presenting problem, trauma, abuse, etc'
+
+    assert.equal(normaliseQuestionLabel(longest), longest)
+  })
+
+  test('every registered section name survives normalisation unchanged', ({ assert }) => {
+    // A section whose own name does not normalise to itself can never be
+    // matched by a finding, which is the failure this all exists to prevent.
+    const changed = ANNOTATABLE_SECTIONS.map((section) => section.display_name)
+      .filter((name) => !name.startsWith('Goal '))
+      .filter((name) => normaliseQuestionLabel(name) !== name)
+
+    assert.deepEqual(changed, [])
+  })
+
   test('an ordinary label is left alone apart from tidying', ({ assert }) => {
     assert.equal(normaliseQuestionLabel('Session Frequency:'), 'Session Frequency:')
     assert.equal(normaliseQuestionLabel('  Family   History  '), 'Family History')
