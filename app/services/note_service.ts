@@ -1031,10 +1031,10 @@ export const getDashboardStatistics = async () => {
     // 6. Practitioner Quality Trends (top 4 practitioners by session volume)
     const topPractitioners = await db
       .from('session')
-      .join('practitioner', 'session.practitioner_id', 'practitioner.id')
-      .select('practitioner.id', 'practitioner.first_name', 'practitioner.last_name')
+      .join('users', 'session.practitioner_id', 'users.id')
+      .select('users.id', 'users.full_name')
       .count('session.id as count')
-      .groupBy('practitioner.id', 'practitioner.first_name', 'practitioner.last_name')
+      .groupBy('users.id', 'users.full_name')
       .orderBy('count', 'desc')
       .limit(4)
 
@@ -1044,8 +1044,7 @@ export const getDashboardStatistics = async () => {
     }> = []
 
     for (const p of topPractitioners) {
-      const fullName =
-        `${p.first_name?.[0] || ''}. ${p.last_name || ''}`.trim() || `Practitioner #${p.id}`
+      const fullName = p.full_name?.trim() || `Practitioner #${p.id}`
       const pData: Array<{ day: string; score: number }> = []
 
       for (let i = 6; i >= 0; i--) {
@@ -1085,9 +1084,7 @@ export const getDashboardStatistics = async () => {
       else if (session.aiStatus === AiStatusEnum.passed) type = 'progress'
       else if (session.humanReview === HumanReviewEnum.pending) type = 'info'
 
-      const practitionerName = session.practitioner
-        ? `${session.practitioner.firstName} ${session.practitioner.lastName}`
-        : 'Practitioner'
+      const practitionerName = session.practitioner?.fullName || 'Practitioner'
 
       const dateStr = session.createdAt ? session.createdAt.toRelative() || 'Recently' : 'Recently'
 

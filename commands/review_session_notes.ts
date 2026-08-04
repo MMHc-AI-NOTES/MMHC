@@ -4,6 +4,7 @@ import { invokeSessionReview } from '#services/session_review_service'
 import fs from 'node:fs/promises'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
+// @ts-ignore
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { s3DatasetConfig } from '#config/services'
 
