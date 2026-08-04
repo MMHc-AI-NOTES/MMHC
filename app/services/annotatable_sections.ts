@@ -183,10 +183,26 @@ const GOAL_SECTIONS: AnnotatableSection[] = [
   { id: 114, field_id: 'goal-4-12', display_name: 'Goal 4 Objectives and Interventions' },
   { id: 115, field_id: 'goal-4-13', display_name: 'Goal 4 Intervention Completion Date' },
   // Numbered after its own goal on one form variant.
-  { id: 116, field_id: 'goal-1-intervention-a', display_name: 'Goal 1 Intervention 1a Completion Date' },
-  { id: 117, field_id: 'goal-2-intervention-a', display_name: 'Goal 2 Intervention 2a Completion Date' },
-  { id: 118, field_id: 'goal-3-intervention-a', display_name: 'Goal 3 Intervention 3a Completion Date' },
-  { id: 119, field_id: 'goal-4-intervention-a', display_name: 'Goal 4 Intervention 4a Completion Date' },
+  {
+    id: 116,
+    field_id: 'goal-1-intervention-a',
+    display_name: 'Goal 1 Intervention 1a Completion Date',
+  },
+  {
+    id: 117,
+    field_id: 'goal-2-intervention-a',
+    display_name: 'Goal 2 Intervention 2a Completion Date',
+  },
+  {
+    id: 118,
+    field_id: 'goal-3-intervention-a',
+    display_name: 'Goal 3 Intervention 3a Completion Date',
+  },
+  {
+    id: 119,
+    field_id: 'goal-4-intervention-a',
+    display_name: 'Goal 4 Intervention 4a Completion Date',
+  },
 ]
 
 export const ANNOTATABLE_SECTIONS: AnnotatableSection[] = [
