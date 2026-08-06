@@ -382,6 +382,25 @@ export function normaliseQuestionLabel(text: string | undefined | null): string 
 // otherwise the normalised question label, otherwise the raw id. Treatment
 // plans repeat labels like "Status" across goal blocks, so repeats get
 // numbered (2), (3), etc rather than overwriting each other.
+/**
+ * Administrative scheduling fields, excluded from the stored session.
+ *
+ * These sit in the Client Details block of the PracticeQ forms. The SME team
+ * reviews the clinical writing and asked for them not to appear, the same way
+ * the patient's name and date of birth do not. Excluding them here keeps them
+ * out of the review screen and out of the scorer payload in one place.
+ * Compared by name so both wordings of Initiation Date are covered.
+ */
+const EXCLUDED_ADMIN_FIELD_NAMES = new Set(
+  ['Initiation Date:', 'Initiation date', 'Review on', 'days on'].map((name) =>
+    name.toLowerCase().replace(/:$/, '').trim()
+  )
+)
+
+export function isExcludedAdminField(fieldName: string): boolean {
+  return EXCLUDED_ADMIN_FIELD_NAMES.has(fieldName.toLowerCase().replace(/:$/, '').trim())
+}
+
 export function buildSessionObject(
   questions: QuestionLike[] | undefined | null,
   sessionType?: number
@@ -399,6 +418,7 @@ export function buildSessionObject(
 
     const baseFieldName = (id && idMap[id]) || normaliseQuestionLabel(text) || id
     if (!baseFieldName) continue
+    if (isExcludedAdminField(baseFieldName)) continue
 
     const occurrence = (seenCount[baseFieldName] ?? 0) + 1
     seenCount[baseFieldName] = occurrence
