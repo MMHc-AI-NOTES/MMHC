@@ -197,7 +197,7 @@ const TREATMENT_PLAN_FIELD_MAPPING: Record<string, string> = {
   'd5sc-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
-const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
+export const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
   [SessionTypeEnum.progress_note]: FIELD_MAPPING,
   [SessionTypeEnum.intake]: INTAKE_FIELD_MAPPING,
   [SessionTypeEnum.treatment_plan]: TREATMENT_PLAN_FIELD_MAPPING,
