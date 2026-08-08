@@ -60,6 +60,35 @@ test.group('note_type_mapping_service | resolveSessionType', () => {
     assert.equal(result.type, SessionTypeEnum.progress_note)
     assert.isFalse(result.matched)
   })
+
+  test('the combined treatment plan and progress note resolves to its own type', ({ assert }) => {
+    for (const label of [
+      'Treatment Plan + Progress Note',
+      'Combined Treatment Plan + Progress Note',
+      'Treatment Plan / Progress Note',
+      'Treatment Plan and Progress Note',
+      'Combined Note: Treatment Plan & Progress Note',
+    ]) {
+      assert.equal(
+        resolveSessionType(label).type,
+        SessionTypeEnum.treatment_plan_progress_note,
+        label
+      )
+    }
+  })
+
+  test('a plain treatment plan is not mistaken for the combined type', ({ assert }) => {
+    assert.equal(
+      resolveSessionType('Initial Consultation: Assessment/Treatment Plan').type,
+      SessionTypeEnum.treatment_plan
+    )
+    // A renewal that mentions progress without "progress note" stays a plan.
+    assert.equal(
+      resolveSessionType('Treatment Plan 90 Day Progress Review').type,
+      SessionTypeEnum.treatment_plan
+    )
+    assert.equal(resolveSessionType('Progress Note').type, SessionTypeEnum.progress_note)
+  })
 })
 
 test.group('note_type_mapping_service | buildSessionObject', () => {

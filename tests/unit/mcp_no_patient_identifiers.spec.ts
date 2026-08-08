@@ -98,6 +98,17 @@ test.group('Patient identifiers never reach the scorer', () => {
     assert.notProperty(request.previous_session ?? {}, 'Date of Birth:')
   })
 
+  test('the combined treatment plan and progress note is stripped like the others', ({
+    assert,
+  }) => {
+    const session = parseSessionForMcp(intakeSession, SessionTypeEnum.treatment_plan_progress_note)
+
+    assert.notProperty(session, 'First Name:')
+    assert.notProperty(session, 'Last Name:')
+    assert.notProperty(session, 'Date of Birth:')
+    assert.property(session, 'Presenting Problem & Symptoms')
+  })
+
   test('progress notes are unchanged, since their shape never carried identifiers', ({
     assert,
   }) => {
