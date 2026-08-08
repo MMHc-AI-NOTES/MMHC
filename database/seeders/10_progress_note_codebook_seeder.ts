@@ -4,7 +4,7 @@ import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
 import ErrorType from '#models/error_type'
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
-import { DateTime } from 'luxon'
+import db from '@adonisjs/lucid/services/db'
 import {
   PROGRESS_NOTE_CODEBOOK,
   CODEBOOK_SECTIONS,
@@ -15,17 +15,12 @@ import {
  * Syncs the SME templates for progress note sections to the client's
  * finalized codebook in progress_note_codebook.ts.
  *
- * Runs on every deploy and is idempotent. Three rules keep it safe:
- *
- * Existing issue description rows are never edited. Historical SME issues
- * reference them, so changing their text would rewrite what a past reviewer
- * said. A codebook description that does not exist verbatim gets a new row.
- *
- * Templates are matched by description_id, which is unique. A matching row is
- * updated in place, a missing one is created, and rows in codebook sections
- * whose id is not in the codebook are soft deleted. Past SME issues carry
- * their own copies of severity and description, so none of this rewrites
- * history.
+ * Runs on every deploy and is idempotent. The existing notes and reviews are
+ * being cleared and re-reviewed under this codebook, so the sync is a clean
+ * slate: templates are matched by description_id and updated in place or
+ * created, templates in codebook sections that the codebook no longer lists
+ * are removed, and description rows that nothing references any more are
+ * removed with them.
  *
  * Sections outside the codebook are not touched, so the starter templates on
  * intake, treatment plan and termination stay until their codebooks arrive.
@@ -101,19 +96,40 @@ export default class extends BaseSeeder {
       }
 
       // Templates in codebook sections that the codebook no longer lists are
-      // retired. Soft deleted so nothing referencing them breaks.
+      // removed. The old reviews are being cleared and re-run, so there is
+      // nothing left that should resolve against them.
       const codebookIds = PROGRESS_NOTE_CODEBOOK.map((e) => e.descriptionId)
       const coveredSectionIds = CODEBOOK_SECTIONS.map((name) => sectionToId.get(name)!)
 
-      const retiredCount = await SmeIssuesTamplate.query()
+      const removedCount = await SmeIssuesTamplate.query()
         .whereIn('issues_related_to_id', coveredSectionIds)
-        .whereNotIn('description_id', codebookIds)
-        .whereNull('deleted_at')
-        .update({ deleted_at: DateTime.now().toSQL() })
+        .where((query) => {
+          query.whereNotIn('description_id', codebookIds).orWhereNull('description_id')
+        })
+        .delete()
+
+      // Description rows nothing references any more go with them, so the
+      // Settings screens offer only the codebook's wording.
+      const referencedByTemplates = (
+        await SmeIssuesTamplate.query().whereNotNull('issue_description_id')
+      ).map((t) => t.issueDescriptionId)
+      const referencedBySmeIssues = await db
+        .from('sme_issues')
+        .whereNotNull('issue_description_id')
+        .distinct('issue_description_id')
+      const stillReferenced = new Set<number>([
+        ...referencedByTemplates.filter((id): id is number => id !== null),
+        ...referencedBySmeIssues.map((row) => Number(row.issue_description_id)),
+      ])
+
+      const orphanCount = await IssueDescription.query()
+        .whereNotIn('id', [...stillReferenced, 0])
+        .delete()
 
       logger.info(
         `Codebook sync: ${created} template(s) created, ${updated} updated, ` +
-          `${unchanged} already correct, ${Number(retiredCount)} retired`
+          `${unchanged} already correct, ${Number(removedCount)} removed, ` +
+          `${Number(orphanCount)} unused description(s) cleaned`
       )
     } catch (error) {
       logger.error(`Error seeding the progress note codebook: ${error}`)
