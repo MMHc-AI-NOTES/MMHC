@@ -98,6 +98,57 @@ test.group('Question label normalisation', () => {
     )
   })
 
+  test('a fifth and sixth goal resolve without any id map', ({ assert }) => {
+    // The updated template carries up to six goals. The rules are number
+    // generic, so the new blocks map to their sections the moment the first
+    // note arrives, before any question id has been catalogued.
+    assert.equal(
+      normaliseQuestionLabel('Treatment Goal  #5 (OPTIONAL)\nInstructions: x'),
+      'Goal 5 Long-Term Goal'
+    )
+    assert.equal(normaliseQuestionLabel('Tentative Goal 6'), 'Goal 6 Long-Term Goal')
+    assert.equal(
+      normaliseQuestionLabel('Goal #6 Target Completion Date'),
+      'Goal 6 Target Completion Date'
+    )
+    assert.equal(
+      normaliseQuestionLabel('Objective, Intervention and Status for GOAL #5\nInstructions: x'),
+      'Goal 5 Objectives and Interventions'
+    )
+    assert.equal(
+      normaliseQuestionLabel('Intervention #6a Completion Date'),
+      'Goal 6 Intervention 6a Completion Date'
+    )
+    assert.equal(
+      normaliseQuestionLabel('Intervention #5 Completion Date'),
+      'Goal 5 Intervention Completion Date'
+    )
+  })
+
+  test('every goal 5 and 6 label lands on a registered section', ({ assert }) => {
+    const sectionNames = new Set(ANNOTATABLE_SECTIONS.map((section) => section.display_name))
+
+    for (const label of [
+      'Treatment Goal  #5\nInstructions: x',
+      'Treatment Goal  #6 (OPTIONAL)\nInstructions: x',
+      'Goal #5 Target Completion Date',
+      'Goal #6 Target Completion Date',
+      'Objective, Intervention and Status for GOAL #5\nInstructions: x',
+      'Objective, Intervention and Status for GOAL #6\nInstructions: x',
+      'Intervention #5 Completion Date',
+      'Intervention #5a Completion Date',
+      'Intervention #6 Completion Date',
+      'Intervention #6a Completion Date',
+      'Goal #5 Status',
+      'Goal #6 Notes',
+    ]) {
+      assert.isTrue(
+        sectionNames.has(normaliseQuestionLabel(label)),
+        `${normaliseQuestionLabel(label)} has no section`
+      )
+    }
+  })
+
   test('sections on the current forms have somewhere to attach a finding', ({ assert }) => {
     const sectionNames = new Set(ANNOTATABLE_SECTIONS.map((section) => section.display_name))
 

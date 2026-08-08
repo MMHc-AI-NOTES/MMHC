@@ -197,7 +197,11 @@ const TREATMENT_PLAN_FIELD_MAPPING: Record<string, string> = {
   'd5sc-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
-export const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
+export // The combined treatment plan + progress note has no id map yet: its question
+// ids are unknown until the first real payload arrives, so it relies on the
+// label normalisation fallback in buildSessionObject, which the goal label
+// rules already cover for any goal number.
+const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
   [SessionTypeEnum.progress_note]: FIELD_MAPPING,
   [SessionTypeEnum.intake]: INTAKE_FIELD_MAPPING,
   [SessionTypeEnum.treatment_plan]: TREATMENT_PLAN_FIELD_MAPPING,
@@ -214,6 +218,7 @@ export const SESSION_TYPE_SLUG: Record<number, string> = {
   [SessionTypeEnum.intake]: 'intake',
   [SessionTypeEnum.treatment_plan]: 'treatment_plan',
   [SessionTypeEnum.termination]: 'termination',
+  [SessionTypeEnum.treatment_plan_progress_note]: 'treatment_plan_progress_note',
 }
 
 export function sessionTypeSlug(sessionType?: number | null): string {
@@ -226,6 +231,13 @@ const TYPE_LABEL_TO_ENUM: Record<string, number> = {
   'initial consultation: intake/assessment': SessionTypeEnum.intake,
   'initial consultation: assessment/treatment plan': SessionTypeEnum.treatment_plan,
   'termination note': SessionTypeEnum.termination,
+  // The combined form's exact label is unconfirmed until the first real note
+  // arrives, so these cover the likely wordings and the fuzzy match below
+  // catches the rest.
+  'treatment plan + progress note': SessionTypeEnum.treatment_plan_progress_note,
+  'combined treatment plan + progress note': SessionTypeEnum.treatment_plan_progress_note,
+  'treatment plan / progress note': SessionTypeEnum.treatment_plan_progress_note,
+  'treatment plan and progress note': SessionTypeEnum.treatment_plan_progress_note,
   // unconfirmed aliases, just a safety net
   'progress': SessionTypeEnum.progress_note,
   'intake': SessionTypeEnum.intake,
@@ -242,6 +254,12 @@ const TYPE_LABEL_TO_ENUM: Record<string, number> = {
 // before "intake" - the real treatment plan label also contains the
 // word "assessment" so order matters here.
 function fuzzyMatchType(key: string): number | undefined {
+  // The combined label contains both phrases, so it has to be checked first.
+  // "progress note" rather than "progress" alone, so a renewal label that
+  // merely mentions progress stays a treatment plan.
+  if (key.includes('treatment plan') && key.includes('progress note')) {
+    return SessionTypeEnum.treatment_plan_progress_note
+  }
   if (key.includes('treatment plan')) return SessionTypeEnum.treatment_plan
   if (key.includes('termination') || key.includes('discharge')) return SessionTypeEnum.termination
   if (key.includes('intake')) return SessionTypeEnum.intake

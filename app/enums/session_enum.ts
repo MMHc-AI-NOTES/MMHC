@@ -4,6 +4,7 @@ export const SessionTypeEnum = {
   intake: 2,
   treatment_plan: 3,
   termination: 4,
+  treatment_plan_progress_note: 5,
 }
 
 // AI Status Enum
