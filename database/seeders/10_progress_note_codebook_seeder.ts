@@ -110,9 +110,9 @@ export default class extends BaseSeeder {
 
       // Description rows nothing references any more go with them, so the
       // Settings screens offer only the codebook's wording.
-      const referencedByTemplates = (
+      const remainingTemplates =
         await SmeIssuesTamplate.query().whereNotNull('issue_description_id')
-      ).map((t) => t.issueDescriptionId)
+      const referencedByTemplates = remainingTemplates.map((t) => t.issueDescriptionId)
       const referencedBySmeIssues = await db
         .from('sme_issues')
         .whereNotNull('issue_description_id')
