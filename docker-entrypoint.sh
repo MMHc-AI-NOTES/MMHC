@@ -12,8 +12,6 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   node build/ace db:seed -f "./database/seeders/5_error_type_seeder"
   node build/ace db:seed -f "./database/seeders/6_issue_description_seeder"
   node build/ace db:seed -f "./database/seeders/7_issues_related_to_seeder"
-  node build/ace db:seed -f "./database/seeders/9_sme_issue_template_seeder"
-  node build/ace db:seed -f "./database/seeders/10_progress_note_codebook_seeder"
 fi
 
 
