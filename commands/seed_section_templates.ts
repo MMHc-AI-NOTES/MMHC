@@ -3,8 +3,9 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { seedMissingSectionTemplates } from '#services/section_template_service'
 
 /**
- * The same work 9_sme_issue_template_seeder does on deploy, exposed as a
- * command so it can be inspected before it writes.
+ * Fills starter templates into sections that have none. Template seeding no
+ * longer happens on deploy, so this command is the only way it runs, and it
+ * reports before it writes.
  *
  * A section on its own is not enough for the plus button: it offers templates,
  * and a template is a section joined to an issue description and a severity.
