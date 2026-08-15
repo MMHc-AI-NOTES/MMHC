@@ -8,6 +8,12 @@ import {
   CODEBOOK_SECTIONS,
   assertCodebookIsConsistent,
 } from '#services/progress_note_codebook'
+import {
+  TREATMENT_PLAN_CODEBOOK,
+  TREATMENT_PLAN_CODEBOOK_SECTIONS,
+  isGoalSectionName,
+  assertTreatmentPlanCodebookIsConsistent,
+} from '#services/treatment_plan_codebook'
 
 export interface CodebookSyncResult {
   created: number
@@ -18,15 +24,18 @@ export interface CodebookSyncResult {
 }
 
 /**
- * Syncs the SME templates for the progress note sections to the finalized
- * codebook in progress_note_codebook.ts.
+ * Syncs the SME templates to the finalized codebooks: progress note sections
+ * from progress_note_codebook.ts and treatment plan sections from
+ * treatment_plan_codebook.ts. One codebook covers the three treatment plan
+ * templates; the Combined note's progress note sections score under the
+ * progress note codes, so nothing is duplicated.
  *
  * This is deliberately not a deploy seeder. It rewrites template rows,
- * including removing ones the codebook does not list, so it runs only when
+ * including removing ones the codebooks do not list, so it runs only when
  * invoked on purpose through the codebook:sync command, and only applies
  * changes when the apply flag is passed.
  *
- * Sections outside the codebook are never touched.
+ * Sections outside the codebooks are never touched.
  */
 export async function syncProgressNoteCodebook(
   options: { apply?: boolean } = {}
@@ -34,6 +43,7 @@ export async function syncProgressNoteCodebook(
   const apply = options.apply === true
 
   assertCodebookIsConsistent()
+  assertTreatmentPlanCodebookIsConsistent()
 
   const errorTypes = await ErrorType.all()
   const severityToId = new Map(errorTypes.map((e) => [e.name, e.id]))
@@ -43,7 +53,7 @@ export async function syncProgressNoteCodebook(
 
   const sections = await IssuesRelatedTo.all()
   const sectionToId = new Map(sections.map((s) => [s.displayName, s.id]))
-  for (const name of CODEBOOK_SECTIONS) {
+  for (const name of [...CODEBOOK_SECTIONS, ...TREATMENT_PLAN_CODEBOOK_SECTIONS]) {
     if (!sectionToId.has(name)) throw new Error(`Section "${name}" is not seeded`)
   }
 
@@ -58,7 +68,7 @@ export async function syncProgressNoteCodebook(
     orphansCleaned: 0,
   }
 
-  for (const entry of PROGRESS_NOTE_CODEBOOK) {
+  for (const entry of [...PROGRESS_NOTE_CODEBOOK, ...TREATMENT_PLAN_CODEBOOK]) {
     const text = entry.description.trim()
 
     let descriptionRowId = descriptionToId.get(text)
@@ -110,8 +120,17 @@ export async function syncProgressNoteCodebook(
     }
   }
 
-  const codebookIds = PROGRESS_NOTE_CODEBOOK.map((e) => e.descriptionId)
-  const coveredSectionIds = CODEBOOK_SECTIONS.map((name) => sectionToId.get(name)!)
+  const codebookIds = [...PROGRESS_NOTE_CODEBOOK, ...TREATMENT_PLAN_CODEBOOK].map(
+    (e) => e.descriptionId
+  )
+  // Goal fields belong to the treatment plan codebook: cleared with the rest,
+  // no codes of their own.
+  const coveredSectionIds = [
+    ...[...CODEBOOK_SECTIONS, ...TREATMENT_PLAN_CODEBOOK_SECTIONS].map(
+      (name) => sectionToId.get(name)!
+    ),
+    ...sections.filter((s) => isGoalSectionName(s.displayName)).map((s) => s.id),
+  ]
 
   const removableQuery = SmeIssuesTamplate.query()
     .whereIn('issues_related_to_id', coveredSectionIds)
