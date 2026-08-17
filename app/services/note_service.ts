@@ -962,6 +962,9 @@ export const getDashboardStatistics = async () => {
       topPractitioners,
       volumeRows,
       recentSessions,
+      reviewOutcomesResult,
+      pendingHitlResult,
+      correctionsResult,
     ] = await Promise.all([
       db
         .from('session')
@@ -1027,6 +1030,29 @@ export const getDashboardStatistics = async () => {
         .preload('patient')
         .orderBy('createdAt', 'desc')
         .limit(5),
+      // Pass rate over the last 7 days: reviewed notes only.
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfThisWeek)
+        .whereIn('ai_status', [AiStatusEnum.passed, AiStatusEnum.failed])
+        .select(
+          db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as passed', [AiStatusEnum.passed]),
+          db.raw('COUNT(*) as reviewed')
+        ),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('human_review', HumanReviewEnum.pending)
+        .count('* as total'),
+      // Failed notes whose workflow is still open are the ones a practitioner
+      // has to correct.
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('ai_status', AiStatusEnum.failed)
+        .whereNot('workflow', WorkflowEnum.completed)
+        .count('* as total'),
     ])
 
     const notesAuditedToday = Number(notesAuditedTodayResult[0]?.total || 0)
@@ -1041,6 +1067,12 @@ export const getDashboardStatistics = async () => {
     } else if (thisWeekCount > 0) {
       weeklyGrowth = 100
     }
+
+    const passedCount = Number(reviewOutcomesResult[0]?.passed || 0)
+    const reviewedCount = Number(reviewOutcomesResult[0]?.reviewed || 0)
+    const passRate = reviewedCount > 0 ? Math.round((passedCount / reviewedCount) * 100) : 0
+    const pendingHitlReviews = Number(pendingHitlResult[0]?.total || 0)
+    const correctionsRequired = Number(correctionsResult[0]?.total || 0)
 
     const volumeByDay = new Map(volumeRows.map((row: any) => [dayKeyOf(row.day), row]))
     const weeklyAuditVolume = last7Days.map((dayDate) => {
@@ -1116,6 +1148,9 @@ export const getDashboardStatistics = async () => {
       weeklyGrowth,
       activePractitioners,
       criticalIssues,
+      passRate,
+      pendingHitlReviews,
+      correctionsRequired,
       weeklyAuditVolume,
       practitionerTrends,
       recentActivities,
