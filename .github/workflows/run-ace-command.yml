@@ -1,0 +1,147 @@
+name: Run Ace Command on Prod
+
+# Prod runs on ECS Fargate, so there is no box to log into and no way to run a
+# maintenance command by hand. This starts a one-off task on the same image,
+# the same subnets and the same secrets the service already uses, waits for it
+# to finish, prints its logs and fails the run if the command failed.
+#
+# Nothing is hardcoded: the network configuration and task definition are read
+# back from the running service, so this keeps working when either changes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Ace command and flags, e.g. session:rebuild-fields --type=3'
+        required: true
+        type: string
+      confirm:
+        description: 'Type the word apply to allow a command that writes'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  run:
+    name: Run ace command
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+      CONTAINER_NAME: Main
+
+    steps:
+      # A command carrying --apply writes to the production database, so it
+      # needs the word typed in as well. Reading the flag is easy to skip.
+      - name: Require confirmation for a command that writes
+        run: |
+          case "${{ inputs.command }}" in
+            *--apply*|*--force*)
+              if [ "${{ inputs.confirm }}" != "apply" ]; then
+                echo "This command writes to production. Type apply in the confirm field."
+                exit 1
+              fi
+              ;;
+          esac
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_GITHUB }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Read task definition and network from the running service
+        id: service
+        run: |
+          service=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0]' --output json)
+
+          task_definition=$(echo "$service" | jq -r '.taskDefinition')
+          network=$(echo "$service" | jq -c '.networkConfiguration')
+
+          if [ "$network" = "null" ]; then
+            echo "The service has no network configuration to copy."
+            exit 1
+          fi
+
+          echo "task_definition=$task_definition" >> $GITHUB_OUTPUT
+          echo "network=$network" >> $GITHUB_OUTPUT
+          echo "Using $task_definition"
+
+      - name: Start the task
+        id: start
+        run: |
+          # Split the command into the argument array ECS expects, and skip the
+          # entrypoint migrations so a maintenance run cannot alter the schema.
+          command_json=$(jq -cn --arg c "${{ inputs.command }}" \
+            '["node","build/ace.js"] + ($c | split(" ") | map(select(length > 0)))')
+
+          overrides=$(jq -cn \
+            --arg name "$CONTAINER_NAME" \
+            --argjson command "$command_json" \
+            '{containerOverrides:[{name:$name,command:$command,environment:[{name:"RUN_MIGRATIONS",value:"false"}]}]}')
+
+          echo "Running: $command_json"
+
+          task_arn=$(aws ecs run-task \
+            --cluster "$ECS_CLUSTER" \
+            --task-definition "${{ steps.service.outputs.task_definition }}" \
+            --launch-type FARGATE \
+            --network-configuration '${{ steps.service.outputs.network }}' \
+            --overrides "$overrides" \
+            --started-by "gha-${GITHUB_RUN_ID}" \
+            --query 'tasks[0].taskArn' --output text)
+
+          if [ -z "$task_arn" ] || [ "$task_arn" = "None" ]; then
+            echo "The task did not start."
+            exit 1
+          fi
+
+          echo "task_arn=$task_arn" >> $GITHUB_OUTPUT
+          echo "task_id=${task_arn##*/}" >> $GITHUB_OUTPUT
+
+      - name: Wait for it to finish
+        run: |
+          aws ecs wait tasks-stopped \
+            --cluster "$ECS_CLUSTER" \
+            --tasks "${{ steps.start.outputs.task_arn }}"
+
+      - name: Print the output and report the result
+        run: |
+          task=$(aws ecs describe-tasks \
+            --cluster "$ECS_CLUSTER" \
+            --tasks "${{ steps.start.outputs.task_arn }}" \
+            --query 'tasks[0]' --output json)
+
+          definition=$(aws ecs describe-task-definition \
+            --task-definition "${{ steps.service.outputs.task_definition }}" \
+            --query 'taskDefinition.containerDefinitions[0].logConfiguration.options' --output json)
+
+          group=$(echo "$definition" | jq -r '."awslogs-group"')
+          prefix=$(echo "$definition" | jq -r '."awslogs-stream-prefix"')
+
+          echo "----- output -----"
+          aws logs get-log-events \
+            --log-group-name "$group" \
+            --log-stream-name "$prefix/$CONTAINER_NAME/${{ steps.start.outputs.task_id }}" \
+            --query 'events[].message' --output text || echo "(no logs yet)"
+          echo "------------------"
+
+          exit_code=$(echo "$task" | jq -r '.containers[0].exitCode // "null"')
+          reason=$(echo "$task" | jq -r '.stoppedReason // ""')
+
+          echo "Exit code: $exit_code"
+          [ -n "$reason" ] && echo "Reason: $reason"
+
+          if [ "$exit_code" != "0" ]; then
+            exit 1
+          fi

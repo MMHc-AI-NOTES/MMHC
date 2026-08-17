@@ -11,6 +11,9 @@ export interface Session {
   'Therapist Reflection and Insight (optional)': string
   'Overall': string
   'Therapist Initials': string
+
+  // Other note types carry their own sections.
+  [field: string]: string
 }
 
 /** Request body for POST /score-note */
@@ -18,6 +21,10 @@ export interface McpScoreNoteRequest {
   note_id: string
   client_id: string
   cpt_code: string
+  // note_type is the value to branch on. note_name is the label PracticeQ used
+  // and is there for traceability, since the wording varies between forms.
+  note_type: string
+  note_name: string
   diagnosis: Record<string, any>[]
   current_session: Session
   previous_session?: Session | null

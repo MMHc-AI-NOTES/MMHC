@@ -3,15 +3,12 @@ import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import { sendSuccess, sendError } from '#services/custom_response_service'
-import { paginateQuery } from '#services/apply_pagination'
+import { paginateConfigQuery } from '#services/apply_pagination'
 import type {
   createSmeIssueTemplateValidatorInterface,
   updateSmeIssueTemplateValidatorInterface,
 } from '#validators/sme_issue_template_validator'
-import {
-  getNextDescriptionId,
-  resequenceDescriptionIds,
-} from '#helpers/sme_issue_template_description_id_helper'
+import { getNextDescriptionId } from '#helpers/sme_issue_template_description_id_helper'
 import logger from '@adonisjs/core/services/logger'
 
 export const createSmeIssueTemplate = async (reqData: createSmeIssueTemplateValidatorInterface) => {
@@ -80,7 +77,7 @@ export const listSmeIssueTemplates = async (page?: number, pageSize?: number) =>
       .preload('issueDescription')
       .orderBy('id', 'desc')
 
-    const paginated = await paginateQuery(query, pageSize, page)
+    const paginated = await paginateConfigQuery(query, pageSize, page)
 
     return {
       count: paginated['rows'].length,
@@ -147,7 +144,6 @@ export const updateSmeIssueTemplate = async (
       return sendError('SME issue template not found')
     }
 
-    const oldIssuesRelatedToId = template.issuesRelatedToId
     const hasDescriptionId = Object.prototype.hasOwnProperty.call(reqData, 'description_id')
     const requestedDescriptionId =
       hasDescriptionId && reqData.description_id && reqData.description_id.trim().length > 0
@@ -165,14 +161,10 @@ export const updateSmeIssueTemplate = async (
       template.errorTypeId = reqData.error_type_id
     }
 
-    let nextDescriptionId: string | null = null
     if (reqData.issues_related_to_id !== undefined) {
       const issuesRelatedTo = await IssuesRelatedTo.find(reqData.issues_related_to_id)
       if (!issuesRelatedTo) {
         return sendError('Issues related to not found for the provided issues_related_to_id')
-      }
-      if (reqData.issues_related_to_id !== oldIssuesRelatedToId) {
-        nextDescriptionId = await getNextDescriptionId(issuesRelatedTo.displayName)
       }
       template.issuesRelatedToId = reqData.issues_related_to_id
     }
@@ -217,20 +209,7 @@ export const updateSmeIssueTemplate = async (
       return sendError('Template with this combination already exists')
     }
 
-    if (nextDescriptionId && !hasDescriptionId) {
-      template.descriptionId = nextDescriptionId
-    }
-
     await template.save()
-
-    if (!hasDescriptionId) {
-      if (oldIssuesRelatedToId !== template.issuesRelatedToId) {
-        await resequenceDescriptionIds(oldIssuesRelatedToId)
-        await resequenceDescriptionIds(template.issuesRelatedToId)
-      } else {
-        await resequenceDescriptionIds(template.issuesRelatedToId)
-      }
-    }
 
     await template.load('errorType')
     await template.load('issuesRelatedTo')
@@ -252,9 +231,7 @@ export const deleteSmeIssueTemplate = async (id: number) => {
       return sendError('SME issue template not found')
     }
 
-    const issuesRelatedToId = template.issuesRelatedToId
     await template.delete()
-    await resequenceDescriptionIds(issuesRelatedToId)
     return sendSuccess('SME issue template deleted successfully')
   } catch (error: any) {
     logger.error('Error in deleteSmeIssueTemplate:', error.message)

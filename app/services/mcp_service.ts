@@ -4,6 +4,8 @@ import { EvaluationThresholdEnum } from '#enums/evaluation_enum'
 import { mcpConfig } from '#config/services'
 import logger from '@adonisjs/core/services/logger'
 import { ErrorTypeEnum, ErrorTypePoints } from '#enums/manual_issue_enum'
+import { SessionTypeEnum } from '#enums/session_enum'
+import { sessionTypeSlug } from '#services/note_type_mapping_service'
 import axios from 'axios'
 
 // ─── Types (MMHC AI Scorer Mock API v13 — POST /score-note) ─────────────────
@@ -341,15 +343,55 @@ export function parseNoteToSessionObject(note: unknown): Record<string, unknown>
  * Build MCP current_session / previous_session from DB session JSON.
  * Maps stored webhook field names to the MCP Session interface.
  */
-export function parseSessionForMcp(sessionContent: unknown): Session {
+/**
+ * Session object sent to the scorer. Progress notes keep the fixed twelve
+ * sections, blanks included, since the scorer depends on that shape. Other
+ * types send their own sections; forcing them through the twelve sent the
+ * scorer an empty note.
+ */
+/**
+ * Patient identifiers, never sent to the scorer.
+ *
+ * The progress note shape is a fixed list that happens to exclude these, so
+ * nothing identifying ever left with a progress note. Other note types send
+ * every stored field, which put the patient's name and date of birth in the
+ * request. The scorer grades the writing and has no use for either.
+ */
+const PATIENT_IDENTIFIER_KEYS = ['first name', 'last name', 'date of birth']
+
+export function isPatientIdentifierKey(key: string): boolean {
+  const normalised = key
+    .replace(/\s*\(optional\)/gi, '')
+    .replace(/:$/, '')
+    .trim()
+    .toLowerCase()
+
+  return PATIENT_IDENTIFIER_KEYS.includes(normalised)
+}
+
+export function parseSessionForMcp(sessionContent: unknown, sessionType?: number | null): Session {
   const parsed = parseNoteToSessionObject(sessionContent)
 
-  const getFieldValue = (key: keyof Session): string => {
-    return String(parsed[key] ?? '').trim()
+  // Opt in by known type so an unexpected value keeps the old behaviour.
+  const typesWithOwnSections: number[] = [
+    SessionTypeEnum.intake,
+    SessionTypeEnum.treatment_plan,
+    SessionTypeEnum.termination,
+    SessionTypeEnum.treatment_plan_progress_note,
+  ]
+  const useProgressNoteShape =
+    sessionType === null || sessionType === undefined || !typesWithOwnSections.includes(sessionType)
+
+  if (useProgressNoteShape) {
+    return SESSION_FIELD_KEYS.reduce((session, key) => {
+      session[key] = String(parsed[key] ?? '').trim()
+      return session
+    }, {} as Session)
   }
 
-  return SESSION_FIELD_KEYS.reduce((session, key) => {
-    session[key] = getFieldValue(key)
+  return Object.entries(parsed).reduce((session, [key, value]) => {
+    const text = String(value ?? '').trim()
+    if (key.trim() && text && !isPatientIdentifierKey(key)) session[key] = text
     return session
   }, {} as Session)
 }
@@ -378,14 +420,20 @@ export function buildMcpScoreNoteRequest(params: {
   diagnosis: Record<string, any>[]
   currentNote: string
   previousNote?: string
+  sessionType?: number | null
+  noteName?: string | null
 }): McpScoreNoteRequest {
-  const currentSession = parseSessionForMcp(params.currentNote)
-  const previousSession = params.previousNote ? parseSessionForMcp(params.previousNote) : null
+  const currentSession = parseSessionForMcp(params.currentNote, params.sessionType)
+  const previousSession = params.previousNote
+    ? parseSessionForMcp(params.previousNote, params.sessionType)
+    : null
 
   return {
     note_id: params.noteId,
     client_id: params.clientId,
     cpt_code: params.cptCode,
+    note_type: sessionTypeSlug(params.sessionType),
+    note_name: params.noteName?.trim() ?? '',
     diagnosis: params.diagnosis,
     current_session: currentSession,
     previous_session: previousSession,
@@ -472,6 +520,8 @@ export async function evaluateChatWithMcp(params: {
   diagnosis: Record<string, any>[]
   currentNote: string
   previousNote: string | undefined
+  sessionType?: number | null
+  noteName?: string | null
 }): Promise<NormalizedEvaluationResult> {
   const baseUrl = mcpConfig.apiUrl
   const token = mcpConfig.token
@@ -485,6 +535,8 @@ export async function evaluateChatWithMcp(params: {
     diagnosis: params.diagnosis,
     currentNote: params.currentNote,
     previousNote: params.previousNote,
+    sessionType: params.sessionType,
+    noteName: params.noteName,
   })
 
   const userInput = buildUserInput(

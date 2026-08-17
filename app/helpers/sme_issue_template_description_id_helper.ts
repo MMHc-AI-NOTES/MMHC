@@ -1,4 +1,3 @@
-import IssuesRelatedTo from '#models/issues_related_to'
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 
 export const buildDescriptionPrefix = (displayName: string): string => {
@@ -31,26 +30,8 @@ export const getNextDescriptionId = async (issuesRelatedToDisplayName: string): 
   return `${prefix}_${maxNumber + 1}`
 }
 
-export const resequenceDescriptionIds = async (issuesRelatedToId: number) => {
-  const issuesRelatedTo = await IssuesRelatedTo.find(issuesRelatedToId)
-  if (!issuesRelatedTo) return
-
-  const prefix = buildDescriptionPrefix(issuesRelatedTo.displayName)
-  const templates = await SmeIssuesTamplate.query()
-    .where('issues_related_to_id', issuesRelatedToId)
-    .orderBy('created_at', 'asc')
-
-  templates.sort((a: any, b: any) => {
-    const diff = getNumericSuffix(a.descriptionId) - getNumericSuffix(b.descriptionId)
-    if (diff !== 0) return diff
-    return a.id - b.id
-  })
-
-  for (const [index, template] of templates.entries()) {
-    const expectedDescriptionId = `${prefix}_${index + 1}`
-    if (template.descriptionId !== expectedDescriptionId) {
-      template.descriptionId = expectedDescriptionId
-      await template.save()
-    }
-  }
-}
+// An issue code is a permanent identifier shared with the AI scorer: findings
+// arrive tagged with it, so a code must never be reassigned to a different
+// template. Deleting a template leaves a gap in the numbering on purpose. The
+// old resequencing that renumbered a section after a delete or a move would
+// silently repoint the scorer's codes at different labels.

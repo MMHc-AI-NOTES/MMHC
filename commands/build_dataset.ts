@@ -3,6 +3,7 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { buildTestDataset } from '#services/note_service'
 import app from '@adonisjs/core/services/app'
 import fs from 'node:fs/promises'
+// @ts-ignore
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { s3DatasetConfig } from '#config/services'
 

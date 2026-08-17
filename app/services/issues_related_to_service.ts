@@ -6,7 +6,7 @@ import SmeIssue from '#models/sme_issue'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
-import { paginateQuery } from '#services/apply_pagination'
+import { paginateConfigQuery } from '#services/apply_pagination'
 import type {
   createIssuesRelatedToValidatorInterface,
   updateIssuesRelatedToValidatorInterface,
@@ -47,7 +47,7 @@ export const listIssuesRelatedTo = async (
       }
     }
     let sortQuery = sortIssuesRelatedTo?.query ?? query
-    let issuesRelatedToListingPaginated = await paginateQuery(sortQuery, pageSize, page)
+    let issuesRelatedToListingPaginated = await paginateConfigQuery(sortQuery, pageSize, page)
 
     return sendSuccess('Issues related to listed successfully', {
       count: issuesRelatedToListingPaginated['rows'].length,
