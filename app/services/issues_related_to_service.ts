@@ -6,7 +6,7 @@ import SmeIssue from '#models/sme_issue'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
-import { paginateQuery } from '#services/apply_pagination'
+import { paginateConfigQuery } from '#services/apply_pagination'
 import type {
   createIssuesRelatedToValidatorInterface,
   updateIssuesRelatedToValidatorInterface,
@@ -47,7 +47,7 @@ export const listIssuesRelatedTo = async (
       }
     }
     let sortQuery = sortIssuesRelatedTo?.query ?? query
-    let issuesRelatedToListingPaginated = await paginateQuery(sortQuery, pageSize, page)
+    let issuesRelatedToListingPaginated = await paginateConfigQuery(sortQuery, pageSize, page)
 
     return sendSuccess('Issues related to listed successfully', {
       count: issuesRelatedToListingPaginated['rows'].length,
@@ -91,6 +91,7 @@ export const createIssuesRelatedTo = async (reqData: createIssuesRelatedToValida
     const issuesRelatedTo = await IssuesRelatedTo.create({
       fieldId: reqData.field_id,
       displayName: reqData.display_name,
+      noteType: reqData.note_type ?? null,
     })
 
     return sendSuccess('Issues related to created successfully', issuesRelatedTo)
@@ -124,6 +125,9 @@ export const updateIssuesRelatedTo = async (
     }
     if (reqData.display_name !== undefined) {
       updateData.displayName = reqData.display_name
+    }
+    if (reqData.note_type !== undefined) {
+      updateData.noteType = reqData.note_type
     }
 
     await issuesRelatedTo.merge(updateData).save()

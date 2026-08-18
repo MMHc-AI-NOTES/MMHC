@@ -5,6 +5,7 @@ import {
   getNoteWithChats,
   getQueueStatistics,
   getWorkloadStatistics,
+  getDashboardStatistics,
   updateNote,
   buildTestDataset,
 } from '#services/note_service'
@@ -88,6 +89,16 @@ export default class NotesController {
       return sendSuccess('Test dataset built successfully', data)
     } catch (error) {
       logger.error('Test dataset error', error)
+      return ErrorService.handleError(ctx, error)
+    }
+  }
+
+  public async dashboardStatistics(ctx: HttpContext) {
+    try {
+      const statistics = await getDashboardStatistics()
+      return sendSuccess('Dashboard statistics retrieved successfully', statistics)
+    } catch (error) {
+      logger.error('Dashboard statistics error', error)
       return ErrorService.handleError(ctx, error)
     }
   }

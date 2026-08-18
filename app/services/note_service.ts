@@ -21,9 +21,13 @@ import { AuditActionEnum } from '#enums/audit_log_enum'
 import logger from '@adonisjs/core/services/logger'
 
 export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<string, any>[]> {
+  if (!noteId || typeof noteId !== 'string' || !noteId.trim()) {
+    return []
+  }
+
   const auditLog = await db
     .from('audit_logs')
-    .where('note_id', noteId)
+    .where('note_id', noteId.trim())
     .where('action', AuditActionEnum.webhookSessionReceived)
     .select('metadata')
     .first()
@@ -31,11 +35,68 @@ export async function getDiagnosisFromAuditLog(noteId: string): Promise<Record<s
   if (!auditLog?.metadata) {
     return []
   }
-  const meta =
-    typeof auditLog.metadata === 'string' ? JSON.parse(auditLog.metadata) : auditLog.metadata
+
+  let meta: any = null
+  if (typeof auditLog.metadata === 'string') {
+    const trimmed = auditLog.metadata.trim()
+    if (!trimmed) return []
+    try {
+      meta = JSON.parse(trimmed)
+    } catch {
+      logger.warn('[AuditLog] Failed to parse JSON metadata for diagnosis', { noteId })
+      return []
+    }
+  } else {
+    meta = auditLog.metadata
+  }
+
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
+    return []
+  }
 
   const raw = meta?.raw_payload?.Diagnosis
   return Array.isArray(raw) ? raw : []
+}
+
+/**
+ * The form name PracticeQ sent with the note. Not stored on the session, so it
+ * comes back from the payload kept in the audit log.
+ */
+export async function getNoteNameFromAuditLog(noteId: string): Promise<string> {
+  if (!noteId || typeof noteId !== 'string' || !noteId.trim()) {
+    return ''
+  }
+
+  const auditLog = await db
+    .from('audit_logs')
+    .where('note_id', noteId.trim())
+    .where('action', AuditActionEnum.webhookSessionReceived)
+    .select('metadata')
+    .first()
+
+  if (!auditLog?.metadata) return ''
+
+  let meta: any = null
+  if (typeof auditLog.metadata === 'string') {
+    const trimmed = auditLog.metadata.trim()
+    if (!trimmed) return ''
+    try {
+      meta = JSON.parse(trimmed)
+    } catch {
+      logger.warn('[AuditLog] Failed to parse JSON metadata for note name', { noteId })
+      return ''
+    }
+  } else {
+    meta = auditLog.metadata
+  }
+
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
+    return ''
+  }
+
+  const payload = meta?.raw_payload
+  const name = payload?.NoteName ?? payload?.noteName ?? payload?.Type ?? payload?.type
+  return typeof name === 'string' ? name.trim() : ''
 }
 
 /**
@@ -147,9 +208,9 @@ export const noteListing = async (
       .preload('practitioner')
       .preload('patient')
       .preload('parentNote')
-      .preload('childNotes', (childQuery) => {
-        childQuery.preload('practitioner').preload('patient')
-      })
+      // Only childNotes[0]'s id/noteId are read below, so its own practitioner/patient
+      // rows are never used on the list and aren't worth preloading for every row.
+      .preload('childNotes')
       .preload('chats', (chatsQuery) => {
         chatsQuery.orderBy('id', 'desc').preload('humanReviews', (humanReviewsQuery) => {
           humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
@@ -159,10 +220,9 @@ export const noteListing = async (
         humanReviewsQuery.orderBy('id', 'desc').preload('reviewer')
       })
       .preload('webhookVersions', (versionsQuery) => {
+        // extractReviewers only reads sme_issues.reviewer; errorType/issuesRelatedTo/
+        // issueDescription are detail-page fields the list never serializes.
         versionsQuery.preload('smeIssues', (smeIssuesQuery) => {
-          smeIssuesQuery.preload('errorType')
-          smeIssuesQuery.preload('issuesRelatedTo')
-          smeIssuesQuery.preload('issueDescription')
           smeIssuesQuery.preload('reviewer')
         })
         versionsQuery.orderBy('id', 'desc')
@@ -363,7 +423,10 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
       throw new Error('Note not found for the provided note ID')
     }
 
-    const diagnosis = await getDiagnosisFromAuditLog(noteId)
+    const [diagnosis, feedbackVerdicts] = await Promise.all([
+      getDiagnosisFromAuditLog(noteId),
+      loadFeedbackVerdictsForSession(note.id),
+    ])
 
     const serialized = note.serialize()
     // parent_note_id = newer note. Current = parent_note_id === null. Previous = older = childNotes[0]. Child = newer = parentNote.
@@ -390,8 +453,6 @@ export const getNoteWithChats = async (noteId: string, user?: User | null) => {
     delete serialized.webhook_versions
     delete serialized.feedbackVerdicts
     delete serialized.feedback_verdicts
-
-    const feedbackVerdicts = await loadFeedbackVerdictsForSession(note.id)
 
     const noteWithCount = {
       ...serialized,
@@ -869,5 +930,198 @@ export const updateNote = async (noteId: string, reqData: updateNoteValidatorInt
   } catch (error: any) {
     logger.error('Error in getNoteWithChats:', error.message)
     throw new Error('error while getting note with chat')
+  }
+}
+
+/** MySQL DATE() can come back as a Date or a string depending on driver config. */
+const dayKeyOf = (value: unknown): string => {
+  const dt = value instanceof Date ? DateTime.fromJSDate(value) : DateTime.fromISO(String(value))
+  return dt.toFormat('yyyy-LL-dd')
+}
+
+export const getDashboardStatistics = async () => {
+  try {
+    const now = DateTime.now()
+    const startOfToday = now.startOf('day').toSQL()!
+    const startOfThisWeek = now.minus({ days: 7 }).startOf('day').toSQL()!
+    const startOfLastWeek = now.minus({ days: 14 }).startOf('day').toSQL()!
+    const startOfVolumeWindow = now.minus({ days: 6 }).startOf('day').toSQL()!
+    const endOfToday = now.endOf('day').toSQL()!
+
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const last7Days = Array.from({ length: 7 }, (_, i) => now.minus({ days: 6 - i }))
+
+    // Independent counts, the weekly volume, the top practitioners, and recent
+    // activity all run together instead of one query per day/practitioner.
+    const [
+      notesAuditedTodayResult,
+      activePractitionersResult,
+      criticalIssuesResult,
+      thisWeekResult,
+      lastWeekResult,
+      topPractitioners,
+      volumeRows,
+      recentSessions,
+    ] = await Promise.all([
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfToday)
+        .count('* as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .whereNotNull('practitioner_id')
+        .countDistinct('practitioner_id as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where((builder) => {
+          builder.where('ai_status', AiStatusEnum.failed).orWhere('priority', 1)
+        })
+        .count('* as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfThisWeek)
+        .count('* as total'),
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfLastWeek)
+        .where('created_at', '<', startOfThisWeek)
+        .count('* as total'),
+      // Top 4 practitioners by session volume, for the quality trends below.
+      db
+        .from('session')
+        .whereNull('session.deleted_at')
+        .join('users', 'session.practitioner_id', 'users.id')
+        .select('users.id', 'users.full_name')
+        .count('session.id as count')
+        .groupBy('users.id', 'users.full_name')
+        .orderBy('count', 'desc')
+        .limit(4),
+      // Weekly Audit Volume per day, aggregated in one grouped query instead of one per day.
+      db
+        .from('session')
+        .whereNull('deleted_at')
+        .where('created_at', '>=', startOfVolumeWindow)
+        .where('created_at', '<=', endOfToday)
+        .groupByRaw('DATE(created_at)')
+        .select(
+          db.raw('DATE(created_at) as day'),
+          db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as critical_failures', [
+            AiStatusEnum.failed,
+          ]),
+          db.raw('SUM(CASE WHEN ai_status = ? THEN 1 ELSE 0 END) as passed', [AiStatusEnum.passed]),
+          db.raw('SUM(CASE WHEN human_review = ? THEN 1 ELSE 0 END) as practitioner_corrections', [
+            HumanReviewEnum.completed,
+          ]),
+          db.raw('SUM(CASE WHEN human_review = ? THEN 1 ELSE 0 END) as hitl', [
+            HumanReviewEnum.pending,
+          ])
+        ),
+      // Recent Activities (last 5 sessions)
+      Session.query()
+        .preload('practitioner')
+        .preload('patient')
+        .orderBy('createdAt', 'desc')
+        .limit(5),
+    ])
+
+    const notesAuditedToday = Number(notesAuditedTodayResult[0]?.total || 0)
+    const activePractitioners = Number(activePractitionersResult[0]?.total || 0)
+    const criticalIssues = Number(criticalIssuesResult[0]?.total || 0)
+    const thisWeekCount = Number(thisWeekResult[0]?.total || 0)
+    const lastWeekCount = Number(lastWeekResult[0]?.total || 0)
+
+    let weeklyGrowth = 0
+    if (lastWeekCount > 0) {
+      weeklyGrowth = Math.round(((thisWeekCount - lastWeekCount) / lastWeekCount) * 100)
+    } else if (thisWeekCount > 0) {
+      weeklyGrowth = 100
+    }
+
+    const volumeByDay = new Map(volumeRows.map((row: any) => [dayKeyOf(row.day), row]))
+    const weeklyAuditVolume = last7Days.map((dayDate) => {
+      const row: any = volumeByDay.get(dayDate.toFormat('yyyy-LL-dd'))
+      return {
+        day: daysOfWeek[dayDate.weekday % 7],
+        criticalFailures: Number(row?.critical_failures || 0),
+        hitl: Number(row?.hitl || 0),
+        passed: Number(row?.passed || 0),
+        practitionerCorrections: Number(row?.practitioner_corrections || 0),
+      }
+    })
+
+    // Practitioner Quality Trends: one grouped query across all top practitioners and days,
+    // instead of one avg() query per practitioner per day.
+    const practitionerIds = topPractitioners.map((p: any) => p.id)
+    const trendRows = practitionerIds.length
+      ? await db
+          .from('session')
+          .whereNull('deleted_at')
+          .whereIn('practitioner_id', practitionerIds)
+          .where('created_at', '>=', startOfVolumeWindow)
+          .where('created_at', '<=', endOfToday)
+          .whereNotNull('ai_score')
+          .groupByRaw('practitioner_id, DATE(created_at)')
+          .select(
+            'practitioner_id',
+            db.raw('DATE(created_at) as day'),
+            db.raw('AVG(ai_score) as avg_score')
+          )
+      : []
+
+    const trendByPractitionerDay = new Map(
+      trendRows.map((row: any) => [`${row.practitioner_id}_${dayKeyOf(row.day)}`, row])
+    )
+
+    const practitionerTrends = topPractitioners.map((p: any) => {
+      const fullName = p.full_name?.trim() || `Practitioner #${p.id}`
+
+      const data = last7Days.map((dayDate) => {
+        const row: any = trendByPractitionerDay.get(`${p.id}_${dayDate.toFormat('yyyy-LL-dd')}`)
+        return {
+          day: daysOfWeek[dayDate.weekday % 7],
+          score: Math.round(Number(row?.avg_score || 0)),
+        }
+      })
+
+      return { name: fullName, data }
+    })
+
+    const recentActivities = recentSessions.map((session) => {
+      let type: 'info' | 'progress' | 'critical' | 'default' = 'default'
+      if (session.aiStatus === AiStatusEnum.failed) type = 'critical'
+      else if (session.aiStatus === AiStatusEnum.passed) type = 'progress'
+      else if (session.humanReview === HumanReviewEnum.pending) type = 'info'
+
+      const practitionerName = session.practitioner?.fullName || 'Practitioner'
+
+      const dateStr = session.createdAt ? session.createdAt.toRelative() || 'Recently' : 'Recently'
+
+      return {
+        id: String(session.id),
+        type,
+        title: `Note #${session.noteId || session.id} ${session.aiStatus === AiStatusEnum.failed ? 'failed audit' : 'processed'}`,
+        description: `Practitioner: ${practitionerName}`,
+        timestamp: session.createdAt ? session.createdAt.toISO() : new Date().toISOString(),
+        timeAgo: dateStr,
+      }
+    })
+
+    return {
+      notesAuditedToday,
+      weeklyGrowth,
+      activePractitioners,
+      criticalIssues,
+      weeklyAuditVolume,
+      practitionerTrends,
+      recentActivities,
+    }
+  } catch (error: any) {
+    logger.error('Error fetching dashboard statistics', error)
+    throw new Error('Error fetching dashboard statistics')
   }
 }

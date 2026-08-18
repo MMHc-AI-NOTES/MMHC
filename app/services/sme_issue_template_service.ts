@@ -3,7 +3,7 @@ import IssuesRelatedTo from '#models/issues_related_to'
 import IssueDescription from '#models/issue_description'
 import SmeIssuesTamplate from '#models/sme_issues_tamplate'
 import { sendSuccess, sendError } from '#services/custom_response_service'
-import { paginateQuery } from '#services/apply_pagination'
+import { paginateConfigQuery } from '#services/apply_pagination'
 import type {
   createSmeIssueTemplateValidatorInterface,
   updateSmeIssueTemplateValidatorInterface,
@@ -80,7 +80,7 @@ export const listSmeIssueTemplates = async (page?: number, pageSize?: number) =>
       .preload('issueDescription')
       .orderBy('id', 'desc')
 
-    const paginated = await paginateQuery(query, pageSize, page)
+    const paginated = await paginateConfigQuery(query, pageSize, page)
 
     return {
       count: paginated['rows'].length,

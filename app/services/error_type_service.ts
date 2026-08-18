@@ -3,7 +3,7 @@ import SmeIssue from '#models/sme_issue'
 import { sendSuccess, sendError } from '#services/custom_response_service'
 import { applyFilters } from '#services/apply_filter'
 import { applySorting } from '#services/apply_sorting'
-import { paginateQuery } from '#services/apply_pagination'
+import { paginateConfigQuery } from '#services/apply_pagination'
 import type {
   createErrorTypeValidatorInterface,
   updateErrorTypeValidatorInterface,
@@ -44,7 +44,7 @@ export const listErrorTypes = async (
       }
     }
     let sortQuery = sortErrorType?.query ?? query
-    let errorTypeListingPaginated = await paginateQuery(sortQuery, pageSize, page)
+    let errorTypeListingPaginated = await paginateConfigQuery(sortQuery, pageSize, page)
 
     return sendSuccess('Error types listed successfully', {
       count: errorTypeListingPaginated['rows'].length,

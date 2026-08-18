@@ -98,22 +98,146 @@ const TERMINATION_FIELD_MAPPING: Record<string, string> = {
   '45z4-1': 'Documented by Supervised Clinician (if applicable)',
 }
 
-// Treatment plan is left out on purpose - ids aren't reliable for it,
-// so it always falls back to question text (see file comment up top).
+// Treatment plan id -> field name. Two form variants are in circulation and
+// their ids do not overlap, so both live here.
+//
+// Variant A carries three goal blocks, koai, has1 and 4yq4. The suffixes are
+// not in display order: koai-5 (Status) arrives before koai-4 (Short-Term
+// Objective 1), so names follow meaning rather than number.
+//
+// Variant B carries four, and its goal and objective headings hold no answer,
+// only the dates beneath them do.
+const TREATMENT_PLAN_FIELD_MAPPING: Record<string, string> = {
+  'uap4-1': 'First Name:',
+  'uap4-3': 'Last Name:',
+  'uap4-4': 'Date of Birth:',
+  'uap4-5': 'Initiation Date:',
+  'uap4-6': 'Review on',
+  'uap4-7': 'days on',
+  '425q-1': 'Referral for Additional Services?',
+  '425q-2': 'If yes, specify:',
+  '1abg-1': 'Encounter Type & Method',
+  'yshx-1': 'Session Frequency:',
+  'yshx-2': 'Expected Duration:',
+  'pqkf-1': 'Treatment Modality',
+  'my3p-1': 'Primary Clinical Approach',
+  'qn1y-1': 'Secondary Clinical Approach',
+  'zad8-1': 'Tenative Goals & Plans:',
+  '5mbv-1': 'Expected Length of Treatment:',
+  'cj7t-1': 'Appointments Frequency:',
+
+  // Variant A, goal 1
+  'koai-1': 'Goal 1 Long-Term Goal',
+  'koai-2': 'Goal 1 Target Completion Date',
+  'koai-5': 'Goal 1 Status',
+  'koai-4': 'Goal 1 Short-Term Objective 1',
+  'koai-7': 'Goal 1 Objective 1 Target Date',
+  'koai-11': 'Goal 1 Objective 1 Status',
+  'koai-8': 'Goal 1 Short-Term Objective 2',
+  'koai-9': 'Goal 1 Objective 2 Target Date',
+  'koai-10': 'Goal 1 Objective 2 Status',
+  'koai-12': 'Goal 1 Primary Clinical Intervention',
+  'koai-13': 'Goal 1 Secondary Clinical Intervention',
+  'koai-6': 'Goal 1 Notes',
+
+  // Variant A, goal 2
+  'has1-1': 'Goal 2 Long-Term Goal',
+  'has1-2': 'Goal 2 Target Completion Date',
+  'has1-5': 'Goal 2 Status',
+  'has1-4': 'Goal 2 Short-Term Objective 1',
+  'has1-7': 'Goal 2 Objective 1 Target Date',
+  'has1-11': 'Goal 2 Objective 1 Status',
+  'has1-8': 'Goal 2 Short-Term Objective 2',
+  'has1-9': 'Goal 2 Objective 2 Target Date',
+  'has1-10': 'Goal 2 Objective 2 Status',
+  'has1-12': 'Goal 2 Primary Clinical Intervention',
+  'has1-13': 'Goal 2 Secondary Clinical Intervention',
+  'has1-6': 'Goal 2 Notes',
+
+  // Variant A, goal 3 (optional on the form)
+  '4yq4-1': 'Goal 3 Long-Term Goal',
+  '4yq4-2': 'Goal 3 Target Completion Date',
+  '4yq4-5': 'Goal 3 Status',
+  '4yq4-4': 'Goal 3 Short-Term Objective 1',
+  '4yq4-7': 'Goal 3 Objective 1 Target Date',
+  '4yq4-11': 'Goal 3 Objective 1 Status',
+  '4yq4-8': 'Goal 3 Short-Term Objective 2',
+  '4yq4-9': 'Goal 3 Objective 2 Target Date',
+  '4yq4-10': 'Goal 3 Objective 2 Status',
+  '4yq4-12': 'Goal 3 Primary Clinical Intervention',
+  '4yq4-13': 'Goal 3 Secondary Clinical Intervention',
+  '4yq4-6': 'Goal 3 Notes',
+
+  // Variant B. The goal and objective headings carry instruction text and no
+  // answer, so they are named plainly and drop out of display when empty.
+  'fvuz-1': 'Goal 1 Long-Term Goal',
+  'e0cx-1': 'Goal 1 Target Completion Date',
+  '2ivu-1': 'Goal 1 Objectives and Interventions',
+  'i2k9-2': 'Goal 1 Intervention Completion Date',
+  'i2k9-1': 'Goal 1 Intervention 1a Completion Date',
+  'rt7s-1': 'Goal 2 Long-Term Goal',
+  'f220-1': 'Goal 2 Target Completion Date',
+  'mb2a-1': 'Goal 2 Objectives and Interventions',
+  '6t4l-2': 'Goal 2 Intervention Completion Date',
+  '6t4l-1': 'Goal 2 Intervention 2a Completion Date',
+  'n9fx-1': 'Goal 3 Long-Term Goal',
+  '6tai-1': 'Goal 3 Target Completion Date',
+  'spdh-1': 'Goal 3 Objectives and Interventions',
+  'qgx7-2': 'Goal 3 Intervention Completion Date',
+  'qgx7-1': 'Goal 3 Intervention 3a Completion Date',
+  'e12d-1': 'Goal 4 Long-Term Goal',
+  'r685-1': 'Goal 4 Target Completion Date',
+  'eafq-1': 'Goal 4 Objectives and Interventions',
+  'a28a-2': 'Goal 4 Intervention Completion Date',
+  'a28a-1': 'Goal 4 Intervention 4a Completion Date',
+
+  '8pav-1': 'Progress Since Last Plan',
+  '8ys9-1': 'Full Name & Credentials (Signature)',
+  '8ys9-2': 'Date Completed',
+  'd5sc-1': 'Documented by Supervised Clinician (if applicable)',
+}
+
+export // The combined treatment plan + progress note has no id map yet: its question
+// ids are unknown until the first real payload arrives, so it relies on the
+// label normalisation fallback in buildSessionObject, which the goal label
+// rules already cover for any goal number.
 const FIELD_MAPPING_BY_TYPE: Record<number, Record<string, string>> = {
   [SessionTypeEnum.progress_note]: FIELD_MAPPING,
   [SessionTypeEnum.intake]: INTAKE_FIELD_MAPPING,
+  [SessionTypeEnum.treatment_plan]: TREATMENT_PLAN_FIELD_MAPPING,
   [SessionTypeEnum.termination]: TERMINATION_FIELD_MAPPING,
 }
 
 // PracticeQ's NoteName (or Type) -> our enum. First four are confirmed
 // from the real sample data; the rest are guesses in case the wording
 // comes through differently on some notes.
+// Stable names for the four note types, used wherever a type has to travel
+// outside the application. Numbers stay in the database, these go on the wire.
+export const SESSION_TYPE_SLUG: Record<number, string> = {
+  [SessionTypeEnum.progress_note]: 'progress_note',
+  [SessionTypeEnum.intake]: 'intake',
+  [SessionTypeEnum.treatment_plan]: 'treatment_plan',
+  [SessionTypeEnum.termination]: 'termination',
+  [SessionTypeEnum.treatment_plan_progress_note]: 'treatment_plan_progress_note',
+}
+
+export function sessionTypeSlug(sessionType?: number | null): string {
+  if (sessionType === null || sessionType === undefined) return 'unknown'
+  return SESSION_TYPE_SLUG[sessionType] ?? 'unknown'
+}
+
 const TYPE_LABEL_TO_ENUM: Record<string, number> = {
   'progress note': SessionTypeEnum.progress_note,
   'initial consultation: intake/assessment': SessionTypeEnum.intake,
   'initial consultation: assessment/treatment plan': SessionTypeEnum.treatment_plan,
   'termination note': SessionTypeEnum.termination,
+  // The combined form's exact label is unconfirmed until the first real note
+  // arrives, so these cover the likely wordings and the fuzzy match below
+  // catches the rest.
+  'treatment plan + progress note': SessionTypeEnum.treatment_plan_progress_note,
+  'combined treatment plan + progress note': SessionTypeEnum.treatment_plan_progress_note,
+  'treatment plan / progress note': SessionTypeEnum.treatment_plan_progress_note,
+  'treatment plan and progress note': SessionTypeEnum.treatment_plan_progress_note,
   // unconfirmed aliases, just a safety net
   'progress': SessionTypeEnum.progress_note,
   'intake': SessionTypeEnum.intake,
@@ -130,6 +254,12 @@ const TYPE_LABEL_TO_ENUM: Record<string, number> = {
 // before "intake" - the real treatment plan label also contains the
 // word "assessment" so order matters here.
 function fuzzyMatchType(key: string): number | undefined {
+  // The combined label contains both phrases, so it has to be checked first.
+  // "progress note" rather than "progress" alone, so a renewal label that
+  // merely mentions progress stays a treatment plan.
+  if (key.includes('treatment plan') && key.includes('progress note')) {
+    return SessionTypeEnum.treatment_plan_progress_note
+  }
   if (key.includes('treatment plan')) return SessionTypeEnum.treatment_plan
   if (key.includes('termination') || key.includes('discharge')) return SessionTypeEnum.termination
   if (key.includes('intake')) return SessionTypeEnum.intake
@@ -188,6 +318,78 @@ function formatAnswer(answer: unknown): string {
   return String(answer)
 }
 
+// PracticeQ labels a question with the text the clinician reads on the form,
+// which often carries the instructions with it:
+//
+//   "Treatment Goal  #1\nInstructions: Enter the clients primary goal..."
+//
+// The id maps above cover the form variants we have seen, but a variant we
+// have not seen falls back to this text and turns it into a heading, which is
+// unreadable and never matches a section. Question ids change between
+// variants; the label the clinician reads does not. Normalising the label
+// keeps a new variant readable without waiting on a code change.
+const GOAL_LABEL_RULES: [RegExp, string][] = [
+  // The initial plan heads its goal blocks "Tentative Goal 1" and the 90 day
+  // renewal heads the same blocks "Treatment Goal #1". Tentative describes when
+  // the goal was written, not what the field is, so both resolve to one name.
+  // Splitting them would double the goal sections and show a client's initial
+  // plan and their renewal under different headings.
+  // Each rule consumes the rest of the label. What follows a goal heading is
+  // decoration, "(optional)" or the instructions, and never another field.
+  [/^Tentative\s+(?:Treatment\s+)?Goal\s*#?\s*(\d+).*$/i, 'Goal $1 Long-Term Goal'],
+  [
+    /^Objective,?\s*Intervention and Status for\s*GOAL\s*#?\s*(\d+).*$/i,
+    'Goal $1 Objectives and Interventions',
+  ],
+  [/^Treatment\s*Goal\s*#?\s*(\d+).*$/i, 'Goal $1 Long-Term Goal'],
+  [/^Goal\s*#?\s*(\d+)\s+Target Completion Date.*$/i, 'Goal $1 Target Completion Date'],
+  [
+    /^Intervention\s*#?\s*(\d+)([a-z])\s+Completion Date.*$/i,
+    'Goal $1 Intervention $1$2 Completion Date',
+  ],
+  [/^Intervention\s*#?\s*(\d+)\s+Completion Date.*$/i, 'Goal $1 Intervention Completion Date'],
+  [/^Goal\s*#\s*(\d+)\s+(.+)$/i, 'Goal $1 $2'],
+]
+
+/**
+ * A heading longer than this is guidance text rather than a field name. The
+ * longest real one is the intake history question at 66 characters.
+ *
+ * This is the guard that does not depend on guessing PracticeQ's wording. The
+ * splits below drop instructions written on their own line whatever they are
+ * introduced by, but instructions on the same line as the label cannot be
+ * recognised by keyword, since the keyword is theirs to change. Length catches
+ * those without us predicting anything.
+ */
+const MAX_HEADING_LENGTH = 80
+
+export function normaliseQuestionLabel(text: string | undefined | null): string {
+  if (!text) return ''
+
+  let label = String(text)
+    // Anything after a line break is guidance. Taking the first line covers
+    // Instructions, Note, Guidance and any wording we have not seen.
+    .split('\n')[0]
+    .replace(/\s*\(OPTIONAL\)/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!label) return ''
+
+  for (const [pattern, replacement] of GOAL_LABEL_RULES) {
+    if (pattern.test(label)) return label.replace(pattern, replacement).trim()
+  }
+
+  // Same line guidance. Cut at the first colon that has a sentence after it,
+  // and only when the label is too long to be a field name on its own.
+  if (label.length > MAX_HEADING_LENGTH) {
+    const beforeColon = label.split(/:\s+/)[0].trim()
+    if (beforeColon && beforeColon.length <= MAX_HEADING_LENGTH) return beforeColon
+  }
+
+  return label
+}
+
 // Builds the session object from a note's Questions array.
 //
 // Pass sessionType from resolveSessionType(...).type, but only when
@@ -195,9 +397,28 @@ function formatAnswer(answer: unknown): string {
 // instead of risking the wrong field names on a type we don't recognize.
 //
 // Field name for each question: the id map for this type if we have one,
-// otherwise PracticeQ's own question text, otherwise the raw id. Treatment
+// otherwise the normalised question label, otherwise the raw id. Treatment
 // plans repeat labels like "Status" across goal blocks, so repeats get
 // numbered (2), (3), etc rather than overwriting each other.
+/**
+ * Administrative scheduling fields, excluded from the stored session.
+ *
+ * These sit in the Client Details block of the PracticeQ forms. The SME team
+ * reviews the clinical writing and asked for them not to appear, the same way
+ * the patient's name and date of birth do not. Excluding them here keeps them
+ * out of the review screen and out of the scorer payload in one place.
+ * Compared by name so both wordings of Initiation Date are covered.
+ */
+const EXCLUDED_ADMIN_FIELD_NAMES = new Set(
+  ['Initiation Date:', 'Initiation date', 'Review on', 'days on'].map((name) =>
+    name.toLowerCase().replace(/:$/, '').trim()
+  )
+)
+
+export function isExcludedAdminField(fieldName: string): boolean {
+  return EXCLUDED_ADMIN_FIELD_NAMES.has(fieldName.toLowerCase().replace(/:$/, '').trim())
+}
+
 export function buildSessionObject(
   questions: QuestionLike[] | undefined | null,
   sessionType?: number
@@ -213,8 +434,9 @@ export function buildSessionObject(
     const text = q?.text ?? q?.Text
     const answer = formatAnswer(q?.answer ?? q?.Answer)
 
-    const baseFieldName = (id && idMap[id]) || text || id
+    const baseFieldName = (id && idMap[id]) || normaliseQuestionLabel(text) || id
     if (!baseFieldName) continue
+    if (isExcludedAdminField(baseFieldName)) continue
 
     const occurrence = (seenCount[baseFieldName] ?? 0) + 1
     seenCount[baseFieldName] = occurrence
