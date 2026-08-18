@@ -9,7 +9,22 @@ export interface AnnotatableSection {
   id: number
   field_id: string
   display_name: string
+  note_type?: string
 }
+
+/** Which template family a section belongs to, shown on the Settings screens. */
+export const SECTION_NOTE_TYPES = [
+  'progress_note',
+  'intake',
+  'treatment_plan',
+  'termination',
+  'shared',
+] as const
+
+const withNoteType = (
+  sections: AnnotatableSection[],
+  noteType: (typeof SECTION_NOTE_TYPES)[number]
+): AnnotatableSection[] => sections.map((section) => ({ ...section, note_type: noteType }))
 
 const PROGRESS_NOTE_SECTIONS: AnnotatableSection[] = [
   { id: 1, field_id: 'p9m9-1', display_name: 'Session Duration' },
@@ -246,13 +261,13 @@ const GOAL_SECTIONS: AnnotatableSection[] = [
 ]
 
 export const ANNOTATABLE_SECTIONS: AnnotatableSection[] = [
-  ...PROGRESS_NOTE_SECTIONS,
-  ...SHARED_SECTIONS,
-  ...INTAKE_SECTIONS,
-  ...TERMINATION_SECTIONS,
-  ...TREATMENT_PLAN_SECTIONS,
-  ...LATER_FORM_SECTIONS,
-  ...GOAL_SECTIONS,
+  ...withNoteType(PROGRESS_NOTE_SECTIONS, 'progress_note'),
+  ...withNoteType(SHARED_SECTIONS, 'shared'),
+  ...withNoteType(INTAKE_SECTIONS, 'intake'),
+  ...withNoteType(TERMINATION_SECTIONS, 'termination'),
+  ...withNoteType(TREATMENT_PLAN_SECTIONS, 'treatment_plan'),
+  ...withNoteType(LATER_FORM_SECTIONS, 'shared'),
+  ...withNoteType(GOAL_SECTIONS, 'treatment_plan'),
 ]
 
 /** Throws if a name, field id or id repeats. */
