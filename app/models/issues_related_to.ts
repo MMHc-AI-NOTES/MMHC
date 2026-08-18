@@ -2,11 +2,18 @@ import { DateTime } from 'luxon'
 import { BaseModel, beforeFetch, beforeFind, column } from '@adonisjs/lucid/orm'
 import { softDeleteQuery } from '#helpers/soft_delete_helper'
 
-export const issuesRelatedToFilterEnum = ['id', 'field_id', 'display_name', 'created_at']
+export const issuesRelatedToFilterEnum = [
+  'id',
+  'field_id',
+  'display_name',
+  'note_type',
+  'created_at',
+]
 export const issuesRelatedToSortEnum = [
   'id',
   'field_id',
   'display_name',
+  'note_type',
   'created_at',
   'updated_at',
 ]
@@ -26,6 +33,11 @@ export default class IssuesRelatedTo extends BaseModel {
     columnName: 'display_name',
   })
   declare displayName: string
+
+  @column({
+    columnName: 'note_type',
+  })
+  declare noteType: string | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
