@@ -130,6 +130,36 @@ const pinned: Record<string, number> = {
   'Goal 2 Intervention 2a Completion Date': 117,
   'Goal 3 Intervention 3a Completion Date': 118,
   'Goal 4 Intervention 4a Completion Date': 119,
+  'Goal 5 Long-Term Goal': 120,
+  'Goal 5 Target Completion Date': 121,
+  'Goal 5 Status': 122,
+  'Goal 5 Short-Term Objective 1': 123,
+  'Goal 5 Objective 1 Target Date': 124,
+  'Goal 5 Objective 1 Status': 125,
+  'Goal 5 Short-Term Objective 2': 126,
+  'Goal 5 Objective 2 Target Date': 127,
+  'Goal 5 Objective 2 Status': 128,
+  'Goal 5 Primary Clinical Intervention': 129,
+  'Goal 5 Secondary Clinical Intervention': 130,
+  'Goal 5 Notes': 131,
+  'Goal 5 Objectives and Interventions': 132,
+  'Goal 5 Intervention Completion Date': 133,
+  'Goal 6 Long-Term Goal': 134,
+  'Goal 6 Target Completion Date': 135,
+  'Goal 6 Status': 136,
+  'Goal 6 Short-Term Objective 1': 137,
+  'Goal 6 Objective 1 Target Date': 138,
+  'Goal 6 Objective 1 Status': 139,
+  'Goal 6 Short-Term Objective 2': 140,
+  'Goal 6 Objective 2 Target Date': 141,
+  'Goal 6 Objective 2 Status': 142,
+  'Goal 6 Primary Clinical Intervention': 143,
+  'Goal 6 Secondary Clinical Intervention': 144,
+  'Goal 6 Notes': 145,
+  'Goal 6 Objectives and Interventions': 146,
+  'Goal 6 Intervention Completion Date': 147,
+  'Goal 5 Intervention 5a Completion Date': 148,
+  'Goal 6 Intervention 6a Completion Date': 149,
 }
 
 test.group('Section ids are stable', () => {
@@ -172,13 +202,16 @@ test.group('Section ids are stable', () => {
     assert.equal(byName.get('Goal 4 Intervention Completion Date'), 115)
     assert.equal(byName.get('Goal 1 Intervention 1a Completion Date'), 116)
     assert.equal(byName.get('Goal 4 Intervention 4a Completion Date'), 119)
+    assert.equal(byName.get('Goal 5 Long-Term Goal'), 120)
+    assert.equal(byName.get('Goal 6 Long-Term Goal'), 134)
+    assert.equal(byName.get('Goal 6 Intervention 6a Completion Date'), 149)
   })
 
   test('the id a new section should take is the next free one', ({ assert }) => {
     const used = new Set(ANNOTATABLE_SECTIONS.map((section) => section.id))
     const highest = Math.max(...used)
 
-    assert.equal(highest, 119)
-    assert.isFalse(used.has(120), 'A new section takes 120, not a gap in the middle')
+    assert.equal(highest, 149)
+    assert.isFalse(used.has(150), 'A new section takes 150, not a gap in the middle')
   })
 })

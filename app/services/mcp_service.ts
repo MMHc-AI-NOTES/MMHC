@@ -377,6 +377,7 @@ export function parseSessionForMcp(sessionContent: unknown, sessionType?: number
     SessionTypeEnum.intake,
     SessionTypeEnum.treatment_plan,
     SessionTypeEnum.termination,
+    SessionTypeEnum.treatment_plan_progress_note,
   ]
   const useProgressNoteShape =
     sessionType === null || sessionType === undefined || !typesWithOwnSections.includes(sessionType)
