@@ -91,6 +91,7 @@ export const createIssuesRelatedTo = async (reqData: createIssuesRelatedToValida
     const issuesRelatedTo = await IssuesRelatedTo.create({
       fieldId: reqData.field_id,
       displayName: reqData.display_name,
+      noteType: reqData.note_type ?? null,
     })
 
     return sendSuccess('Issues related to created successfully', issuesRelatedTo)
@@ -124,6 +125,9 @@ export const updateIssuesRelatedTo = async (
     }
     if (reqData.display_name !== undefined) {
       updateData.displayName = reqData.display_name
+    }
+    if (reqData.note_type !== undefined) {
+      updateData.noteType = reqData.note_type
     }
 
     await issuesRelatedTo.merge(updateData).save()
